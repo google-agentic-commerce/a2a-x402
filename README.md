@@ -1,1 +1,1 @@
-# x402
+# A2A x402 Extension Monorepo
