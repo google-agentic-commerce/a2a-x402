@@ -278,8 +278,6 @@ Sent by the Client Agent in `Message` metadata to the Merchant Agent, containing
 | `paymentRequirements` | `PaymentRequirements` | Yes | The selected payment requirements. |
 | `paymentPayload` | `PaymentPayload` | Yes | The signed payment payload |
 
-### 
-
 ### **5.5. `x402SettleResponse`**
 
 Returned by the Merchant Agent in `Task` metadata after a successful payment.
