@@ -45,7 +45,7 @@ The x402 extension maps the payment lifecycle to the A2A Task state machine. The
 
 * **Host/Client Agents** primarily relay information by sending `Message` objects.  
 * **Merchant/Wallet Agents** are specialist agents that respond with stateful `Task` objects or simple `Message` objects containing the data requested by the Host.  
-* All x402-specific data objects (`x402PaymentRequiredResponse`, `x402PaymentPayloadResponse, x402PaymentPayloadRequest`,  `x402SettleRequest, x402SettleResponse`) are passed within the `metadata` field of `Task` or `Message` objects.
+* All x402-specific data objects (`PaymentRequirements, x402PaymentRequiredResponse`, `PaymentPayload, x402SettleRequest, x402SettleResponse`) are passed within the `metadata` field of `Task` or `Message` objects.
 
 ### **4.1. Architecture**
 
@@ -58,10 +58,12 @@ sequenceDiagram
     Host Agent->>Merchant Agent: 1. Request service (Message)
     Merchant Agent-->>Host Agent: 2. Respond with Task (state: 'input-required', data: x402PaymentRequiredResponse)
     Host Agent->>Wallet Agent: 3. Request signature (Message with x402PaymentRequiredResponse)
-    Wallet Agent-->>Host Agent: 4. Respond with signed payload (Message/Task with x402PaymentRequest)
-    Host Agent->>Merchant Agent: 5. Fulfill request (Message with x402PaymentRequest & taskId)
-    Merchant Agent-->>Host Agent: 6. Respond with completed Task (state: 'completed', data: x402PaymentResponse & Artifact)
+    Wallet Agent-->>Host Agent: 4. Respond with signed payload (Message/Task with PaymentPayload)
+    Host Agent->>Merchant Agent: 5. Fulfill request (Message with x402SettleRequest & taskId)
+    Merchant Agent-->>Host Agent: 6. Respond with completed Task (state: 'completed', data: x402SettleResponse & Artifact)
 ```
+
+### 
 
 ### **4.2. Step 1: Payment Request (Merchant → Host)**
 
@@ -123,7 +125,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
 1. **Host selects a compatible payment requirement relays request to Wallet:** The Host Agent extracts the `x402PaymentRequiredResponse` object from the task's metadata, find the preferred payment requirement object to sign, and sends it within the `metadata` of a new `Message` to a trusted Wallet Agent, asking it to sign the transaction.
 
 ```
-* Request from Host Agent to Wallet Agent */
+/* Request from Host Agent to Wallet Agent */
 {
   "jsonrpc": "2.0",
   "method": "message/send",
@@ -145,7 +147,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
 2. **Wallet returns signed payload:** The Wallet Agent validates the request, signs it securely, and returns the `x402PaymentPayload` object to the Host Agent within the `metadata` of a response `Message`.
 
 ```
-* Response from Wallet Agent to Host Agent */
+/* Response from Wallet Agent to Host Agent */
 {
   "jsonrpc": "2.0",
   "id": "req-002",
@@ -178,7 +180,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
 **Host relays signed payload to Merchant:** The Host Agent receives the signed payload and sends it back to the Merchant Agent in the `metadata` of a new `Message`. This message **MUST** include the `taskId` from the original payment request so the Merchant can correlate the payment to the correct service.
 
 ```
-* Request from Host Agent to Merchant Agent */
+/* Request from Host Agent to Merchant Agent */
 {
   "jsonrpc": "2.0",
   "method": "message/send",
@@ -259,26 +261,7 @@ Describes a single way a client can pay.
 | `maxTimeoutSeconds` | number | No | The number of seconds the payment requirements are valid for. |
 | `extra` | object | No | A container for additional scheme-specific data (e.g., EIP-712 domain info). |
 
-### **5.3. `x402PaymentPayloadRequest`**
-
-Sent by the Client Agent in `Message` metadata to the Wallet Agent to sign, containing the select paymentRequirements object to sign.
-
-| Field | Type | Required | Description |
-| ----- | ----- | ----- | ----- |
-| `paymentRequirements` | `PaymentRequirements` | Yes | The selected payment requirements. |
-
-### 
-
-### **5.4. `x402PaymentPayloadResponse`**
-
-Sent by the Wallet Agent in `Message or Task` metadata, containing the signed payment authorization.
-
-| Field | Type | Required | Description |
-| ----- | ----- | ----- | ----- |
-| `paymentRequirements` | `PaymentRequirements` | Yes | The selected payment requirements. |
-| `paymentPayload` | `PaymentPayload` | Yes | The signed payment payload |
-
-### **5.5. `PaymentPayload`**
+### **5.3. `PaymentPayload`**
 
 Sent by the Wallet Agent in metadata, containing the signed payment authorization.
 
@@ -289,7 +272,7 @@ Sent by the Wallet Agent in metadata, containing the signed payment authorizatio
 | `scheme` | string | Yes | The payment scheme being used. |
 | `payload` | object | Yes | The signed payment details, specific to the scheme. |
 
-### **5.6. `x402SettleRequest`**
+### **5.4. `x402SettleRequest`**
 
 Sent by the Client Agent in `Message` metadata to the Merchant Agent, containing the signed payment authorization.
 
@@ -300,7 +283,7 @@ Sent by the Client Agent in `Message` metadata to the Merchant Agent, containing
 
 ### 
 
-### **5.7. `x402SettleResponse`**
+### **5.5. `x402SettleResponse`**
 
 Returned by the Merchant Agent in `Task` metadata after a successful payment.
 
@@ -317,14 +300,13 @@ Returned by the Merchant Agent in `Task` metadata after a successful payment.
 This extension uses the `metadata` field on `Task` and `Message` objects to track the payment state and transport data.
 
 * `x402.payment.status`: The current stage of the payment flow. Values:   
-  * `"payment-required"`   
-  * `"payment-submitted"`  
-  * `"payment-pending"`  
-  * `"payment-completed"`  
-  * `"payment-failed"`  
+  * `"payment-required"` \- Payment requirements have been sent to client agent  
+  * `"Payment-submitted"` \- Payment payload has been received by the server agent  
+  * `"payment-pending"`\- Payment payload has been sent to facilitator to settle by the server agent  
+  * `"Payment-completed"` \- Payment transaction has successfully be posted on-chain  
+  * `"Payment-failed"`\- Payment payload failed to be verified, settled, or posted on-chain successfully.  
 * `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
-* `x402.payment.requirements`: Contains the `x402PaymentPayloadRequest` object selected from the agent. This is selected from the x402PaymentRequireedResponse’s accepts array.  
-* `x402.payment.payload`: Contains the `x402PaymentPayloadResponse` or `x402SettleRequest` object with the signed authorization from the Wallet.  
+* `x402.payment.payload`: Contains the `x402SettleRequest` object with the signed authorization from the Wallet.  
 * `x402.payment.receipt`: Contains the `x402SettleResponse` object upon successful settlement or failed settlement.  
 * `x402.payment.error`: In case of failure, a short error code (e.g., `"insufficient_funds"`).
 
@@ -393,3 +375,5 @@ If a payment fails, the server MUST set the `Task` state to `failed` and provide
 * [**A2A Protocol Specification**](https://a2a-protocol.org/latest/specification): The core Agent-to-Agent protocol specification, defining the base data structures and methods that this extension builds upon.  
 * [**A2A Extensions Documentation**](https://github.com/a2aproject/A2A/blob/main/docs/topics/extensions.md): The official documentation on how to create and use extensions within the A2A protocol.  
 * [**x402 Protocol Specification**](https://x402.gitbook.io/x402): The underlying x402 payments protocol specification that provides the conceptual framework for this A2A extension.
+
+
