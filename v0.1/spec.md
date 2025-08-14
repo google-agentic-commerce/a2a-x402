@@ -41,7 +41,7 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 ## **4\. Payment Protocol Flow**
 
-The x402 extension maps the payment lifecycle to the A2A Task state machine. The flow involves a **Host Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Wallet Agent/Service** (handling cryptographic signatures).
+The x402 extension maps the payment lifecycle to the A2A Task state machine. The flow involves a **Host Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Signing Service** (handling cryptographic signatures).
 
 * **Host/Client Agents** primarily relay information by sending `Message` objects.
 * **Signing Service** Entity that has the capability of signing a PaymentRequirement and creating a PaymentPayload.  This could be another agent, and MCP server, or the Host agent could call the x402 Client directly itself.
@@ -152,7 +152,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
       "metadata": {
         "x402.payment.status": "payment-submitted",
 	  "x402.payment.requirements": {  /* ... The selected payment requirements */ }
-        "x402.payment.payload": { /* ... The signed object from the Wallet Agent ... */ }
+        "x402.payment.payload": { /* ... The signed object from the Host's signing service ... */ }
       }
     }
   }
@@ -219,7 +219,7 @@ Describes a single way a client can pay.
 
 ### **5.3. `PaymentPayload`**
 
-Sent by the Wallet Agent in metadata, containing the signed payment authorization.
+Created by the Signing Service, containing the signed payment authorization.
 
 | Field | Type | Required | Description |
 | ----- | ----- | ----- | ----- |
@@ -260,7 +260,7 @@ This extension uses the `metadata` field on `Task` and `Message` objects to trac
   * `"Payment-completed"`: Payment transaction has successfully be posted on-chain  
   * `"Payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
 * `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
-* `x402.payment.payload`: Contains the `x402SettleRequest` object with the signed authorization from the Wallet.  
+* `x402.payment.payload`: Contains the `x402SettleRequest` object with the signed authorization from the signing service.  
 * `x402.payment.receipt`: Contains the `x402SettleResponse` object upon successful settlement or failed settlement.  
 * `x402.payment.error`: In case of failure, a short error code (e.g., `"insufficient_funds"`).
 
@@ -318,7 +318,7 @@ If a payment fails, the server MUST set the `Task` state to `failed` and provide
 
 ## **9\. Security Considerations**
 
-* **Private Key Security**: Private keys MUST only be handled by a secure wallet agent or service. They must never be exposed to an orchestrating (host) agent or the merchant agent.  
+* **Private Key Security**: Private keys MUST only be handled by a secure signing service. They must never be exposed to an orchestrating (host) agent or the merchant agent.  
 * **Signature Verification**: Server agents MUST cryptographically verify every payment signature before attempting settlement.  
 * **Input Validation**: Servers MUST rigorously validate the contents of all payment-related data structures.  
 * **Replay Protection**: Servers MUST track used nonces to prevent replay attacks.  
