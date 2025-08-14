@@ -63,8 +63,6 @@ sequenceDiagram
     Merchant Agent-->>Host Agent: 6. Respond with completed Task (state: 'completed', data: x402SettleResponse & Artifact)
 ```
 
-### 
-
 ### **4.2. Step 1: Payment Request (Merchant → Host)**
 
 When a Host Agent requests a service, the Merchant Agent determines that payment is required. It creates a `Task`, sets its status to `input-required`, and includes the `x402PaymentRequiredResponse` object in the `metadata` of the `Task`. This `Task` is sent back to the Host Agent.
