@@ -122,7 +122,7 @@ When a Host Agent requests a service, the Merchant Agent determines that payment
 
 The Host Agent receives the `Task` and must now get the payment authorized.
 
-1. **Host selects a compatible payment requirement relays request to Wallet:** The Host Agent extracts the `x402PaymentRequiredResponse` object from the task's metadata, find the preferred payment requirement object to sign, and sends it within the `metadata` of a new `Message` to a trusted Wallet Agent, asking it to sign the transaction.
+1. **Host selects a compatible payment requirement and relays the request to the Wallet:** The Host Agent extracts the `x402PaymentRequiredResponse` object from the task's metadata, finds the preferred payment requirement object to sign, and sends it within the `metadata` of a new `Message` to a trusted Wallet Agent, asking it to sign the transaction.
 
 ```
 /* Request from Host Agent to Wallet Agent */
@@ -137,7 +137,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
         { "kind": "text", "text": "Please sign the following payment." }
       ],
       "metadata": {
-        "x402.payment.required": { /* ... same object from Merchant task metadata ... */ }
+        "x402.payment.requirements": { /* ... one of the PaymentRequirements objects from the 'accepts' array ... */ }
       }
     }
   }
@@ -221,13 +221,12 @@ The Host Agent receives the `Task` and must now get the payment authorized.
     },
     "artifacts": [ /* ... service result ... */ ],
     "metadata": {
-      "x402.payment.status": "payment-completed" | "payment-failed",
+      "x402.payment.status": "payment-completed",
       "x402.payment.receipt": {
-        "success": true | false
+        "success": true,
         "transaction": "0xabc123...",
         "network": "base",
         "payer": "0xpayerAddress"
-        "errorReason": undefined | "error reason",
       }
     }
   }
@@ -290,8 +289,8 @@ Returned by the Merchant Agent in `Task` metadata after a successful payment.
 | Field | Type | Required | Description |
 | ----- | ----- | ----- | ----- |
 | `success` | bool | Yes | Status of the transaction settlement |
-| `errorReason` | str | No | Error reason for unsuccessful settlement |
-| `transaction` | string | Yes | The on-chain transaction hash of the settled payment. |
+| `errorReason` | string | No | Error reason for unsuccessful settlement |
+| `transaction` | string | No | The on-chain transaction hash of the settled payment. Present only if `success` is true. |
 | `network` | string | Yes | The network where the payment was settled. |
 | `payer` | string | No | The payer of the settled transaction |
 
