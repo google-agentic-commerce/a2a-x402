@@ -51,16 +51,22 @@ The x402 extension maps the payment lifecycle to the A2A Task state machine. The
 
 ```mermaid
 sequenceDiagram
+    participant Signing Service
     participant Host Agent
     participant Merchant Agent
-    participant Wallet Agent
+    participant Facilitator
 
     Host Agent->>Merchant Agent: 1. Request service (Message)
     Merchant Agent-->>Host Agent: 2. Respond with Task (state: 'input-required', data: x402PaymentRequiredResponse)
-    Host Agent->>Wallet Agent: 3. Request signature (Message with x402PaymentRequiredResponse)
-    Wallet Agent-->>Host Agent: 4. Respond with signed payload (Message/Task with PaymentPayload)
+    Host Agent->>Signing Service: 3. Request signature (Message with PaymentRequirements)
+    Signing Service-->>Host Agent: 4. Respond with signed payload (Message/Task with PaymentPayload)
     Host Agent->>Merchant Agent: 5. Fulfill request (Message with x402SettleRequest & taskId)
-    Merchant Agent-->>Host Agent: 6. Respond with completed Task (state: 'completed', data: x402SettleResponse & Artifact)
+    Merchant Agent->>Facilitator: 6. Request to verify and settle payment
+    Facilitator-->>Merchant Agent: Return Verification status
+    Merchant Agent->>Merchant Agent: 7. Process Host Agent Request
+    Merchant Agent->>Facilitator: 8. Settle Payment Payload	
+    Facilitator-->>Merchant Agent: Return Settled Transaction
+    Merchant Agent-->>Host Agent: 9. Respond with completed Task (state: 'completed', data: x402SettleResponse & Artifact)
 ```
 
 ### **4.2. Step 1: Payment Request (Merchant → Host)**
