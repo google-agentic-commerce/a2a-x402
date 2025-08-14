@@ -43,9 +43,11 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 The x402 extension maps the payment lifecycle to the A2A Task state machine. The flow involves a **Host Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Wallet Agent/Service** (handling cryptographic signatures).
 
-* **Host/Client Agents** primarily relay information by sending `Message` objects.  
-* **Merchant/Wallet Agents** are specialist agents that respond with stateful `Task` objects or simple `Message` objects containing the data requested by the Host.  
+* **Host/Client Agents** primarily relay information by sending `Message` objects.
+* **Signing Service** Entity that has the capability of signing a PaymentRequirement and creating a PaymentPayload.  This could be another agent, and MCP server, or the Host agent could call the x402 Client directly itself.
+* **Merchant Agents** are specialist agents that respond with stateful `Task` objects or simple `Message` objects containing the data requested by the Host.  
 * All x402-specific data objects (`PaymentRequirements, x402PaymentRequiredResponse`, `PaymentPayload, x402SettleRequest, x402SettleResponse`) are passed within the `metadata` field of `Task` or `Message` objects.
+* **Facilitator** Entity that is able to verify and settle payment payload according the x402 protocol definition.
 
 ### **4.1. Architecture**
 
@@ -122,62 +124,13 @@ When a Host Agent requests a service, the Merchant Agent determines that payment
 
 ```
 
-### **4.3. Step 2: Payment Authorization (Host → Wallet → Host)**
+### **4.3. Step 2: Payment Authorization (Host → Signing Service → Host)**
 
 The Host Agent receives the `Task` and must now get the payment authorized.
 
-1. **Host selects a compatible payment requirement and relays the request to the Wallet:** The Host Agent extracts the `x402PaymentRequiredResponse` object from the task's metadata, finds the preferred payment requirement object to sign, and sends it within the `metadata` of a new `Message` to a trusted Wallet Agent, asking it to sign the transaction.
+1. **Host selects relays the payment requirements to the signing service:** The Host Agent extracts the `x402PaymentRequiredResponse` object from the task's metadata, finds the preferred payment requirement object to sign and calls its preferred signing service, asking it to sign the transaction.
 
-```
-/* Request from Host Agent to Wallet Agent */
-{
-  "jsonrpc": "2.0",
-  "method": "message/send",
-  "id": "req-002",
-  "params": {
-    "message": {
-      "role": "user",
-      "parts": [
-        { "kind": "text", "text": "Please sign the following payment." }
-      ],
-      "metadata": {
-        "x402.payment.requirements": { /* ... one of the PaymentRequirements objects from the 'accepts' array ... */ }
-      }
-    }
-  }
-}
-```
-
-2. **Wallet returns signed payload:** The Wallet Agent validates the request, signs it securely, and returns the `x402PaymentPayload` object to the Host Agent within the `metadata` of a response `Message`.
-
-```
-/* Response from Wallet Agent to Host Agent */
-{
-  "jsonrpc": "2.0",
-  "id": "req-002",
-  "result": {
-    "kind": "message",
-    "role": "agent",
-    "parts": [
-      { "kind": "text", "text": "Here is the signed payment authorization." }
-    ],
-    "metadata": {
-	"x402.payment.requirements": {
-		/* ... the selected payment requirements from the accepts array */
-	},
-      "x402.payment.payload": {
-        "x402Version": 1,
-        "network": "base",
-        "scheme": "exact",
-        "payload": {
-          "signature": "0x1b2e3c4d5e...",
-          "authorization": { /* ... EIP-3009 fields ... */ }
-        }
-      }
-    }
-  }
-}
-```
+2. **Signing Service returns signed payload:** The Signing Service validates the request, signs it securely, and returns the `x402PaymentPayload` object to the Host Agent.
 
 ### **4.4. Step 3: Fulfill and Settle (Host → Merchant → Host)**
 
