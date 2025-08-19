@@ -43,13 +43,49 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 The x402 extension maps the payment lifecycle to the A2A Task state machine. The flow involves a **Host Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Signing Service** (handling cryptographic signatures).
 
-* **Host/Client Agents** primarily relay information by sending `Message` objects.
-* **Signing Service** Entity that has the capability of signing a PaymentRequirement and creating a PaymentPayload.  This could be another agent, and MCP server, or the Host agent could call the x402 Client directly itself.
-* **Merchant Agents** are specialist agents that respond with stateful `Task` objects or simple `Message` objects containing the data requested by the Host.  
-* All x402-specific data objects (`PaymentRequirements, x402PaymentRequiredResponse`, `PaymentPayload, x402SettleRequest, x402SettleResponse`) are passed within the `metadata` field of `Task` or `Message` objects.
-* **Facilitator** Entity that is able to verify and settle payment payload according the x402 protocol definition.
+### **4.1. Roles & Responsibilities **
 
-### **4.1. Architecture**
+The x402 payment protocol defines the interactions between four distinct architectural roles. While a single application might combine some of these functions (e.g., a Host Agent with an integrated Signing Service), understanding their logical separation is key to a secure and correct implementation.
+
+---
+
+#### Host Agent
+The Host Agent acts as the client on behalf of a user, orchestrating the payment flow.
+
+* **Initiates** service requests to the Merchant Agent.
+* **Receives** a `Task` that requires payment and forwards the `x402PaymentRequiredResponse` to a Signing Service for authorization.
+* **Submits** the signed payment authorization, packaged as an `x402SettleRequest`, back to the Merchant Agent, ensuring the `taskId` is included to correlate the payment with the original request.
+* **Waits for and processes** the final `Task` from the Merchant Agent, which contains either the completed service result or a payment failure notice.
+
+---
+
+#### Merchant Agent
+The Merchant Agent is a specialist agent that provides a monetized skill or service.
+
+* **Determines** when a service request requires payment and responds with an `input-required` `Task` containing the payment requirements.
+* **Receives** the correlated payment submission from the Host Agent.
+* **Communicates** with a Facilitator to first verify the payment's signature and validity, and then to settle the transaction on-chain.
+* **Concludes** the flow by returning a final `Task` to the Host Agent, containing the service result as an `Artifact` and the settlement details in a payment `receipt`.
+
+---
+
+#### Signing Service
+The Signing Service is a secure component responsible for handling cryptographic signatures. This separation is a critical security pattern.
+
+* **Securely manages** private keys, which MUST NEVER be exposed to the orchestrating Host Agent or the Merchant Agent.
+* **Receives** payment requirements from the Host Agent.
+* **Signs** the selected payment requirement to create a `PaymentPayload` and returns it to the Host Agent.
+
+---
+
+#### Facilitator
+The Facilitator is an entity, typically a separate service, that handles direct blockchain interactions.
+
+* **Verifies** the validity of a payment signature upon request from the Merchant Agent.
+* **Settles** a valid payment by posting the transaction to the correct blockchain network.
+* **Returns** the result of the settlement (e.g., a transaction hash or an error reason) to the Merchant Agent.
+
+### **4.2. Architecture**
 
 ```mermaid
 sequenceDiagram
@@ -71,7 +107,7 @@ sequenceDiagram
 
 ```
 
-### **4.2. Step 1: Payment Request (Merchant → Host)**
+### **4.3. Step 1: Payment Request (Merchant → Host)**
 
 When a Host Agent requests a service, the Merchant Agent determines that payment is required. It creates a `Task`, sets its status to `input-required`, and includes the `x402PaymentRequiredResponse` object in the `metadata` of the `Task`. This `Task` is sent back to the Host Agent.
 
@@ -124,7 +160,7 @@ When a Host Agent requests a service, the Merchant Agent determines that payment
 
 ```
 
-### **4.3. Step 2: Payment Authorization (Host → Signing Service → Host)**
+### **4.4. Step 2: Payment Authorization (Host → Signing Service → Host)**
 
 The Host Agent receives the `Task` and must now get the payment authorized.
 
@@ -132,7 +168,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
 
 2. **Signing Service returns signed payload:** The Signing Service validates the request, signs it securely, and returns the `x402PaymentPayload` object to the Host Agent.
 
-### **4.4. Step 3: Fulfill and Settle (Host → Merchant → Host)**
+### **4.5. Step 3: Fulfill and Settle (Host → Merchant → Host)**
 
 **Host relays signed payload to Merchant:** The Host Agent receives the signed payload and sends it back to the Merchant Agent in the `metadata` of a new `Message`. This message **MUST** include the `taskId` from the original payment request so the Merchant can correlate the payment to the correct service.
 
