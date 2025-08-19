@@ -43,7 +43,7 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 The x402 extension maps the payment lifecycle to the A2A Task state machine. The flow involves a **Host Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Signing Service** (handling cryptographic signatures).
 
-### **4.1. Roles & Responsibilities **
+### **4.1. Roles & Responsibilities**
 
 The x402 payment protocol defines the interactions between four distinct architectural roles. While a single application might combine some of these functions (e.g., a Host Agent with an integrated Signing Service), understanding their logical separation is key to a secure and correct implementation.
 
