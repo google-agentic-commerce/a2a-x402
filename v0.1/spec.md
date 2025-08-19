@@ -113,7 +113,7 @@ When a Host Agent requests a service, the Merchant Agent determines that payment
 
 **Task State:** `input-required` 
 
-**Task Metadata:** `x402.payment.status: "payment-required"`, `x402.payment.requirements: { ... }`
+**Task Metadata:** `x402.payment.status: "payment-required"`, `x402.payment.required: { ... }`
 
 ```
 /* Response from Merchant Agent to Host Agent */
@@ -187,8 +187,7 @@ The Host Agent receives the `Task` and must now get the payment authorized.
       ],
       "metadata": {
         "x402.payment.status": "payment-submitted",
-	  "x402.payment.requirements": {  /* ... The selected payment requirements */ }
-        "x402.payment.payload": { /* ... The signed object from the Host's signing service ... */ }
+        "x402.payment.payload": { /* ... The signed objects from the Host's signing service in a x402SettleRequest  ... */ }
       }
     }
   }
