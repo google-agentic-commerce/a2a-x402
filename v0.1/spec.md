@@ -2,17 +2,13 @@
 
 ## **1\. Abstract**
 
-The x402 Payments Extension is a **Profile Extension** for the Agent-to-Agent (A2A) protocol. It enables agents to monetize services through on-chain cryptocurrency payments, reviving the spirit of the HTTP 402 "Payment Required" status code for the world of decentralized agents.
+The x402 Payments Extension is a **Extension** for the Agent-to-Agent (A2A) protocol. It enables agents to monetize services through on-chain cryptocurrency payments, reviving the spirit of the HTTP 402 "Payment Required" status code for the world of decentralized agents.
 
 This specification defines the required data structures, message flows, and state machine for requesting, authorizing, and settling payments within the A2A framework. It allows a server agent to require payment for a service, a client agent to authorize that payment using a secure wallet, and the server to verify and settle the transaction on a blockchain network.
 
 ## **2\. Extension URI**
 
-The canonical URI for this version of the extension is:
-
-```
-[https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1](https://github.com/google-a2a/a2a-x402/v0.1)
-```
+The canonical URI for this version of the extension is: https://github.com/google-a2a/a2a-x402/v0.1
 
 Implementations of this extension MUST use this URI for declaration and activation.
 
@@ -41,7 +37,7 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 ## **4\. Payment Protocol Flow**
 
-The x402 extension maps the payment lifecycle to the A2A Task state machine. The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Signing Service** (handling cryptographic signatures).
+The x402 extension maps the payment lifecycle to the [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum). The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Signing Service** (handling cryptographic signatures).
 
 ### **4.1. Roles & Responsibilities**
 
