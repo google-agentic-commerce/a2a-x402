@@ -143,11 +143,11 @@ class X402Metadata:
 # Extension URI constant
 X402_EXTENSION_URI = "https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1"
 
-def get_extension_declaration(
+    def get_extension_declaration(
     description: str = "Supports x402 payments", 
-    required: bool = True
+        required: bool = True
 ) -> dict:
-    """Creates extension declaration for AgentCard."""
+        """Creates extension declaration for AgentCard."""
     return {
         "uri": X402_EXTENSION_URI,
         "description": description,
@@ -682,11 +682,11 @@ utils = X402Utils()
 
 # Handle payment request
 async def handle_payment_request(task: Task, price: str, resource: str):
-    # Create requirements
+# Create requirements
     requirements = create_payment_requirements(
-        price=price,
+    price=price,
         resource=resource,
-        merchant_address="0x...",
+    merchant_address="0x...",
         network="base",
         description="Service payment"
     )
@@ -834,9 +834,9 @@ class X402ServerExecutor(X402BaseExecutor):
                     transaction=settle_response.transaction, network=settle_response.network or "base",
                     payer=settle_response.payer, error_reason=settle_response.error_reason)
                 
-                if settle_response.success:
+            if settle_response.success:
                     task = self.utils.record_payment_success(task, a2a_response)
-                else:
+            else:
                     task = self.utils.record_payment_failure(task, "settlement_failed", a2a_response)
             
             await event_queue.enqueue_event(task)
