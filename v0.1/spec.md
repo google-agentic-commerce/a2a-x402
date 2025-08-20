@@ -290,10 +290,11 @@ This extension uses the `metadata` field on `Task` and `Message` objects to trac
 
 * `x402.payment.status`: The current stage of the payment flow. Values:   
   * `"payment-required"`: Payment requirements have been sent to client agent  
-  * `"Payment-submitted"`: Payment payload has been received by the server agent  
+  * `"payment-submitted"`: Payment payload has been received by the server agent
+  * `"payment-rejected"`: Payment requirements have been rejected by the client
   * `"payment-pending"`: Payment payload has been sent to facilitator to settle by the server agent  
-  * `"Payment-completed"`: Payment transaction has successfully be posted on-chain  
-  * `"Payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
+  * `"payment-completed"`: Payment transaction has successfully be posted on-chain  
+  * `"payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
 * `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
 * `x402.payment.payload`: Contains the `x402SettleRequest` object with the signed authorization from the signing service.  
 * `x402.payment.receipt`: Contains the `x402SettleResponse` object upon successful settlement or failed settlement.  
