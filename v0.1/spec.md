@@ -21,7 +21,7 @@ Agents that support this extension MUST declare it in the `extensions` array of 
   "capabilities": {
     "extensions": [
       {
-        "uri": "https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1",
+        "uri": "https://github.com/google-a2a/a2a-x402/v0.1",
         "description": "Supports payments using the x402 protocol for on-chain settlement.",
         "required": true,
       }
@@ -46,11 +46,15 @@ The x402 payment protocol defines the interactions between four distinct archite
 ---
 
 #### Client Agent
-The Client Agent acts as the client on behalf of a user, orchestrating the payment flow.
+The Client Agent acts on behalf of a user, orchestrating the payment flow.
 
 * **Initiates** service requests to the Merchant Agent.
-* **Receives** a `Task` that requires payment and forwards the `x402PaymentRequiredResponse` to a Signing Service for authorization.
-* **Submits** the signed payment authorization, packaged as an `x402SettleRequest`, back to the Merchant Agent, ensuring the `taskId` is included to correlate the payment with the original request.
+* **Receives** a `Task` that requires payment and processes the `x402PaymentRequiredResponse`.
+  * The agent first extracts the list of accepted PaymentRequirements from the response.
+  * It then determines whether to proceed with payment based on the terms (e.g., cost, asset, network).
+    * If accepting, the agent selects a preferred PaymentRequirements option and has it signed by a designated signing service or wallet. This service securely signs the object to create the PaymentPayload. 
+    * If rejecting, the agent responds to the Merchant Agent with a payment status of `payment-rejected`.
+* **Submits** the signed payment authorization, packaged as an `PaymentPayload`, back to the Merchant Agent, ensuring the `taskId` is included to correlate the payment with the original request.
 * **Waits for and processes** the final `Task` from the Merchant Agent, which contains either the completed service result or a payment failure notice.
 
 ---
@@ -60,56 +64,34 @@ The Merchant Agent is a specialist agent that provides a monetized skill or serv
 
 * **Determines** when a service request requires payment and responds with an `input-required` `Task` containing the payment requirements.
 * **Receives** the correlated payment submission from the Client Agent.
-* **Communicates** with a Facilitator to first verify the payment's signature and validity, and then to settle the transaction on-chain.
+* **Communicates** with a type of facilitator to first verify the payment's signature and validity, and then to settle the transaction on-chain.
 * **Concludes** the flow by returning a final `Task` to the Client Agent, containing the service result as an `Artifact` and the settlement details in a payment `receipt`.
 
----
-
-#### Signing Service
-The Signing Service is a secure component responsible for handling cryptographic signatures. This separation is a critical security pattern.
-
-* **Securely manages** private keys, which MUST NEVER be exposed to the orchestrating Client Agent or the Merchant Agent.
-* **Receives** payment requirements from the Client Agent.
-* **Signs** the selected payment requirement to create a `PaymentPayload` and returns it to the Client Agent.
-
----
-
-#### Facilitator
-The Facilitator is an entity, typically a separate service, that handles direct blockchain interactions.
-
-* **Verifies** the validity of a payment signature upon request from the Merchant Agent.
-* **Settles** a valid payment by posting the transaction to the correct blockchain network.
-* **Returns** the result of the settlement (e.g., a transaction hash or an error reason) to the Merchant Agent.
 
 ### **4.2. Architecture**
 
 ```mermaid
 sequenceDiagram
-    participant Signing Service
     participant Client Agent
     participant Merchant Agent
-    participant Facilitator
     Client Agent->>Merchant Agent: 1. Request service (Message)
-    Merchant Agent-->>Client Agent: 2. Respond with Task (state: 'input-required', metadata: x402PaymentRequiredResponse)
-    Client Agent->>Signing Service: 3. Request signature { PaymentRequirements[] , x402Version }
-    Signing Service-->>Client Agent: 4. Respond with signed payload (Message/Task with PaymentPayload)
-    Client Agent->>Merchant Agent: 5. Fulfill request (Message with x402SettleRequest & taskId)
-    Merchant Agent->>Facilitator: 6. Request to verify  { PaymentRequirements, PaymentPayload }
-    Facilitator-->>Merchant Agent: Return Verification status
-    Merchant Agent->>Merchant Agent: 7. Process Client Agent Request
-    Merchant Agent->>Facilitator: 8. Settle Payment Payload	  { PaymentRequirements, PaymentPayload }
-    Facilitator-->>Merchant Agent: Return Settled Transaction
-    Merchant Agent-->>Client Agent: 9. Respond with completed Task (state: 'completed', metadata: x402SettleResponse & Artifact)
+    Merchant Agent-->>Client Agent: 2. Respond with Task (state: 'input-required', message: { metadata: x402PaymentRequiredResponse })
+    Client Agent->>Client Agent: 3. Create signed PaymentPayload (Typically signed by a wallet or separate service)
+    Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
+    Merchant Agent->>Merchant Agent: 5. Verifies the PaymentPayload (Typically verified by an x402 Facilitator)
+    Merchant Agent->>Merchant Agent: 6. Process Client Agent Request
+    Merchant Agent->>Merchant: 7. Settle PaymentPayload	(Broadcasts transaction to network) 
+    Merchant Agent-->>Client Agent: 8. Respond with TaskStatusUpdate (state: 'working|completed|failed', message: { metadata: x402SettleResponse })
 
 ```
 
 ### **4.3. Step 1: Payment Request (Merchant → Client)**
 
-When a Client Agent requests a service, the Merchant Agent determines that payment is required. It creates a `Task`, sets its status to `input-required`, and includes the `x402PaymentRequiredResponse` object in the `metadata` of the `Task`. This `Task` is sent back to the Client Agent.
+When a Client Agent requests a service, the Merchant Agent determines that payment is required. It creates a `Task`, sets its status to `input-required`, and includes the `x402PaymentRequiredResponse` object in the `metadata` of the `Task`'s `message`. This `Task` is sent back to the Client Agent.
 
 **Task State:** `input-required` 
 
-**Task Metadata:** `x402.payment.status: "payment-required"`, `x402.payment.required: { ... }`
+**Task Message Metadata:** `x402.payment.status: "payment-required"`, `x402.payment.required: { ... }`
 
 ```
 /* Response from Merchant Agent to Client Agent */
@@ -126,47 +108,46 @@ When a Client Agent requests a service, the Merchant Agent determines that payme
         "role": "agent",
         "parts": [
           { "kind": "text", "text": "Payment is required to generate the image." }
-        ]
-      }
-    },
-    "metadata": {
-      "x402.payment.status": "payment-required",
-      "x402.payment.required": {
-        "x402Version": 1,
-        "accepts": [{
-          "scheme": "exact",
-          "network": "base",
-          "resource": "https://api.example.com/generate-image",
-          "description": "Generate an image",
-          "mimeType": "application/json",
-          "outputSchema": {},
-          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913",
-          "payTo": "0xServerWalletAddressHere",
-          "maxAmountRequired": "48240000",
-          "maxTimeoutSeconds": 600,
-          "extra": {
-			"name": "USD Coin",
-			"version": 2
+        ],
+        "metadata": {
+          "x402.payment.status": "payment-required",
+          "x402.payment.required": {
+            "x402Version": 1,
+            "accepts": [{
+              "scheme": "exact",
+              "network": "base",
+              "resource": "https://api.example.com/generate-image",
+              "description": "Generate an image",
+              "mimeType": "application/json",
+              "outputSchema": {},
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913",
+              "payTo": "0xServerWalletAddressHere",
+              "maxAmountRequired": "48240000",
+              "maxTimeoutSeconds": 600,
+              "extra": {
+                "name": "USD Coin",
+                "version": 2
+              }
+            }]
           }
-        }]
+        }
       }
     }
   }
 }
-
 ```
 
-### **4.4. Step 2: Payment Authorization (Client → Signing Service → Client)**
+### **4.4. Step 2: Payment Authorization (Client → Wallet → Client)**
 
-The Client Agent receives the `Task` and must now get the payment authorized.
+The Client Agent receives the `Task` and must determine how to proceed:
 
-1. **Client selects relays the payment requirements to the signing service:** The Client Agent extracts the `x402PaymentRequiredResponse` object from the task's metadata, finds the preferred payment requirement object to sign and calls its preferred signing service, asking it to sign the transaction.
+1. **Client selects the preferred Payment Requirements:** The Client Agent extracts the `x402PaymentRequiredResponse` object from the task's message metadata, finds the preferred payment requirement object to sign and creates a `PaymentPayload` by signing the payment requirements via its wallet or preffered signing service.
 
-2. **Signing Service returns signed payload:** The Signing Service validates the request, signs it securely, and returns the `x402PaymentPayload` object to the Client Agent.
+2. **Client Rejects Payment Requirements:** The client rejects all payment requirements and responds to the server agent with a message setting the message metadata "x402.payment.status" to `payment-rejected`.
 
 ### **4.5. Step 3: Fulfill and Settle (Client → Merchant → Client)**
 
-**Client relays signed payload to Merchant:** The Client Agent receives the signed payload and sends it back to the Merchant Agent in the `metadata` of a new `Message`. This message **MUST** include the `taskId` from the original payment request so the Merchant can correlate the payment to the correct service.
+**Client relays signed payload to Merchant:** The Client Agent prepares the signed payload and sends it back to the Merchant Agent in the `metadata` of a new `Message`. This message **MUST** include the `taskId` from the original payment request so the Merchant can correlate the payment to the correct service.
 
 ```
 /* Request from Client Agent to Merchant Agent */
@@ -183,20 +164,20 @@ The Client Agent receives the `Task` and must now get the payment authorized.
       ],
       "metadata": {
         "x402.payment.status": "payment-submitted",
-        "x402.payment.payload": { /* ... The signed objects from the Client's signing service in a x402SettleRequest  ... */ }
+        "x402.payment.payload": { /* ... The signed objects from the Client as a PaymentPayload  ... */ }
       }
     }
   }
 }
 ```
 
-**Merchant verifies, settles, and completes:** The Merchant receives the signed payload, verifies it, and settles the payment on-chain. It updates the original `Task`'s state to `completed`, provides the service result as an `Artifact`, and includes the `x402PaymentReceipt` in the task's `metadata`.  
-**Task State:** `working` → `completed` 
+**Merchant verifies, settles, and completes:** The Merchant receives the signed payload, verifies it, and settles the payment on-chain. It updates the original `Task`'s state, provides the service result as an `Artifact`, and includes the `x402PaymentReceipt` in the task's message `metadata`.  
+**Task State:** `input-required` → `completed` | `working` ...
 
 **Task Metadata:** `x402.payment.status: "payment-pending"` → `"payment-completed"`
 
 ```
-/* Final response from Merchant Agent to Client Agent */
+/* Payment Completed response from Merchant Agent to Client Agent */
 {
   "jsonrpc": "2.0",
   "id": "req-003",
@@ -204,22 +185,28 @@ The Client Agent receives the `Task` and must now get the payment authorized.
     "kind": "task",
     "id": "task-123",
     "status": {
-      "state": "completed",
-      "message": { /* ... */ }
+      "state": "working",
+      "message": { 
+        "kind": "message",
+        "role": "agent",
+        "parts": [{ "kind": "text", "text": "Payment successful. Your image is ready." }],
+        "metadata": {
+          "x402.payment.status": "payment-completed",
+          "x402.payment.receipt": {
+            "success": true,
+            "transaction": "0xabc123...",
+            "network": "base",
+            "payer": "0xpayerAddress"
+          }
+        }
+      }
     },
     "artifacts": [ /* ... service result ... */ ],
-    "metadata": {
-      "x402.payment.status": "payment-completed",
-      "x402.payment.receipt": {
-        "success": true,
-        "transaction": "0xabc123...",
-        "network": "base",
-        "payer": "0xpayerAddress"
-      }
-    }
   }
 }
 ```
+
+Note: The Task state may be working if the payment is complete but the primary Artifact is still being generated. The Task will transition to completed in a subsequent update.
 
 ## **5\. Data Structures**
 
@@ -259,18 +246,9 @@ Created by the Signing Service, containing the signed payment authorization.
 | `scheme` | string | Yes | The payment scheme being used. |
 | `payload` | object | Yes | The signed payment details, specific to the scheme. |
 
-### **5.4. `x402SettleRequest`**
+### **5.4. `x402SettleResponse`**
 
-Sent by the Client Agent in `Message` metadata to the Merchant Agent, containing the signed payment authorization.
-
-| Field | Type | Required | Description |
-| ----- | ----- | ----- | ----- |
-| `paymentRequirements` | `PaymentRequirements` | Yes | The selected payment requirements. |
-| `paymentPayload` | `PaymentPayload` | Yes | The signed payment payload |
-
-### **5.5. `x402SettleResponse`**
-
-Returned by the Merchant Agent in `Task` metadata after a successful payment.
+Returned by the Merchant Agent in `Task`'s `Message` metadata after a successful payment.
 
 | Field | Type | Required | Description |
 | ----- | ----- | ----- | ----- |
@@ -282,25 +260,39 @@ Returned by the Merchant Agent in `Task` metadata after a successful payment.
 
 ## **6\. Metadata and State Management**
 
-This extension uses the `metadata` field on `Task` and `Message` objects to track the payment state and transport data.
+This extension uses the `metadata` field on the `Message` objects to track the payment state and transport data.
 
 * `x402.payment.status`: The current stage of the payment flow. Values:   
   * `"payment-required"`: Payment requirements have been sent to client agent  
   * `"payment-submitted"`: Payment payload has been received by the server agent
   * `"payment-rejected"`: Payment requirements have been rejected by the client
-  * `"payment-pending"`: Payment payload has been sent to facilitator to settle by the server agent  
+  * `"payment-pending"`: Payment payload has been sent to settle by the server agent  
   * `"payment-completed"`: Payment transaction has successfully be posted on-chain  
   * `"payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
 * `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
-* `x402.payment.payload`: Contains the `x402SettleRequest` object with the signed authorization from the signing service.  
+* `x402.payment.payload`: Contains the `PaymentPayload` object with the signed authorization from the signing service.  
 * `x402.payment.receipt`: Contains the `x402SettleResponse` object upon successful settlement or failed settlement.  
 * `x402.payment.error`: In case of failure, a short error code (e.g., `"insufficient_funds"`).
+
+### **6.1. State Transitions**
+
+```mermaid
+stateDiagram-v2
+    [*] --> PAYMENT_REQUIRED: Server Requires Payment
+    PAYMENT_REQUIRED --> PAYMENT_REJECTED: Client Rejects Payment Requirments
+    PAYMENT_REQUIRED --> PAYMENT_SUBMITTED: Client creates PaymentPayload
+    PAYMENT_SUBMITTED --> PAYMENT_PENDING: Server agent settles submitted PaymentPayload
+    PAYMENT_PENDING --> PAYMENT_COMPLETED: Payment settles and is now on chain.
+    PAYMENT_PENDING --> PAYMENT_FAILED: Payment failed to be verified or settled
+    PAYMENT_FAILED --> [*]
+    PAYMENT_COMPLETED --> [*]
+```
 
 ## **7\. Extension Activation**
 
 Clients MUST request activation of this extension by including its URI in the `X-A2A-Extensions` HTTP header.
 
-`X-A2A-Extensions: https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1`
+`X-A2A-Extensions: https://github.com/google-a2a/a2a-x402/v0.1`
 
 The server agent MUST echo the URI in the response header to confirm activation.
 
@@ -331,17 +323,17 @@ If a payment fails, the server MUST set the `Task` state to `failed` and provide
     "message": {
       "kind": "message",
       "role": "agent",
-      "parts": [{ "kind": "text", "text": "Payment verification failed: The signature has expired." }]
-    }
-  },
-  "metadata": {
-    "x402.payment.status": "payment-failed",
-    "x402.payment.error": "EXPIRED_PAYMENT",
-    "x402.payment.receipt": {
-        "success": false,
-        "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
-        "network": "base",
-	   "transaction": ""
+      "parts": [{ "kind": "text", "text": "Payment verification failed: The signature has expired." }],
+      "metadata": {
+        "x402.payment.status": "payment-failed",
+        "x402.payment.error": "EXPIRED_PAYMENT",
+        "x402.payment.receipt": {
+            "success": false,
+            "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
+            "network": "base",
+        "transaction": ""
+        }
+      }
     }
   }
 }
@@ -350,7 +342,7 @@ If a payment fails, the server MUST set the `Task` state to `failed` and provide
 
 ## **9\. Security Considerations**
 
-* **Private Key Security**: Private keys MUST only be handled by a secure signing service. They must never be exposed to an orchestrating (Client) agent or the merchant agent.  
+* **Private Key Security**: Private keys MUST only be handled by trusted entities and never be handled directly by any LLM operating an agent.
 * **Signature Verification**: Server agents MUST cryptographically verify every payment signature before attempting settlement.  
 * **Input Validation**: Servers MUST rigorously validate the contents of all payment-related data structures.  
 * **Replay Protection**: Servers MUST track used nonces to prevent replay attacks.  
@@ -361,5 +353,3 @@ If a payment fails, the server MUST set the `Task` state to `failed` and provide
 * [**A2A Protocol Specification**](https://a2a-protocol.org/latest/specification): The core Agent-to-Agent protocol specification, defining the base data structures and methods that this extension builds upon.  
 * [**A2A Extensions Documentation**](https://github.com/a2aproject/A2A/blob/main/docs/topics/extensions.md): The official documentation on how to create and use extensions within the A2A protocol.  
 * [**x402 Protocol Specification**](https://x402.gitbook.io/x402): The underlying x402 payments protocol specification that provides the conceptual framework for this A2A extension.
-
-
