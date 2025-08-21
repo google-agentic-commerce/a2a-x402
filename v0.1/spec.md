@@ -173,7 +173,7 @@ The Client Agent receives the `Task` and must determine how to proceed:
 }
 ```
 
-**Merchant verifies, settles, and completes:** The Merchant receives the signed payload, verifies it, and settles the payment on-chain. It updates the original `Task`'s state and includes the `x402PaymentReceipt` in the task's message `metadata`.  
+**Merchant verifies, settles, and completes:** The Merchant receives the signed payload, verifies it, and settles the payment on-chain. It updates the original `Task`'s `x402.payment.status` and includes the `x402PaymentReceipt` in the task's message `metadata`.  
 
 **Task State:** `input-required` → `completed` | `working` ... 
 The management of intermediate Task states during the payment flow, such as transitioning to working during settlement, is at the discretion of the Merchant Agent's implementation.
