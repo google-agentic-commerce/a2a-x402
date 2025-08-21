@@ -183,6 +183,8 @@ The management of intermediate Task states during the payment flow, such as tran
 
 The Agent **MUST** include ALL payment receipts created in the lifetime of a Task in the final TaskStatus.message.
 
+The Agent **MUST** include ALL payment receipts created in the lifetime of a Task in the final TaskStatus.message.
+
 ```
 /* Payment Completed response from Merchant Agent to Client Agent */
 {
