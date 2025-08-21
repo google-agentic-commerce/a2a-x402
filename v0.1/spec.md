@@ -82,10 +82,12 @@ sequenceDiagram
     Merchant Agent-->>Client Agent: 2. Respond with Task (state: 'input-required', message: { metadata: x402PaymentRequiredResponse })
     Client Agent->>Client Agent: 3. Create signed PaymentPayload (Typically signed by a wallet or separate service)
     Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
-    Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload (Typically verified by an x402 Facilitator) and begins processing the task.
+    Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload (Typically verified by an x402 Facilitator) and begins processing the task*.
     Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: x402SettleResponse, payment-status: payment-pending | payment-complete })
 
 ```
+
+* The Merchant Agent SHOULD ensure that the requested work is completed before settling the payment
 
 ### **4.3. Step 1: Payment Request (Merchant → Client)**
 
