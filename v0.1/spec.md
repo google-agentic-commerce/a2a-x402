@@ -62,10 +62,13 @@ The Client Agent acts on behalf of a user, orchestrating the payment flow.
 #### Merchant Agent
 The Merchant Agent is a specialist agent that provides a monetized skill or service.
 
-* **Determines** when a service request requires payment and responds with an `input-required` `Task` containing the payment requirements.
+* **Determines** when a service request requires payment and responds with an `input-required` `Task` containing a list of accepted payment requirements.
 * **Receives** the correlated payment submission from the Client Agent.
 * **Communicates** with a type of facilitator to first verify the payment's signature and validity, and then to settle the transaction on-chain.
 * **Concludes** the flow by returning a final `Task` to the Client Agent, containing the service result as an `Artifact` and the settlement details in a payment `receipt`.
+
+**Note:** The Merchant Agent is responsible for state management, using the taskId to track the payment lifecycle. When it receives a payment submission, it uses the taskId to retrieve the original PaymentRequirements offered for that task. This allows the agent to validate that the signed PaymentPayload corresponds to a valid payment option it previously sent.
+
 
 
 ### **4.2. Architecture**
