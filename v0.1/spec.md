@@ -80,7 +80,7 @@ sequenceDiagram
     Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
     Merchant Agent->>Merchant Agent: 5. Verifies the PaymentPayload (Typically verified by an x402 Facilitator)
     Merchant Agent->>Merchant Agent: 6. Process Client Agent Request
-    Merchant Agent->>Merchant: 7. Settle PaymentPayload	(Broadcasts transaction to network) 
+    Merchant Agent->>Merchant Agent: 7. Settle PaymentPayload	(Broadcasts transaction to network) 
     Merchant Agent-->>Client Agent: 8. Respond with TaskStatusUpdate (state: 'working|completed|failed', message: { metadata: x402SettleResponse })
 
 ```
