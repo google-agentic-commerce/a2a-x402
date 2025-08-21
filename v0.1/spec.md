@@ -37,7 +37,7 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 ## **4\. Payment Protocol Flow**
 
-The x402 extension maps the payment lifecycle to the [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum). The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service) and a **Signing Service** (handling cryptographic signatures).
+The x402 extension maps the payment lifecycle to the [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum). The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
 
 ### **4.1. Roles & Responsibilities**
 
