@@ -81,10 +81,8 @@ sequenceDiagram
     Merchant Agent-->>Client Agent: 2. Respond with Task (state: 'input-required', message: { metadata: x402PaymentRequiredResponse })
     Client Agent->>Client Agent: 3. Create signed PaymentPayload (Typically signed by a wallet or separate service)
     Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
-    Merchant Agent->>Merchant Agent: 5. Verifies the PaymentPayload (Typically verified by an x402 Facilitator)
-    Merchant Agent->>Merchant Agent: 6. Process Client Agent Request
-    Merchant Agent->>Merchant Agent: 7. Settle PaymentPayload	(Broadcasts transaction to network) 
-    Merchant Agent-->>Client Agent: 8. Respond with TaskStatusUpdate (state: 'working|completed|failed', message: { metadata: x402SettleResponse })
+    Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload (Typically verified by an x402 Facilitator) and begins processing the task.
+    Merchant Agent-->>Client Agent: 6. Respond with TaskStatusUpdate (state: 'working|completed|failed', message: { metadata: x402SettleResponse })
 
 ```
 
@@ -174,10 +172,14 @@ The Client Agent receives the `Task` and must determine how to proceed:
 }
 ```
 
-**Merchant verifies, settles, and completes:** The Merchant receives the signed payload, verifies it, and settles the payment on-chain. It updates the original `Task`'s state, provides the service result as an `Artifact`, and includes the `x402PaymentReceipt` in the task's message `metadata`.  
-**Task State:** `input-required` → `completed` | `working` ...
+**Merchant verifies, settles, and completes:** The Merchant receives the signed payload, verifies it, and settles the payment on-chain. It updates the original `Task`'s state and includes the `x402PaymentReceipt` in the task's message `metadata`.  
+
+**Task State:** `input-required` → `completed` | `working` ... 
+The management of intermediate Task states during the payment flow, such as transitioning to working during settlement, is at the discretion of the Merchant Agent's implementation.
 
 **Task Metadata:** `x402.payment.status: "payment-pending"` → `"payment-completed"`
+
+The Agent **MUST** include ALL payment receipts created in the lifetime of a Task in the final TaskStatus.message.
 
 ```
 /* Payment Completed response from Merchant Agent to Client Agent */
