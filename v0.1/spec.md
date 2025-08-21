@@ -37,7 +37,8 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 ## **4\. Payment Protocol Flow**
 
-The x402 extension maps the payment lifecycle to the [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum). The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
+This x402 extension represents the payment lifecycle using two layers of state: the high-level [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum) (e.g., input-required, completed) and a more granular x402.payment.status field that offers a detailed view of the payment process.
+The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
 
 ### **4.1. Roles & Responsibilities**
 
@@ -82,7 +83,7 @@ sequenceDiagram
     Client Agent->>Client Agent: 3. Create signed PaymentPayload (Typically signed by a wallet or separate service)
     Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
     Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload (Typically verified by an x402 Facilitator) and begins processing the task.
-    Merchant Agent-->>Client Agent: 6. Respond with TaskStatusUpdate (state: 'working|completed|failed', message: { metadata: x402SettleResponse })
+    Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: x402SettleResponse, payment-status: payment-pending | payment-complete })
 
 ```
 
@@ -303,7 +304,8 @@ The server agent MUST echo the URI in the response header to confirm activation.
 
 ## **8\. Error Handling**
 
-If a payment fails, the server MUST set the `Task` state to `failed` and provide a reason in the `TaskStatus` message and `metadata`.
+If a payment fails, the server MUST set the `x402.payment.status` to `payment-failed` and provide a reason in the `TaskStatus` message and `metadata`.
+The management of Task states at payment failure is at the discretion of the Merchant Agent's implementation. For example the agent could leave the Task state as working or request a payment requirement with `input-required` again.
 
 ### **8.1. Common Error Codes**
 
