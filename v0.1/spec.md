@@ -279,7 +279,7 @@ This extension uses the `metadata` field on the `Message` objects to track the p
   * `"payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
 * `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
 * `x402.payment.payload`: Contains the `PaymentPayload` object with the signed authorization from the signing service.  
-* `x402.payment.receipt`: Contains the `x402SettleResponse` object upon successful settlement or failed settlement.  
+* `x402.payment.receipts`: A persistent array containing the complete history of all x402SettleResponse objects for the task. Each new settlement attempt (successful or failed) MUST be appended to this array, never replacing it. 
 * `x402.payment.error`: In case of failure, a short error code (e.g., `"insufficient_funds"`).
 
 ### **6.1. State Transitions**
