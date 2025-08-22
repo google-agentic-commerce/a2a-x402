@@ -1,1 +1,93 @@
-# TODO: Client-side executor for wallet implementations
+"""Client-side executor for wallet implementations."""
+
+from typing import Optional
+from eth_account import Account
+
+from .base import X402BaseExecutor, AgentExecutor, RequestContext, EventQueue
+from ..types import (
+    PaymentStatus,
+    X402ExtensionConfig,
+    x402PaymentRequiredResponse
+)
+from ..core import process_payment_required
+from ..core.utils import create_payment_submission_message
+
+
+class X402ClientExecutor(X402BaseExecutor):
+    """Client-side payment interceptor for buying agents.
+    
+    Automatically processes payment requirements when services require payment.
+    
+    Example:
+        client = X402ClientExecutor(my_client, config, account)
+        # Your client now pays for services automatically!
+    """
+    
+    def __init__(
+        self,
+        delegate: AgentExecutor,
+        config: X402ExtensionConfig,
+        account: Account,
+        max_value: Optional[int] = None,
+        auto_pay: bool = True
+    ):
+        """Initialize client executor.
+        
+        Args:
+            delegate: Underlying agent executor for service requests
+            config: x402 extension configuration  
+            account: Ethereum account for payment signing
+            max_value: Maximum payment amount willing to pay (optional)
+            auto_pay: Whether to automatically process payments (default: True)
+        """
+        super().__init__(delegate, config)
+        self.account = account
+        self.max_value = max_value
+        self.auto_pay = auto_pay
+    
+    async def execute(
+        self,
+        context: RequestContext,
+        event_queue: EventQueue
+    ):
+        """Payment interceptor: execute → detect payment required → auto-pay."""
+        if not self.is_active(context):
+            return await self._delegate.execute(context, event_queue)
+
+        # Execute the service request
+        result = await self._delegate.execute(context, event_queue)
+        
+        # Check if payment is required
+        task = getattr(context, 'current_task', None)
+        if not task:
+            return result
+            
+        status = self.utils.get_payment_status(task)
+        
+        if status == PaymentStatus.PAYMENT_REQUIRED and self.auto_pay:
+            # Auto-process payment and resubmit
+            await self._auto_pay(task, event_queue)
+            return
+        
+        return result
+    
+    async def _auto_pay(self, task, event_queue: EventQueue):
+        """Automatically process payment and submit authorization."""
+        payment_required = self.utils.get_payment_requirements(task)
+        if not payment_required:
+            return  # No payment requirements found
+        
+        try:
+            # Process payment using wallet functions
+            settle_request = process_payment_required(payment_required, self.account, self.max_value)
+            
+            # Submit payment authorization
+            task = self.utils.record_payment_submission(task, settle_request)
+            await event_queue.enqueue_event(task)
+            
+        except Exception as e:
+            # Payment processing failed
+            from ..types import x402SettleResponse, X402ErrorCode
+            failure_response = x402SettleResponse(success=False, network="base", error_reason=f"Payment failed: {e}")
+            task = self.utils.record_payment_failure(task, X402ErrorCode.INVALID_SIGNATURE, failure_response)
+            await event_queue.enqueue_event(task)
