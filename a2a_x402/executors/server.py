@@ -2,8 +2,11 @@
 
 from typing import Optional
 
-from .base import X402BaseExecutor, AgentExecutor, RequestContext, EventQueue
+from .base import X402BaseExecutor
 from ..types import (
+    AgentExecutor,
+    RequestContext,
+    EventQueue,
     PaymentStatus,
     x402SettleRequest,
     x402SettleResponse,
