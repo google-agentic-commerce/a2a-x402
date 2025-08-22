@@ -200,12 +200,12 @@ The Agent **MUST** include ALL payment receipts created in the lifetime of a Tas
         "parts": [{ "kind": "text", "text": "Payment successful. Your image is ready." }],
         "metadata": {
           "x402.payment.status": "payment-completed",
-          "x402.payment.receipt": {
+          "x402.payment.receipts": [{
             "success": true,
             "transaction": "0xabc123...",
             "network": "base",
             "payer": "0xpayerAddress"
-          }
+          }]
         }
       }
     },
@@ -336,12 +336,12 @@ The management of Task states at payment failure is at the discretion of the Mer
       "metadata": {
         "x402.payment.status": "payment-failed",
         "x402.payment.error": "EXPIRED_PAYMENT",
-        "x402.payment.receipt": {
+        "x402.payment.receipts": [{
             "success": false,
             "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
             "network": "base",
         "transaction": ""
-        }
+        }]
       }
     }
   }
