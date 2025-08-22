@@ -3,8 +3,11 @@
 from typing import Optional
 from eth_account import Account
 
-from .base import X402BaseExecutor, AgentExecutor, RequestContext, EventQueue
+from .base import X402BaseExecutor
 from ..types import (
+    AgentExecutor,
+    RequestContext,
+    EventQueue,
     PaymentStatus,
     X402ExtensionConfig,
     x402PaymentRequiredResponse

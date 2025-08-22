@@ -1,20 +1,16 @@
 """Base executor types and interfaces for x402 payment middleware."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Optional
 
 from ..types import (
+    AgentExecutor,
+    RequestContext,
+    EventQueue,
     X402ExtensionConfig,
     X402_EXTENSION_URI
 )
 from ..core.utils import X402Utils
-
-
-# Generic types for A2A integration
-AgentExecutor = Any
-RequestContext = Any  
-EventQueue = Any
-
 
 class X402BaseExecutor(ABC):
     """Base executor with x402 protocol support."""

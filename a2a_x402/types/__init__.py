@@ -11,6 +11,11 @@ from a2a.types import (
     TaskStatus
 )
 
+# Re-export A2A server execution types
+from a2a.server.agent_execution.agent_executor import AgentExecutor
+from a2a.server.agent_execution.context import RequestContext
+from a2a.server.events.event_queue import EventQueue
+
 # Re-export core x402 protocol types
 from x402.types import (
     PaymentRequirements,
@@ -75,6 +80,11 @@ __all__ = [
     "AgentSkill",
     "TaskState",
     "TaskStatus",
+    
+    # A2A server execution types
+    "AgentExecutor",
+    "RequestContext", 
+    "EventQueue",
     
     # Core x402 protocol types
     "PaymentRequirements",
