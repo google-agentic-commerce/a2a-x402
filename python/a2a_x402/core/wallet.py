@@ -11,7 +11,6 @@ from ..types import (
     PaymentRequirements,
     x402PaymentRequiredResponse,
     PaymentPayload,
-    x402SettleRequest,
     ExactPaymentPayload,
     EIP3009Authorization
 )
@@ -21,7 +20,7 @@ def process_payment_required(
     payment_required: x402PaymentRequiredResponse,
     account: Account,
     max_value: Optional[int] = None
-) -> x402SettleRequest:
+) -> PaymentPayload:
     """Process full payment required response using x402Client logic.
     
     Args:
@@ -30,7 +29,7 @@ def process_payment_required(
         max_value: Maximum payment value willing to pay
         
     Returns:
-        Complete x402SettleRequest with selected requirement + signed payload
+        Signed PaymentPayload with selected requirement
     """
     # Use x402Client for payment requirement selection
     client = x402Client(account=account, max_value=max_value)
@@ -39,10 +38,7 @@ def process_payment_required(
     # Create payment payload (like create_payment_header but return PaymentPayload object)
     payment_payload = process_payment(selected_requirement, account, max_value)
     
-    return x402SettleRequest(
-        payment_requirements=selected_requirement,
-        payment_payload=payment_payload
-    )
+    return payment_payload
 
 
 def process_payment(

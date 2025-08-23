@@ -77,19 +77,11 @@ These types are specific to the A2A protocol extension:
 
 ```python
 from a2a_x402.types import (
-    x402SettleRequest,    # A2A-specific settlement request wrapper
     x402SettleResponse,   # A2A-specific settlement response  
     PaymentStatus,        # A2A payment state enum
     X402MessageType,      # A2A message type enum
     X402Metadata         # A2A metadata key constants
 )
-```
-
-**`x402SettleRequest`** - A2A settlement request wrapper:
-```python
-class x402SettleRequest(BaseModel):
-    payment_requirements: PaymentRequirements = Field(alias="paymentRequirements")
-    payment_payload: PaymentPayload = Field(alias="paymentPayload")
 ```
 
 **`x402SettleResponse`** - A2A settlement response (extends `SettleResponse`):
@@ -109,6 +101,7 @@ class PaymentStatus(str, Enum):
     """Protocol-defined payment states for A2A flow"""
     PAYMENT_REQUIRED = "payment-required"    # Payment requested
     PAYMENT_SUBMITTED = "payment-submitted"  # Payment signed and submitted
+    PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected by client
     PAYMENT_PENDING = "payment-pending"      # Payment being processed
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
@@ -132,8 +125,8 @@ class X402Metadata:
     """Spec-defined metadata key constants (a2a_x402.types.state)"""
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse
-    PAYLOAD_KEY = "x402.payment.payload"        # Contains x402SettleRequest
-    RECEIPT_KEY = "x402.payment.receipt"        # Contains x402SettleResponse
+    PAYLOAD_KEY = "x402.payment.payload"        # Contains PaymentPayload
+    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of x402SettleResponse objects
     ERROR_KEY = "x402.payment.error"            # Error code (when failed)
 ```
 
@@ -141,7 +134,7 @@ class X402Metadata:
 
 ```python
 # Extension URI constant
-X402_EXTENSION_URI = "https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
 
     def get_extension_declaration(
     description: str = "Supports x402 payments", 
@@ -170,7 +163,7 @@ def add_extension_activation_header(response_headers: dict) -> dict:
 ```python
 def create_payment_submission_message(
     task_id: str,  # CRITICAL: Original task ID for correlation
-    settle_request: x402SettleRequest,
+    payment_payload: PaymentPayload,
     text: str = "Payment authorization provided"
 ) -> Message:
     """Creates correlated payment submission message per spec."""
@@ -180,7 +173,7 @@ def create_payment_submission_message(
         parts=[{"kind": "text", "text": text}],
         metadata={
             X402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            X402Metadata.PAYLOAD_KEY: settle_request.model_dump(by_alias=True)
+            X402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
         }
     )
 
@@ -191,33 +184,33 @@ def extract_task_correlation(message: Message) -> Optional[str]:
 
 ## 3. Architecture Role Mapping
 
-The spec defines communication between Host Agent and Merchant Agent. The roles below show **recommended patterns** for organizing payment functionality. These are **architectural examples** showing how different systems might handle their responsibilities - they are not code classes that will be imported from the package:
+The spec defines communication between Client Agent and Merchant Agent. The roles below show **recommended patterns** for organizing payment functionality. These are **architectural examples** showing how different systems might handle their responsibilities - they are not code classes that will be imported from the package:
 
-### 3.1. Host Agent Role
+### 3.1. Client Agent Role
 *Example architectural pattern - represents a separate system/service*
 
 ```python
-class HostAgentOperations:
-    """Example: How a Host Agent system might organize payment orchestration."""
+class ClientAgentOperations:
+    """Example: How a Client Agent system might organize payment orchestration."""
     
     @staticmethod
     async def relay_to_signing_service(
         payment_required: x402PaymentRequiredResponse,
         signing_service: SigningService
-    ) -> x402SettleRequest:
+    ) -> PaymentPayload:
         """Forward payment requirements to signing service for authorization."""
         # Signing service receives entire x402PaymentRequiredResponse
-        # Returns complete x402SettleRequest with selected requirement + signed payload
+        # Returns complete PaymentPayload with selected requirement and signature
         return await signing_service.process_payment_required(payment_required)
     
     @staticmethod
     async def submit_payment_to_merchant(
         task_id: str,
-        settle_request: x402SettleRequest,
+        payment_payload: PaymentPayload,
         merchant_agent: MerchantAgent
     ) -> Task:
         """Submit signed payment authorization back to merchant with task correlation."""
-        message = create_payment_submission_message(task_id, settle_request)
+        message = create_payment_submission_message(task_id, payment_payload)
         return await merchant_agent.process_payment(message)
 ```
 
@@ -252,37 +245,38 @@ class MerchantAgentOperations:
     
     @staticmethod
     async def process_settlement(
-        settle_request: x402SettleRequest,
+        payment_payload: PaymentPayload,
+        payment_requirements: PaymentRequirements,
         facilitator_config: FacilitatorConfig
     ) -> x402SettleResponse:
         """Verify and settle payment after receiving signed authorization."""
         # Verify payment signature and requirements with facilitator
-        verification = await verify_payment(settle_request, facilitator_config)
+        verification = await verify_payment(payment_payload, payment_requirements, facilitator_config)
         if not verification.is_valid:
             return x402SettleResponse(
                 success=False,
-                network=settle_request.payment_requirements.network,
+                network=payment_requirements.network,
                 error_reason=verification.invalid_reason
             )
         
         # Settle payment on blockchain via facilitator
-        return await settle_payment(settle_request, facilitator_config)
+        return await settle_payment(payment_payload, payment_requirements, facilitator_config)
 ```
 
 ### 3.3. Signing Service Role (Recommended Architecture)
-*Example architectural pattern - can be separate system or integrated with Host*
+*Example architectural pattern - can be separate system or integrated with Client*
 
-The spec defines communication between Host Agent and Merchant Agent. The signing service is a **recommended architectural pattern** for security and domain separation, but the spec does not mandate how signing is implemented.
+The spec defines communication between Client Agent and Merchant Agent. The signing service is a **recommended architectural pattern** for security and domain separation, but the spec does not mandate how signing is implemented.
 
 **Architectural Options:**
 
 1. **Separate Signing Service (Recommended)**:
-   - Host Agent communicates with independent signing service
+   - Client Agent communicates with independent signing service
    - Clear security boundary and domain separation  
    - Signing service can be server-side, hardware wallet, MPC, etc.
 
 2. **Integrated Signing (Spec Compliant)**:
-   - Host Agent includes signing capabilities directly
+   - Client Agent includes signing capabilities directly
    - Still meets spec requirements for communication flow
    - Implementation choice based on security model
 
@@ -297,19 +291,16 @@ class SigningServiceOperations:
         self,
         payment_required: x402PaymentRequiredResponse,
         max_value: Optional[int] = None
-    ) -> x402SettleRequest:
-        """Process payment requirements: select, sign, and return complete authorization."""
+    ) -> PaymentPayload:
+        """Process payment requirements: select, sign, and return payment payload."""
         # Select appropriate payment requirement from available options
         selected_requirement = self._select_payment_requirement(payment_required.accepts)
         
         # Sign the selected requirement using private key
         payment_payload = await process_payment(selected_requirement, self._account, max_value)
         
-        # Return complete authorization ready for merchant submission
-        return x402SettleRequest(
-            payment_requirements=selected_requirement,
-            payment_payload=payment_payload
-        )
+        # Return signed payment payload ready for merchant submission
+        return payment_payload
     
     def _select_payment_requirement(
         self, 
@@ -328,17 +319,19 @@ class FacilitatorOperations:
     
     @staticmethod
     async def verify_payment_payload(
-        settle_request: x402SettleRequest
+        payment_payload: PaymentPayload,
+        payment_requirements: PaymentRequirements
     ) -> VerificationResult:
         """Verify payment signature and requirements before processing."""
-        return await verify_payment(settle_request)
+        return await verify_payment(payment_payload, payment_requirements)
     
     @staticmethod
     async def settle_on_chain(
-        settle_request: x402SettleRequest
+        payment_payload: PaymentPayload,
+        payment_requirements: PaymentRequirements
     ) -> x402SettleResponse:
         """Post payment transaction to blockchain after successful verification."""
-        return await settle_payment(settle_request)
+        return await settle_payment(payment_payload, payment_requirements)
 ```
 
 ## 4. Core Protocol Implementation
@@ -366,10 +359,10 @@ def process_payment_required(
     payment_required: x402PaymentRequiredResponse,
     account: Account,
     max_value: Optional[int] = None
-) -> x402SettleRequest:
+) -> PaymentPayload:
     """Process full payment required response - uses x402.clients.base.x402Client.
     
-    Returns complete x402SettleRequest with selected requirement + signed payload.
+    Returns signed PaymentPayload with selected requirement.
     """
 
 def process_payment(
@@ -384,14 +377,16 @@ def process_payment(
 
 # Payment Verification (a2a_x402.core.protocol)
 def verify_payment(
-    settle_request: x402SettleRequest,
+    payment_payload: PaymentPayload,
+    payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
 ) -> VerifyResponse:
     """Verify payment - calls facilitator_client.verify()."""
 
 # Payment Settlement (a2a_x402.core.protocol)  
 def settle_payment(
-    settle_request: x402SettleRequest,
+    payment_payload: PaymentPayload,
+    payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
 ) -> x402SettleResponse:
     """Settle payment - calls facilitator_client.settle()."""
@@ -408,8 +403,8 @@ class X402Utils:
     # Metadata keys as defined by spec
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse
-    PAYLOAD_KEY = "x402.payment.payload"        # Contains x402SettleRequest  
-    RECEIPT_KEY = "x402.payment.receipt"        # Contains x402SettleResponse
+    PAYLOAD_KEY = "x402.payment.payload"        # Contains PaymentPayload  
+    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of x402SettleResponse objects
     ERROR_KEY = "x402.payment.error"            # Error code string
 
     def get_payment_status(self, task: Task) -> Optional[PaymentStatus]:
@@ -436,14 +431,14 @@ class X402Utils:
                 return None
         return None
 
-    def get_settle_request(self, task: Task) -> Optional[x402SettleRequest]:
-        """Extract settle request from task metadata."""
+    def get_payment_payload(self, task: Task) -> Optional[PaymentPayload]:
+        """Extract payment payload from task metadata."""
         if not task or not task.metadata:
             return None
         payload_data = task.metadata.get(self.PAYLOAD_KEY)
         if payload_data:
             try:
-                return x402SettleRequest.model_validate(payload_data)
+                return PaymentPayload.model_validate(payload_data)
             except Exception:
                 return None
         return None
@@ -463,13 +458,13 @@ class X402Utils:
     def record_payment_submission(
         self,
         task: Task,
-        settle_request: x402SettleRequest
+        payment_payload: PaymentPayload
     ) -> Task:
         """Record payment submission in task metadata."""  
         if task.metadata is None:
             task.metadata = {}
         task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
-        task.metadata[self.PAYLOAD_KEY] = settle_request.model_dump(by_alias=True)
+        task.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
         # Clean up requirements after submission
         task.metadata.pop(self.REQUIRED_KEY, None)
         return task
@@ -483,7 +478,10 @@ class X402Utils:
         if task.metadata is None:
             task.metadata = {}
         task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_COMPLETED.value
-        task.metadata[self.RECEIPT_KEY] = settle_response.model_dump(by_alias=True)
+        # Append to receipts array (spec requirement for complete history)
+        if self.RECEIPTS_KEY not in task.metadata:
+            task.metadata[self.RECEIPTS_KEY] = []
+        task.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
         # Clean up intermediate data
         task.metadata.pop(self.PAYLOAD_KEY, None)
         return task
@@ -499,7 +497,10 @@ class X402Utils:
             task.metadata = {}
         task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_FAILED.value
         task.metadata[self.ERROR_KEY] = error_code
-        task.metadata[self.RECEIPT_KEY] = settle_response.model_dump(by_alias=True)
+        # Append to receipts array (spec requirement for complete history)
+        if self.RECEIPTS_KEY not in task.metadata:
+            task.metadata[self.RECEIPTS_KEY] = []
+        task.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
         # Clean up intermediate data
         task.metadata.pop(self.PAYLOAD_KEY, None)
         return task
@@ -511,7 +512,7 @@ The spec defines **protocol-level security requirements** that implementations M
 
 ### 5.1. Implementation Flexibility
 
-The signing service architecture is **recommended** for security and domain separation, but the spec technically only defines communication between Host Agent and Merchant Agent. Implementations can:
+The signing service architecture is **recommended** for security and domain separation, but the spec technically only defines communication between Client Agent and Merchant Agent. Implementations can:
 
 - Use separate signing services (recommended)
 - Integrate signing into the host agent (spec compliant)  
@@ -548,20 +549,20 @@ This section describes the end-to-end payment flow between separate systems comm
 ### 6.1. Payment Flow Overview
 
 The x402 payment flow involves **four separate systems**:
-- **Host Agent**: Orchestrates payment on behalf of user/client
+- **Client Agent**: Orchestrates payment on behalf of user/client
 - **Merchant Agent**: Provides paid services, handles settlement
-- **Signing Service**: Handles payment authorization (can be separate or integrated with Host)
+- **Signing Service**: Handles payment authorization (can be separate or integrated with Client)
 - **Facilitator**: Verifies and settles payments on-chain
 
 ### 6.2. Step-by-Step Protocol Flow
 
 #### **Steps 1-2: Service Request & Payment Requirements**
 
-**Host Agent → Merchant Agent**
-- Host sends A2A service request message
+**Client Agent → Merchant Agent**
+- Client sends A2A service request message
 - Merchant determines payment is required for this service
 
-**Merchant Agent → Host Agent**
+**Merchant Agent → Client Agent**
 - Merchant responds with `Task` (state: `input-required`)
 - Task metadata contains `x402.payment.status: "payment-required"`
 - Task metadata contains `x402.payment.required` with `x402PaymentRequiredResponse`
@@ -569,9 +570,9 @@ The x402 payment flow involves **four separate systems**:
 
 #### **Steps 3-4: Payment Authorization**
 
-**Host Agent → Signing Service**
-- Host extracts `x402PaymentRequiredResponse` from task metadata
-- Host forwards entire payment required response to signing service
+**Client Agent → Signing Service**
+- Client extracts `x402PaymentRequiredResponse` from task metadata
+- Client forwards entire payment required response to signing service
 - Communication method depends on implementation (HTTP, gRPC, local call, etc.)
 
 **Signing Service Internal Process:**
@@ -580,18 +581,17 @@ The x402 payment flow involves **four separate systems**:
 - Signs the selected payment requirement
 - Creates `PaymentPayload` with signature
 
-**Signing Service → Host Agent**
-- Returns complete `x402SettleRequest` containing:
-  - Selected `PaymentRequirements`
-  - Signed `PaymentPayload`
+**Signing Service → Client Agent**
+- Returns signed `PaymentPayload` for the selected payment requirements
+- PaymentPayload contains all necessary signature and payment data
 
 #### **Step 5: Payment Submission**
 
-**Host Agent → Merchant Agent**
-- Host sends A2A `Message` with payment authorization
+**Client Agent → Merchant Agent**
+- Client sends A2A `Message` with payment authorization
 - Message **MUST** include `taskId` for correlation with original request
 - Message metadata contains `x402.payment.status: "payment-submitted"`
-- Message metadata contains `x402.payment.payload` with the `x402SettleRequest`
+- Message metadata contains `x402.payment.payload` with the signed `PaymentPayload`
 
 #### **Steps 6-7: Payment Verification**
 
@@ -627,7 +627,7 @@ The x402 payment flow involves **four separate systems**:
 - Adds `x402.payment.receipt` with settlement details (`x402SettleResponse`)
 - Includes service result as task `artifacts` (if successful)
 
-**Merchant Agent → Host Agent**
+**Merchant Agent → Client Agent**
 - Returns final `Task` with completion status and results
 
 ### 6.3. Error Handling Flow
@@ -638,7 +638,7 @@ At any step, if an error occurs:
    - Merchant updates task state to `failed`
    - Metadata: `x402.payment.status: "payment-failed"`
    - Metadata: `x402.payment.error` with appropriate error code
-   - Returns error response to Host
+   - Returns error response to Client
 
 2. **Settlement Fails (Step 8)**:
    - Same error handling as verification failure
@@ -671,7 +671,6 @@ from x402.types import PaymentRequirements, x402PaymentRequiredResponse
 from a2a_x402 import (
     create_payment_requirements,
     settle_payment,
-    x402SettleRequest,
     X402Utils,
     X402Metadata,
     X402ErrorCode
@@ -702,16 +701,16 @@ async def handle_payment_request(task: Task, price: str, resource: str):
     return task
 
 # Handle payment submission
-async def handle_payment_submission(task: Task):
-    # Get settle request from task metadata
-    settle_request_data = task.metadata.get(utils.PAYLOAD_KEY)
-    settle_request = x402SettleRequest.model_validate(settle_request_data)
+async def handle_payment_submission(task: Task, payment_requirements: PaymentRequirements):
+    # Get payment payload from task metadata
+    payload_data = task.metadata.get(utils.PAYLOAD_KEY)
+    payment_payload = PaymentPayload.model_validate(payload_data)
     
     # Verify payment first
     facilitator_client = FacilitatorClient({"url": "https://x402.org/facilitator"})
     verify_response = await facilitator_client.verify(
-        settle_request.payment_payload, 
-        settle_request.payment_requirements
+        payment_payload, 
+        payment_requirements
     )
     
     if not verify_response.is_valid:
@@ -723,8 +722,8 @@ async def handle_payment_submission(task: Task):
     
     # Settle payment after verification
     settle_response = await facilitator_client.settle(
-        settle_request.payment_payload,
-        settle_request.payment_requirements
+        payment_payload,
+        payment_requirements
     )
     
     # Convert to A2A format
@@ -754,7 +753,6 @@ from x402.types import PaymentRequirements, x402PaymentRequiredResponse
 # A2A Extension Functions & Types  
 from a2a_x402 import (
     process_payment_required,
-    x402SettleRequest,
     X402Utils,
     X402Metadata
 )
@@ -777,14 +775,8 @@ async def handle_payment_requirements(task: Task, account: Account):
     # Create payment payload (like create_payment_header but returns PaymentPayload)
     payment_payload = await process_payment(selected_requirement, account)
     
-    # Create settle request
-    settle_request = x402SettleRequest(
-        payment_requirements=selected_requirement,
-        payment_payload=payment_payload
-    )
-    
     # Update task state
-    task = utils.record_payment_submission(task, settle_request)
+    task = utils.record_payment_submission(task, payment_payload)
     return task
 ```
 
@@ -810,12 +802,13 @@ class X402ServerExecutor(X402BaseExecutor):
         status = self.utils.get_payment_status(task)
 
         if status == PaymentStatus.PAYMENT_SUBMITTED:
-            settle_request_data = task.metadata.get(self.utils.PAYLOAD_KEY)
-            settle_request = x402SettleRequest.model_validate(settle_request_data)
+            payload_data = task.metadata.get(self.utils.PAYLOAD_KEY)
+            payment_payload = PaymentPayload.model_validate(payload_data)
+            # Note: Payment requirements would need to be retrieved from original task correlation
             
             # Verify → Process → Settle pattern (like HTTP middleware)
             verify_response = await self.facilitator_client.verify(
-                settle_request.payment_payload, settle_request.payment_requirements
+                payment_payload, payment_requirements
             )
             
             if not verify_response.is_valid:
@@ -827,7 +820,7 @@ class X402ServerExecutor(X402BaseExecutor):
                 
                 # Settle if successful
                 settle_response = await self.facilitator_client.settle(
-                    settle_request.payment_payload, settle_request.payment_requirements
+                    payment_payload, payment_requirements
                 )
                 
                 a2a_response = x402SettleResponse(success=settle_response.success, 
@@ -873,11 +866,7 @@ class X402ClientExecutor(X402BaseExecutor):
             # Create payment payload (extends x402Client.create_payment_header)
             payment_payload = await process_payment(selected_requirement, self.account)
             
-            settle_request = x402SettleRequest(
-                payment_requirements=selected_requirement,
-                payment_payload=payment_payload
-            )
-            task = self.utils.record_payment_submission(task, settle_request)
+            task = self.utils.record_payment_submission(task, payment_payload)
             await event_queue.enqueue_event(task)
             return
 
@@ -889,10 +878,12 @@ class X402ClientExecutor(X402BaseExecutor):
 ```mermaid
 stateDiagram-v2
     [*] --> PAYMENT_REQUIRED: create_payment_request()
+    PAYMENT_REQUIRED --> PAYMENT_REJECTED: client rejects payment
     PAYMENT_REQUIRED --> PAYMENT_SUBMITTED: record_payment_submission()
     PAYMENT_SUBMITTED --> PAYMENT_PENDING: settle_payment() starts
     PAYMENT_PENDING --> PAYMENT_COMPLETED: record_payment_completion()
     PAYMENT_PENDING --> PAYMENT_FAILED: record_payment_failure()
+    PAYMENT_REJECTED --> [*]
     PAYMENT_FAILED --> [*]
     PAYMENT_COMPLETED --> [*]
 ```
@@ -922,8 +913,7 @@ from a2a_x402 import (
     process_payment,             # Individual signing
     verify_payment,
     
-    # A2A-Specific Types
-    x402SettleRequest,
+    # A2A-Specific Types  
     x402SettleResponse,
     PaymentStatus,
     X402Metadata,
@@ -1032,7 +1022,6 @@ from a2a_x402 import (
     X402Utils,
     
     # A2A-Specific Types
-    x402SettleRequest,            # A2A settlement request wrapper
     x402SettleResponse,           # A2A settlement response
     PaymentStatus,                # A2A payment states
     X402MessageType,              # A2A message types
@@ -1042,7 +1031,7 @@ from a2a_x402 import (
     X402ExtensionConfig,
     
     # Architecture Examples (Documentation Only)
-    # Note: Host/Merchant/Signing/Facilitator are separate systems
+    # Note: Client/Merchant/Signing/Facilitator are separate systems
     # The classes in Section 3 are architectural examples, not importable code
     
     # Error Handling

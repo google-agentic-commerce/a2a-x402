@@ -8,7 +8,8 @@ from ..types import (
     RequestContext,
     EventQueue,
     PaymentStatus,
-    x402SettleRequest,
+    PaymentPayload,
+    PaymentRequirements,
     x402SettleResponse,
     X402ExtensionConfig,
     FacilitatorClient,
@@ -73,19 +74,28 @@ class X402ServerExecutor(X402BaseExecutor):
     ):
         """Process paid request: verify → execute → settle."""
         # Extract payment data
-        settle_request = self.utils.get_settle_request(task)
-        if not settle_request:
+        payment_payload = self.utils.get_payment_payload(task)
+        if not payment_payload:
             return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, "Missing payment data", event_queue)
+        
+        # Get payment requirements from original payment required response
+        # Note: In practice, this would need to be retrieved from task correlation
+        # For now, we'll extract from the payload network and assume single requirement
+        payment_requirements = self._extract_payment_requirements_from_context(task)
+        if not payment_requirements:
+            return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, "Missing payment requirements", event_queue)
         
         # 1. Verify payment
         try:
-            verify_response = await verify_payment(settle_request, self.facilitator_client)
+            verify_response = await verify_payment(payment_payload, payment_requirements, self.facilitator_client)
             if not verify_response.is_valid:
                 return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, verify_response.invalid_reason or "Invalid payment", event_queue)
         except Exception as e:
             return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, f"Verification failed: {e}", event_queue)
         
         # 2. Execute business service
+        if task.metadata is None:
+            task.metadata = {}
         task.metadata[self.utils.STATUS_KEY] = PaymentStatus.PAYMENT_PENDING.value
         try:
             await self._delegate.execute(context, event_queue)
@@ -94,7 +104,7 @@ class X402ServerExecutor(X402BaseExecutor):
         
         # 3. Settle payment
         try:
-            settle_response = await settle_payment(settle_request, self.facilitator_client)
+            settle_response = await settle_payment(payment_payload, payment_requirements, self.facilitator_client)
             if settle_response.success:
                 task = self.utils.record_payment_success(task, settle_response)
             else:
@@ -103,6 +113,21 @@ class X402ServerExecutor(X402BaseExecutor):
             await event_queue.enqueue_event(task)
         except Exception as e:
             await self._fail_payment(task, X402ErrorCode.SETTLEMENT_FAILED, f"Settlement failed: {e}", event_queue)
+    
+    def _extract_payment_requirements_from_context(self, task) -> Optional[PaymentRequirements]:
+        """Extract payment requirements from task context.
+        
+        In the new spec, requirements need to be retrieved from the original
+        payment required response or reconstructed from available context.
+        """
+        # Try to get requirements from the original payment required response
+        payment_required = self.utils.get_payment_requirements(task)
+        if payment_required and payment_required.accepts:
+            # For now, return the first requirement (in practice, this would need
+            # more sophisticated logic to match the selected requirement)
+            return payment_required.accepts[0]
+        
+        return None
     
     async def _fail_payment(self, task, error_code: str, error_reason: str, event_queue: EventQueue):
         """Handle payment failure."""

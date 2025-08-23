@@ -2,8 +2,8 @@
 
 from pydantic import BaseModel
 
-# Extension URI constant from spec section 2
-X402_EXTENSION_URI = "https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1"
+# Extension URI constant from spec section 2  
+X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
 
 
 class X402ExtensionConfig(BaseModel):

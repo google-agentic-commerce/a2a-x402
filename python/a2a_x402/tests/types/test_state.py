@@ -24,16 +24,17 @@ class TestPaymentStatus:
         assert PaymentStatus("payment-required") == PaymentStatus.PAYMENT_REQUIRED
     
     def test_all_states_defined(self):
-        """Test that all 5 spec-required states are defined."""
+        """Test that all 6 spec-required states are defined."""
         all_statuses = list(PaymentStatus)
-        assert len(all_statuses) == 5
+        assert len(all_statuses) == 6
         
         expected_states = [
             "payment-required",
             "payment-submitted", 
             "payment-pending",
             "payment-completed",
-            "payment-failed"
+            "payment-failed",
+            "payment-rejected"
         ]
         
         actual_states = [status.value for status in all_statuses]
@@ -49,7 +50,7 @@ class TestX402Metadata:
         assert X402Metadata.STATUS_KEY == "x402.payment.status"
         assert X402Metadata.REQUIRED_KEY == "x402.payment.required"
         assert X402Metadata.PAYLOAD_KEY == "x402.payment.payload"
-        assert X402Metadata.RECEIPT_KEY == "x402.payment.receipt"
+        assert X402Metadata.RECEIPTS_KEY == "x402.payment.receipts"
         assert X402Metadata.ERROR_KEY == "x402.payment.error"
     
     def test_all_metadata_keys_defined(self):
@@ -58,7 +59,7 @@ class TestX402Metadata:
             "x402.payment.status",
             "x402.payment.required",
             "x402.payment.payload", 
-            "x402.payment.receipt",
+            "x402.payment.receipts",
             "x402.payment.error"
         ]
         
@@ -66,7 +67,7 @@ class TestX402Metadata:
             X402Metadata.STATUS_KEY,
             X402Metadata.REQUIRED_KEY,
             X402Metadata.PAYLOAD_KEY,
-            X402Metadata.RECEIPT_KEY,
+            X402Metadata.RECEIPTS_KEY,
             X402Metadata.ERROR_KEY
         ]
         
@@ -79,5 +80,5 @@ class TestX402Metadata:
         assert isinstance(X402Metadata.STATUS_KEY, str)
         assert isinstance(X402Metadata.REQUIRED_KEY, str)
         assert isinstance(X402Metadata.PAYLOAD_KEY, str)
-        assert isinstance(X402Metadata.RECEIPT_KEY, str)
+        assert isinstance(X402Metadata.RECEIPTS_KEY, str)
         assert isinstance(X402Metadata.ERROR_KEY, str)

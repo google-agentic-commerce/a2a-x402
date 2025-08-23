@@ -20,7 +20,7 @@ from a2a_x402.types import (
     X402ExtensionConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredResponse,
-    x402SettleRequest,
+    PaymentPayload,
     VerifyResponse,
     SettleResponse
 )
@@ -76,8 +76,8 @@ class TestComposabilityPatterns:
             )
             mock_process_payment.return_value = mock_payload
             
-            # Manual client processing
-            settle_request = process_payment_required(payment_required, buyer_account)
+            # Manual client processing - returns PaymentPayload directly (new spec)
+            payment_payload = process_payment_required(payment_required, buyer_account)
         
         # 2. Automated Server Side (using executor)
         mock_business_service = Mock()
@@ -86,7 +86,7 @@ class TestComposabilityPatterns:
         config = X402ExtensionConfig()
         auto_server = X402ServerExecutor(mock_business_service, config)
         
-        # Create task with manual client's payment
+        # Create task with payment requirements first (simulating the full flow)
         task = Task(
             id="mixed-approach-task",
             contextId="mixed-context",
@@ -94,7 +94,9 @@ class TestComposabilityPatterns:
             metadata={}
         )
         
-        task = utils.record_payment_submission(task, settle_request)
+        # Setup payment requirements before payment submission
+        task_with_requirements = utils.create_payment_required_task(task, payment_required)
+        task = utils.record_payment_submission(task_with_requirements, payment_payload)
         
         # Mock facilitator for auto server
         mock_verify_response = VerifyResponse(is_valid=True, payer=buyer_account.address)
@@ -180,11 +182,8 @@ class TestComposabilityPatterns:
                 )
             )
             
-            auto_settle_request = x402SettleRequest(
-                payment_requirements=requirements,
-                payment_payload=auto_payload
-            )
-            mock_auto_payment.return_value = auto_settle_request
+            # Updated for new spec - process_payment_required returns PaymentPayload directly
+            mock_auto_payment.return_value = auto_payload
             
             # Execute auto client
             client_context = Mock()
@@ -202,9 +201,15 @@ class TestComposabilityPatterns:
         # 2. Manual Server Side (using core functions)
         utils = X402Utils()
         
-        # Extract payment from client's submission
-        client_settle_request = utils.get_settle_request(payment_task)
-        assert client_settle_request is not None
+        # Extract payment payload from client's submission (new spec - separate objects)
+        client_payment_payload = utils.get_payment_payload(payment_task)
+        assert client_payment_payload is not None
+        
+        # Extract payment requirements from the original task correlation
+        client_payment_requirements = utils.get_payment_requirements(payment_task)
+        assert client_payment_requirements is not None
+        # Get the actual requirements object from the response
+        actual_requirements = client_payment_requirements.accepts[0]
         
         # Manual server verification
         mock_facilitator = Mock()
@@ -219,15 +224,15 @@ class TestComposabilityPatterns:
             payer=buyer_account.address
         ))
         
-        # Manual verification
-        verify_result = await verify_payment(client_settle_request, mock_facilitator)
+        # Manual verification (new spec - separate parameters)
+        verify_result = await verify_payment(client_payment_payload, actual_requirements, mock_facilitator)
         assert verify_result.is_valid is True
         
         # Manual business logic execution (simulated)
         business_result = "manual_server_provided_service"
         
-        # Manual settlement
-        settle_result = await settle_payment(client_settle_request, mock_facilitator)
+        # Manual settlement (new spec - separate parameters)
+        settle_result = await settle_payment(client_payment_payload, actual_requirements, mock_facilitator)
         assert settle_result.success is True
         
         # Manual state management
@@ -237,7 +242,7 @@ class TestComposabilityPatterns:
         # Auto client payment + manual server processing = success
         final_status = utils.get_payment_status(final_task)
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
-        assert final_task.metadata[utils.RECEIPT_KEY]["transaction"] == "0xmanual_server_tx"
+        assert final_task.metadata[utils.RECEIPTS_KEY][0]["transaction"] == "0xmanual_server_tx"
     
     def test_composability_assessment(self):
         """Assess overall composability of the a2a_x402 package."""
@@ -259,7 +264,7 @@ class TestComposabilityPatterns:
         assert client.utils.STATUS_KEY == utils.STATUS_KEY  # Same utilities
         
         # 4. All approaches use same data structures
-        from a2a_x402.types import x402SettleRequest, x402SettleResponse
+        from a2a_x402.types import PaymentPayload, x402SettleResponse
         # These types work across all approaches - good composability
         
         # 5. State management is consistent

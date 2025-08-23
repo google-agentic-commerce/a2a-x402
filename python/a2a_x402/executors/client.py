@@ -81,11 +81,11 @@ class X402ClientExecutor(X402BaseExecutor):
             return  # No payment requirements found
         
         try:
-            # Process payment using wallet functions
-            settle_request = process_payment_required(payment_required, self.account, self.max_value)
+            # Process payment using wallet functions (returns PaymentPayload directly)
+            payment_payload = process_payment_required(payment_required, self.account, self.max_value)
             
             # Submit payment authorization
-            task = self.utils.record_payment_submission(task, settle_request)
+            task = self.utils.record_payment_submission(task, payment_payload)
             await event_queue.enqueue_event(task)
             
         except Exception as e:

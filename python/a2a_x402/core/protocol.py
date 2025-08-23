@@ -3,7 +3,8 @@
 from typing import Optional
 
 from ..types import (
-    x402SettleRequest,
+    PaymentPayload,
+    PaymentRequirements,
     x402SettleResponse,
     VerifyResponse,
     FacilitatorClient
@@ -11,13 +12,15 @@ from ..types import (
 
 
 async def verify_payment(
-    settle_request: x402SettleRequest,
+    payment_payload: PaymentPayload,
+    payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
 ) -> VerifyResponse:
     """Verify payment signature and requirements using facilitator.
     
     Args:
-        settle_request: Payment data to verify
+        payment_payload: Signed payment authorization
+        payment_requirements: Payment requirements to verify against
         facilitator_client: Optional FacilitatorClient instance
         
     Returns:
@@ -27,19 +30,21 @@ async def verify_payment(
         facilitator_client = FacilitatorClient()
         
     return await facilitator_client.verify(
-        settle_request.payment_payload,
-        settle_request.payment_requirements
+        payment_payload,
+        payment_requirements
     )
 
 
 async def settle_payment(
-    settle_request: x402SettleRequest,
+    payment_payload: PaymentPayload,
+    payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
 ) -> x402SettleResponse:
     """Settle payment on blockchain using facilitator.
     
     Args:
-        settle_request: Verified payment data to settle
+        payment_payload: Signed payment authorization
+        payment_requirements: Payment requirements for settlement
         facilitator_client: Optional FacilitatorClient instance
         
     Returns:
@@ -50,15 +55,15 @@ async def settle_payment(
         
     # Call facilitator to settle payment
     settle_response = await facilitator_client.settle(
-        settle_request.payment_payload,
-        settle_request.payment_requirements
+        payment_payload,
+        payment_requirements
     )
     
     # Convert to A2A-specific response format
     return x402SettleResponse(
         success=settle_response.success,
         transaction=settle_response.transaction,
-        network=settle_response.network or settle_request.payment_requirements.network,
+        network=settle_response.network or payment_requirements.network,
         payer=settle_response.payer,
         error_reason=settle_response.error_reason
     )

@@ -10,7 +10,7 @@ class TestExtensionURI:
     
     def test_extension_uri_matches_spec(self):
         """Test that extension URI matches spec Section 2 exactly."""
-        expected_uri = "https://google-a2a.github.io/A2A/extensions/payments/x402/v0.1"
+        expected_uri = "https://github.com/google-a2a/a2a-x402/v0.1"
         assert X402_EXTENSION_URI == expected_uri
     
     def test_extension_uri_is_string(self):
@@ -20,8 +20,7 @@ class TestExtensionURI:
     def test_extension_uri_format(self):
         """Test that extension URI has correct format."""
         assert X402_EXTENSION_URI.startswith("https://")
-        assert "google-a2a.github.io" in X402_EXTENSION_URI
-        assert "x402" in X402_EXTENSION_URI
+        assert "github.com/google-a2a/a2a-x402" in X402_EXTENSION_URI
         assert "v0.1" in X402_EXTENSION_URI
 
 
