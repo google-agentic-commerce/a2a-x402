@@ -90,7 +90,7 @@ class X402ClientExecutor(X402BaseExecutor):
             
         except Exception as e:
             # Payment processing failed
-            from ..types import x402SettleResponse, X402ErrorCode
-            failure_response = x402SettleResponse(success=False, network="base", error_reason=f"Payment failed: {e}")
+            from ..types import SettleResponse, X402ErrorCode
+            failure_response = SettleResponse(success=False, network="base", error_reason=f"Payment failed: {e}")
             task = self.utils.record_payment_failure(task, X402ErrorCode.INVALID_SIGNATURE, failure_response)
             await event_queue.enqueue_event(task)

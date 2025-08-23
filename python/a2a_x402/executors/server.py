@@ -10,7 +10,7 @@ from ..types import (
     PaymentStatus,
     PaymentPayload,
     PaymentRequirements,
-    x402SettleResponse,
+    SettleResponse,
     X402ExtensionConfig,
     FacilitatorClient,
     X402ErrorCode
@@ -131,6 +131,6 @@ class X402ServerExecutor(X402BaseExecutor):
     
     async def _fail_payment(self, task, error_code: str, error_reason: str, event_queue: EventQueue):
         """Handle payment failure."""
-        failure_response = x402SettleResponse(success=False, network="base", error_reason=error_reason)
+        failure_response = SettleResponse(success=False, network="base", error_reason=error_reason)
         task = self.utils.record_payment_failure(task, error_code, failure_response)
         await event_queue.enqueue_event(task)

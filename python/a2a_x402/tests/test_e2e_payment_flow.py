@@ -16,7 +16,7 @@ from a2a_x402.types import (
     TaskState,
     TaskStatus,
     x402PaymentRequiredResponse,
-    x402SettleResponse,
+    SettleResponse,
     PaymentStatus,
     VerifyResponse,
     SettleResponse,
@@ -199,7 +199,7 @@ class TestE2EPaymentFlow:
         settlement_result = await settle_payment(payment_payload, requirements, mock_facilitator)
         
         # Verify settlement response conversion
-        assert isinstance(settlement_result, x402SettleResponse)
+        assert isinstance(settlement_result, SettleResponse)
         assert settlement_result.success is True
         assert settlement_result.transaction == "0xabc123def456"
         assert settlement_result.network == "base"
@@ -376,7 +376,7 @@ class TestE2EPaymentFlow:
                 metadata={}
             )
             
-            failure_response = x402SettleResponse(
+            failure_response = SettleResponse(
                 success=False,
                 network="base",
                 error_reason="Invalid signature format"
@@ -524,7 +524,7 @@ class TestE2EPaymentFlow:
         assert utils.PAYLOAD_KEY in task.metadata
         
         # State 3: Payment Completed
-        success_response = x402SettleResponse(
+        success_response = SettleResponse(
             success=True,
             transaction="0xstatesuccess123",
             network="base",
@@ -552,7 +552,7 @@ class TestE2EPaymentFlow:
         
         failed_task = utils.record_payment_submission(failed_task, payment_payload)
         
-        failure_response = x402SettleResponse(
+        failure_response = SettleResponse(
             success=False,
             network="base",
             error_reason="Insufficient funds"

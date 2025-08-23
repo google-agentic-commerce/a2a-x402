@@ -264,7 +264,7 @@ class TestComposabilityPatterns:
         assert client.utils.STATUS_KEY == utils.STATUS_KEY  # Same utilities
         
         # 4. All approaches use same data structures
-        from a2a_x402.types import PaymentPayload, x402SettleResponse
+        from a2a_x402.types import PaymentPayload, SettleResponse
         # These types work across all approaches - good composability
         
         # 5. State management is consistent

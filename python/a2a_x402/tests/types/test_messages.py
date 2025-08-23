@@ -1,10 +1,7 @@
 """Unit tests for a2a_x402.types.messages module."""
 
-import pytest
-from pydantic import ValidationError
-from a2a_x402.types.messages import (
+from a2a_x402.types import (
     X402MessageType,
-    x402SettleResponse
 )
 
 
@@ -31,73 +28,4 @@ class TestX402MessageType:
         actual_types = [msg_type.value for msg_type in all_types]
         for expected in expected_types:
             assert expected in actual_types
-
-
-class TestX402SettleResponse:
-    """Test x402SettleResponse data structure."""
-    
-    def test_settle_response_creation_success(self):
-        """Test creating successful x402SettleResponse."""
-        response = x402SettleResponse(
-            success=True,
-            transaction="0xtxhash123",
-            network="base",
-            payer="0xclient456"
-        )
-        
-        assert response.success is True
-        assert response.transaction == "0xtxhash123"
-        assert response.network == "base"
-        assert response.payer == "0xclient456"
-        assert response.error_reason is None
-    
-    def test_settle_response_creation_failure(self):
-        """Test creating failed x402SettleResponse."""
-        response = x402SettleResponse(
-            success=False,
-            network="base",
-            error_reason="Insufficient funds"
-        )
-        
-        assert response.success is False
-        assert response.network == "base"
-        assert response.error_reason == "Insufficient funds"
-        assert response.transaction is None
-        assert response.payer is None
-    
-    def test_settle_response_required_fields(self):
-        """Test that required fields are enforced."""
-        # success and network are required
-        with pytest.raises(ValidationError):
-            x402SettleResponse()
-        
-        with pytest.raises(ValidationError):
-            x402SettleResponse(success=True)  # Missing network
-        
-        # This should work
-        response = x402SettleResponse(success=True, network="base")
-        assert response.success is True
-        assert response.network == "base"
-    
-    def test_settle_response_serialization(self, sample_settle_response):
-        """Test that x402SettleResponse serializes correctly with aliases."""
-        data = sample_settle_response.model_dump(by_alias=True)
-        
-        assert "success" in data
-        assert "network" in data
-        assert "transaction" in data
-        assert "payer" in data
-        
-        # Test with error response to cover the error_reason alias
-        error_response = x402SettleResponse(
-            success=False,
-            network="base",
-            error_reason="Test error"
-        )
-        error_data = error_response.model_dump(by_alias=True)
-        
-        # These lines were missing coverage
-        assert "errorReason" in error_data
-        assert "error_reason" not in error_data
-    
 
