@@ -14,7 +14,7 @@ from a2a_x402.types import (
     X402ExtensionConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredResponse,
-    x402SettleRequest,
+    PaymentPayload,
     x402SettleResponse,
     VerifyResponse,
     SettleResponse
@@ -61,12 +61,7 @@ class TestExecutorE2E:
             )
         )
         
-        settle_request = x402SettleRequest(
-            payment_requirements=requirements,
-            payment_payload=payment_payload
-        )
-        
-        # Create task with payment submission
+        # Create task with payment requirements first (simulating the full flow)
         task = Task(
             id="image-generation-task",
             contextId="buyer-context",
@@ -74,7 +69,14 @@ class TestExecutorE2E:
             metadata={}
         )
         
-        task = selling_agent.utils.record_payment_submission(task, settle_request)
+        # Setup payment requirements before payment submission
+        payment_required = x402PaymentRequiredResponse(
+            x402_version=1,
+            accepts=[requirements],
+            error=""
+        )
+        task_with_requirements = selling_agent.utils.create_payment_required_task(task, payment_required)
+        task = selling_agent.utils.record_payment_submission(task_with_requirements, payment_payload)
         
         # Mock facilitator success
         mock_verify_response = VerifyResponse(is_valid=True, payer="0xbuyer456")
@@ -113,7 +115,7 @@ class TestExecutorE2E:
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
         
         # 5. Payment receipt is available
-        receipt = final_task.metadata[selling_agent.utils.RECEIPT_KEY]
+        receipt = final_task.metadata[selling_agent.utils.RECEIPTS_KEY][0]
         assert receipt["success"] is True
         assert receipt["transaction"] == "0xpayment123"
     
@@ -173,11 +175,8 @@ class TestExecutorE2E:
                 )
             )
             
-            mock_settle_request = x402SettleRequest(
-                payment_requirements=requirements,
-                payment_payload=mock_payload
-            )
-            mock_process_payment.return_value = mock_settle_request
+            # Updated for new spec - process_payment returns PaymentPayload directly
+            mock_process_payment.return_value = mock_payload
             
             # Execute buying agent
             mock_context = Mock()
@@ -272,11 +271,8 @@ class TestExecutorE2E:
                     )
                 )
             )
-            mock_buyer_settle_request = x402SettleRequest(
-                payment_requirements=image_requirements,
-                payment_payload=mock_buyer_payload
-            )
-            mock_buyer_payment.return_value = mock_buyer_settle_request
+            # Updated for new spec - process_payment returns PaymentPayload directly
+            mock_buyer_payment.return_value = mock_buyer_payload
             
             buyer_context = Mock()
             buyer_context.headers = {"X-A2A-Extensions": X402_EXTENSION_URI}
@@ -333,7 +329,7 @@ class TestExecutorE2E:
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
         
         # Commerce transaction complete!
-        receipt = seller_final_task.metadata[image_service.utils.RECEIPT_KEY]
+        receipt = seller_final_task.metadata[image_service.utils.RECEIPTS_KEY][0]
         assert receipt["success"] is True
         assert receipt["transaction"] == "0xcommerce_success"
         assert receipt["payer"] == buyer_account.address

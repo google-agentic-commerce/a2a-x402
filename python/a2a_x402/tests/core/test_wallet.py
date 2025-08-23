@@ -12,7 +12,6 @@ from a2a_x402.types import (
     PaymentRequirements,
     x402PaymentRequiredResponse,
     PaymentPayload,
-    x402SettleRequest,
     ExactPaymentPayload,
     EIP3009Authorization
 )
@@ -61,9 +60,8 @@ class TestProcessPaymentRequired:
                 mock_client.select_payment_requirements.assert_called_once_with(sample_payment_required_response.accepts)
                 
                 # Verify result
-                assert isinstance(result, x402SettleRequest)
-                assert result.payment_requirements == sample_payment_required_response.accepts[0]
-                assert result.payment_payload == mock_payload
+                assert isinstance(result, PaymentPayload)
+                assert result == mock_payload
 
 
 class TestProcessPayment:

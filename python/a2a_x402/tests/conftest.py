@@ -8,7 +8,6 @@ from a2a_x402.types import (
     TaskStatus,
     PaymentRequirements,
     x402PaymentRequiredResponse,
-    x402SettleRequest,
     x402SettleResponse,
     PaymentPayload,
     ExactPaymentPayload,
@@ -83,15 +82,6 @@ def sample_payment_payload():
         scheme="exact",
         network="base",
         payload=exact_payload
-    )
-
-
-@pytest.fixture
-def sample_settle_request(sample_payment_requirements, sample_payment_payload):
-    """Create sample x402SettleRequest for testing."""
-    return x402SettleRequest(
-        payment_requirements=sample_payment_requirements,
-        payment_payload=sample_payment_payload
     )
 
 

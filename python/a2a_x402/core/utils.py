@@ -7,7 +7,7 @@ from ..types import (
     PaymentStatus,
     X402Metadata,
     x402PaymentRequiredResponse,
-    x402SettleRequest,
+    PaymentPayload,
     x402SettleResponse
 )
 from a2a.types import TextPart
@@ -15,7 +15,7 @@ from a2a.types import TextPart
 
 def create_payment_submission_message(
     task_id: str,
-    settle_request: x402SettleRequest,
+    payment_payload: PaymentPayload,
     text: str = "Payment authorization provided"
 ) -> Message:
     """Creates correlated payment submission message per spec."""
@@ -27,7 +27,7 @@ def create_payment_submission_message(
         parts=[TextPart(kind="text", text=text)],
         metadata={
             X402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            X402Metadata.PAYLOAD_KEY: settle_request.model_dump(by_alias=True)
+            X402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
         }
     )
 
@@ -46,9 +46,10 @@ class X402Utils:
     STATUS_KEY = X402Metadata.STATUS_KEY
     REQUIRED_KEY = X402Metadata.REQUIRED_KEY
     PAYLOAD_KEY = X402Metadata.PAYLOAD_KEY
-    RECEIPT_KEY = X402Metadata.RECEIPT_KEY
+    RECEIPTS_KEY = X402Metadata.RECEIPTS_KEY
     ERROR_KEY = X402Metadata.ERROR_KEY
     
+
     def get_payment_status(self, task: Task) -> Optional[PaymentStatus]:
         """Extract payment status from task metadata."""
         if not task or not task.metadata:
@@ -75,15 +76,15 @@ class X402Utils:
                 return None
         return None
         
-    def get_settle_request(self, task: Task) -> Optional[x402SettleRequest]:
-        """Extract settle request from task metadata."""
+    def get_payment_payload(self, task: Task) -> Optional[PaymentPayload]:
+        """Extract payment payload from task metadata."""
         if not task or not task.metadata:
             return None
             
         payload_data = task.metadata.get(self.PAYLOAD_KEY)
         if payload_data:
             try:
-                return x402SettleRequest.model_validate(payload_data)
+                return PaymentPayload.model_validate(payload_data)
             except Exception:
                 return None
         return None
@@ -104,16 +105,15 @@ class X402Utils:
     def record_payment_submission(
         self,
         task: Task,
-        settle_request: x402SettleRequest
+        payment_payload: PaymentPayload
     ) -> Task:
         """Record payment submission in task metadata."""  
         if task.metadata is None:
             task.metadata = {}
             
         task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
-        task.metadata[self.PAYLOAD_KEY] = settle_request.model_dump(by_alias=True)
-        # Clean up requirements after submission
-        task.metadata.pop(self.REQUIRED_KEY, None)
+        task.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
+        # Note: Keep requirements for verification - will be cleaned up after settlement
         return task
     
     def record_payment_success(
@@ -126,9 +126,13 @@ class X402Utils:
             task.metadata = {}
             
         task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_COMPLETED.value
-        task.metadata[self.RECEIPT_KEY] = settle_response.model_dump(by_alias=True)
+        # Append to receipts array (spec requirement for complete history)
+        if self.RECEIPTS_KEY not in task.metadata:
+            task.metadata[self.RECEIPTS_KEY] = []
+        task.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
         # Clean up intermediate data
         task.metadata.pop(self.PAYLOAD_KEY, None)
+        task.metadata.pop(self.REQUIRED_KEY, None)
         return task
     
     def record_payment_failure(
@@ -143,7 +147,29 @@ class X402Utils:
             
         task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_FAILED.value
         task.metadata[self.ERROR_KEY] = error_code
-        task.metadata[self.RECEIPT_KEY] = settle_response.model_dump(by_alias=True)
+        # Append to receipts array (spec requirement for complete history)
+        if self.RECEIPTS_KEY not in task.metadata:
+            task.metadata[self.RECEIPTS_KEY] = []
+        task.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
         # Clean up intermediate data
         task.metadata.pop(self.PAYLOAD_KEY, None)
         return task
+    
+    def get_payment_receipts(self, task: Task) -> list[x402SettleResponse]:
+        """Get all payment receipts from task metadata."""
+        if not task or not task.metadata:
+            return []
+            
+        receipts_data = task.metadata.get(self.RECEIPTS_KEY, [])
+        receipts = []
+        for receipt_data in receipts_data:
+            try:
+                receipts.append(x402SettleResponse.model_validate(receipt_data))
+            except Exception:
+                continue
+        return receipts
+    
+    def get_latest_receipt(self, task: Task) -> Optional[x402SettleResponse]:
+        """Get the most recent payment receipt from task metadata."""
+        receipts = self.get_payment_receipts(task)
+        return receipts[-1] if receipts else None

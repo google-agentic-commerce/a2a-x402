@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 from a2a_x402.types.messages import (
     X402MessageType,
-    x402SettleRequest,
     x402SettleResponse
 )
 
@@ -32,51 +31,6 @@ class TestX402MessageType:
         actual_types = [msg_type.value for msg_type in all_types]
         for expected in expected_types:
             assert expected in actual_types
-
-
-class TestX402SettleRequest:
-    """Test x402SettleRequest data structure."""
-    
-    def test_settle_request_creation(self, sample_payment_requirements, sample_payment_payload):
-        """Test creating x402SettleRequest with valid data."""
-        settle_request = x402SettleRequest(
-            payment_requirements=sample_payment_requirements,
-            payment_payload=sample_payment_payload
-        )
-        
-        assert settle_request.payment_requirements == sample_payment_requirements
-        assert settle_request.payment_payload == sample_payment_payload
-    
-    def test_settle_request_aliases(self, sample_payment_requirements, sample_payment_payload):
-        """Test that camelCase aliases work correctly."""
-        # Test with camelCase field names
-        settle_request = x402SettleRequest(
-            paymentRequirements=sample_payment_requirements,
-            paymentPayload=sample_payment_payload
-        )
-        
-        assert settle_request.payment_requirements == sample_payment_requirements
-        assert settle_request.payment_payload == sample_payment_payload
-    
-    def test_settle_request_serialization(self, sample_settle_request):
-        """Test that x402SettleRequest serializes correctly with aliases."""
-        data = sample_settle_request.model_dump(by_alias=True)
-        
-        assert "paymentRequirements" in data
-        assert "paymentPayload" in data
-        assert "payment_requirements" not in data
-        assert "payment_payload" not in data
-    
-    def test_settle_request_deserialization(self, sample_payment_requirements, sample_payment_payload):
-        """Test that x402SettleRequest can be created from dict."""
-        data = {
-            "paymentRequirements": sample_payment_requirements.model_dump(),
-            "paymentPayload": sample_payment_payload.model_dump()
-        }
-        
-        settle_request = x402SettleRequest.model_validate(data)
-        assert settle_request.payment_requirements.scheme == sample_payment_requirements.scheme
-        assert settle_request.payment_payload.scheme == sample_payment_payload.scheme
 
 
 class TestX402SettleResponse:

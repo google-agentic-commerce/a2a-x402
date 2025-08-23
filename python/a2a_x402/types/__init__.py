@@ -40,7 +40,6 @@ from x402.facilitator import (
 # Export A2A-specific types
 from .messages import (
     X402MessageType,
-    x402SettleRequest,
     x402SettleResponse
 )
 
@@ -105,7 +104,6 @@ __all__ = [
     
     # A2A-specific types
     "X402MessageType",
-    "x402SettleRequest",
     "x402SettleResponse",
     "PaymentStatus",
     "X402Metadata",

@@ -12,7 +12,7 @@ from a2a_x402.types import (
     X402ExtensionConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredResponse,
-    x402SettleRequest,
+    PaymentPayload,
     x402SettleResponse,
     X402ErrorCode
 )
@@ -131,11 +131,9 @@ class TestX402ClientExecutor:
                     )
                 )
             )
-            mock_settle_request = x402SettleRequest(
-                payment_requirements=sample_payment_required_response.accepts[0],
-                payment_payload=mock_payload
-            )
-            mock_process_payment.return_value = mock_settle_request
+            # Use PaymentPayload directly per new spec
+            mock_payment_payload = mock_payload
+            mock_process_payment.return_value = mock_payment_payload
             
             # Execute
             await executor.execute(mock_context, mock_event_queue)
@@ -218,7 +216,7 @@ class TestX402ClientExecutor:
             final_status = executor.utils.get_payment_status(final_task)
             assert final_status == PaymentStatus.PAYMENT_FAILED
             assert final_task.metadata[executor.utils.ERROR_KEY] == X402ErrorCode.INVALID_SIGNATURE
-            assert "Payment failed: Signing failed" in final_task.metadata[executor.utils.RECEIPT_KEY]["errorReason"]
+            assert "Payment failed: Signing failed" in final_task.metadata[executor.utils.RECEIPTS_KEY][0]["errorReason"]
     
     @pytest.mark.asyncio
     async def test_execute_with_no_current_task(self, test_account):

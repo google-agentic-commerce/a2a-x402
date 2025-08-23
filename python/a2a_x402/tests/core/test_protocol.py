@@ -15,7 +15,7 @@ class TestVerifyPayment:
     """Test verify_payment function."""
     
     @pytest.mark.asyncio
-    async def test_verify_payment_with_client(self, sample_settle_request):
+    async def test_verify_payment_with_client(self, sample_payment_payload, sample_payment_requirements):
         """Test verify_payment with provided facilitator client."""
         # Mock facilitator client
         mock_client = Mock(spec=FacilitatorClient)
@@ -27,19 +27,19 @@ class TestVerifyPayment:
         mock_client.verify = AsyncMock(return_value=mock_verify_response)
         
         # Call verify_payment
-        result = await verify_payment(sample_settle_request, mock_client)
+        result = await verify_payment(sample_payment_payload, sample_payment_requirements, mock_client)
         
         # Verify the call was made correctly
         mock_client.verify.assert_called_once_with(
-            sample_settle_request.payment_payload,
-            sample_settle_request.payment_requirements
+            sample_payment_payload,
+            sample_payment_requirements
         )
         
         assert result == mock_verify_response
         assert result.is_valid is True
     
     @pytest.mark.asyncio 
-    async def test_verify_payment_without_client(self, sample_settle_request):
+    async def test_verify_payment_without_client(self, sample_payment_payload, sample_payment_requirements):
         """Test verify_payment creates default facilitator client."""
         mock_verify_response = VerifyResponse(
             is_valid=False,
@@ -53,13 +53,13 @@ class TestVerifyPayment:
             mock_facilitator_class.return_value = mock_client
             
             # Call verify_payment without client
-            result = await verify_payment(sample_settle_request)
+            result = await verify_payment(sample_payment_payload, sample_payment_requirements)
             
             # Verify default client was created and used
             mock_facilitator_class.assert_called_once()
             mock_client.verify.assert_called_once_with(
-                sample_settle_request.payment_payload,
-                sample_settle_request.payment_requirements
+                sample_payment_payload,
+                sample_payment_requirements
             )
             
             assert result == mock_verify_response
@@ -71,7 +71,7 @@ class TestSettlePayment:
     """Test settle_payment function."""
     
     @pytest.mark.asyncio
-    async def test_settle_payment_with_client_success(self, sample_settle_request):
+    async def test_settle_payment_with_client_success(self, sample_payment_payload, sample_payment_requirements):
         """Test settle_payment with provided facilitator client - success case."""
         # Mock facilitator client
         mock_client = Mock(spec=FacilitatorClient)
@@ -85,12 +85,12 @@ class TestSettlePayment:
         mock_client.settle = AsyncMock(return_value=mock_settle_response)
         
         # Call settle_payment
-        result = await settle_payment(sample_settle_request, mock_client)
+        result = await settle_payment(sample_payment_payload, sample_payment_requirements, mock_client)
         
         # Verify the call was made correctly
         mock_client.settle.assert_called_once_with(
-            sample_settle_request.payment_payload,
-            sample_settle_request.payment_requirements
+            sample_payment_payload,
+            sample_payment_requirements
         )
         
         # Verify conversion to A2A format
@@ -102,7 +102,7 @@ class TestSettlePayment:
         assert result.error_reason is None
     
     @pytest.mark.asyncio
-    async def test_settle_payment_with_client_failure(self, sample_settle_request):
+    async def test_settle_payment_with_client_failure(self, sample_payment_payload, sample_payment_requirements):
         """Test settle_payment with provided facilitator client - failure case."""
         mock_client = Mock(spec=FacilitatorClient)
         mock_settle_response = SettleResponse(
@@ -114,17 +114,17 @@ class TestSettlePayment:
         )
         mock_client.settle = AsyncMock(return_value=mock_settle_response)
         
-        result = await settle_payment(sample_settle_request, mock_client)
+        result = await settle_payment(sample_payment_payload, sample_payment_requirements, mock_client)
         
         assert isinstance(result, x402SettleResponse)
         assert result.success is False
         assert result.transaction is None
-        assert result.network == sample_settle_request.payment_requirements.network  # Fallback
+        assert result.network == sample_payment_requirements.network  # Fallback
         assert result.payer is None
         assert result.error_reason == "Insufficient funds"
     
     @pytest.mark.asyncio
-    async def test_settle_payment_without_client(self, sample_settle_request):
+    async def test_settle_payment_without_client(self, sample_payment_payload, sample_payment_requirements):
         """Test settle_payment creates default facilitator client."""
         mock_settle_response = SettleResponse(
             success=True,
@@ -140,13 +140,13 @@ class TestSettlePayment:
             mock_facilitator_class.return_value = mock_client
             
             # Call settle_payment without client
-            result = await settle_payment(sample_settle_request)
+            result = await settle_payment(sample_payment_payload, sample_payment_requirements)
             
             # Verify default client was created and used
             mock_facilitator_class.assert_called_once()
             mock_client.settle.assert_called_once_with(
-                sample_settle_request.payment_payload,
-                sample_settle_request.payment_requirements
+                sample_payment_payload,
+                sample_payment_requirements
             )
             
             assert isinstance(result, x402SettleResponse)
