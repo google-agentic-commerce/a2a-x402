@@ -77,22 +77,10 @@ These types are specific to the A2A protocol extension:
 
 ```python
 from a2a_x402.types import (
-    x402SettleResponse,   # A2A-specific settlement response  
     PaymentStatus,        # A2A payment state enum
     X402MessageType,      # A2A message type enum
     X402Metadata         # A2A metadata key constants
 )
-```
-
-**`x402SettleResponse`** - A2A settlement response (extends `SettleResponse`):
-```python
-class x402SettleResponse(SettleResponse):
-    """A2A-specific settlement response with additional fields for spec compliance"""
-    success: bool                         # Settlement success status
-    transaction: Optional[str] = None     # Transaction hash (if successful) 
-    network: str                         # Settlement network
-    payer: Optional[str] = None          # Payer address
-    error_reason: Optional[str] = Field(default=None, alias="errorReason")
 ```
 
 **`PaymentStatus`** - A2A payment state enumeration:
@@ -126,7 +114,7 @@ class X402Metadata:
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse
     PAYLOAD_KEY = "x402.payment.payload"        # Contains PaymentPayload
-    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of x402SettleResponse objects
+    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of SettleResponse objects
     ERROR_KEY = "x402.payment.error"            # Error code (when failed)
 ```
 
@@ -248,12 +236,12 @@ class MerchantAgentOperations:
         payment_payload: PaymentPayload,
         payment_requirements: PaymentRequirements,
         facilitator_config: FacilitatorConfig
-    ) -> x402SettleResponse:
+    ) -> SettleResponse:
         """Verify and settle payment after receiving signed authorization."""
         # Verify payment signature and requirements with facilitator
         verification = await verify_payment(payment_payload, payment_requirements, facilitator_config)
         if not verification.is_valid:
-            return x402SettleResponse(
+            return SettleResponse(
                 success=False,
                 network=payment_requirements.network,
                 error_reason=verification.invalid_reason
@@ -329,7 +317,7 @@ class FacilitatorOperations:
     async def settle_on_chain(
         payment_payload: PaymentPayload,
         payment_requirements: PaymentRequirements
-    ) -> x402SettleResponse:
+    ) -> SettleResponse:
         """Post payment transaction to blockchain after successful verification."""
         return await settle_payment(payment_payload, payment_requirements)
 ```
@@ -388,8 +376,8 @@ def settle_payment(
     payment_payload: PaymentPayload,
     payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
-) -> x402SettleResponse:
-    """Settle payment - calls facilitator_client.settle()."""
+) -> SettleResponse:
+    """Settle payment - calls facilitator_client.settle() and returns SettleResponse directly."""
 ```
 
 ### 4.2. State Management Utilities  
@@ -404,7 +392,7 @@ class X402Utils:
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse
     PAYLOAD_KEY = "x402.payment.payload"        # Contains PaymentPayload  
-    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of x402SettleResponse objects
+    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of SettleResponse objects
     ERROR_KEY = "x402.payment.error"            # Error code string
 
     def get_payment_status(self, task: Task) -> Optional[PaymentStatus]:
@@ -472,7 +460,7 @@ class X402Utils:
     def record_payment_success(
         self,
         task: Task,
-        settle_response: x402SettleResponse
+        settle_response: SettleResponse
     ) -> Task:
         """Record successful payment with settlement response."""
         if task.metadata is None:
@@ -490,7 +478,7 @@ class X402Utils:
         self,
         task: Task,
         error_code: str,
-        settle_response: x402SettleResponse
+        settle_response: SettleResponse
     ) -> Task:
         """Record payment failure with error details."""
         if task.metadata is None:
@@ -624,7 +612,7 @@ The x402 payment flow involves **four separate systems**:
 **Merchant Agent Final Response:**
 - Updates task state to `completed` (success) or `failed` (error)
 - Updates task metadata: `x402.payment.status: "payment-completed"` or `"payment-failed"`
-- Adds `x402.payment.receipt` with settlement details (`x402SettleResponse`)
+- Adds `x402.payment.receipt` with settlement details (`SettleResponse`)
 - Includes service result as task `artifacts` (if successful)
 
 **Merchant Agent → Client Agent**
@@ -716,7 +704,7 @@ async def handle_payment_submission(task: Task, payment_requirements: PaymentReq
     if not verify_response.is_valid:
         task = utils.record_payment_failure(
             task, "verification_failed", 
-            x402SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason)
+            SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason)
         )
         return task
     
@@ -726,8 +714,8 @@ async def handle_payment_submission(task: Task, payment_requirements: PaymentReq
         payment_requirements
     )
     
-    # Convert to A2A format
-    a2a_response = x402SettleResponse(
+    # Use SettleResponse directly from x402
+    settle_response_result = SettleResponse(
         success=settle_response.success,
         transaction=settle_response.transaction,
         network=settle_response.network or "base",
@@ -737,9 +725,9 @@ async def handle_payment_submission(task: Task, payment_requirements: PaymentReq
     
     # Update task state based on result
     if settle_response.success:
-        task = utils.record_payment_success(task, a2a_response)
+        task = utils.record_payment_success(task, settle_response_result)
     else:
-        task = utils.record_payment_failure(task, "settlement_failed", a2a_response)
+        task = utils.record_payment_failure(task, "settlement_failed", settle_response_result)
     
     return task
 ```
@@ -813,7 +801,7 @@ class X402ServerExecutor(X402BaseExecutor):
             
             if not verify_response.is_valid:
                 task = self.utils.record_payment_failure(task, "verification_failed", 
-                    x402SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason))
+                    SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason))
             else:
                 # Process request with delegate
                 await self._delegate.execute(context, event_queue)
@@ -823,14 +811,14 @@ class X402ServerExecutor(X402BaseExecutor):
                     payment_payload, payment_requirements
                 )
                 
-                a2a_response = x402SettleResponse(success=settle_response.success, 
+                settle_response_result = SettleResponse(success=settle_response.success, 
                     transaction=settle_response.transaction, network=settle_response.network or "base",
                     payer=settle_response.payer, error_reason=settle_response.error_reason)
                 
             if settle_response.success:
-                    task = self.utils.record_payment_success(task, a2a_response)
+                    task = self.utils.record_payment_success(task, settle_response_result)
             else:
-                    task = self.utils.record_payment_failure(task, "settlement_failed", a2a_response)
+                    task = self.utils.record_payment_failure(task, "settlement_failed", settle_response_result)
             
             await event_queue.enqueue_event(task)
             return
@@ -913,8 +901,7 @@ from a2a_x402 import (
     process_payment,             # Individual signing
     verify_payment,
     
-    # A2A-Specific Types  
-    x402SettleResponse,
+    # A2A-Specific Types
     PaymentStatus,
     X402Metadata,
     
@@ -1022,7 +1009,7 @@ from a2a_x402 import (
     X402Utils,
     
     # A2A-Specific Types
-    x402SettleResponse,           # A2A settlement response
+
     PaymentStatus,                # A2A payment states
     X402MessageType,              # A2A message types
     X402Metadata,                 # A2A metadata constants

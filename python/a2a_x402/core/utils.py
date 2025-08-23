@@ -8,7 +8,7 @@ from ..types import (
     X402Metadata,
     x402PaymentRequiredResponse,
     PaymentPayload,
-    x402SettleResponse
+    SettleResponse
 )
 from a2a.types import TextPart
 
@@ -119,7 +119,7 @@ class X402Utils:
     def record_payment_success(
         self,
         task: Task,
-        settle_response: x402SettleResponse
+        settle_response: SettleResponse
     ) -> Task:
         """Record successful payment with settlement response."""
         if task.metadata is None:
@@ -139,7 +139,7 @@ class X402Utils:
         self,
         task: Task,
         error_code: str,
-        settle_response: x402SettleResponse
+        settle_response: SettleResponse
     ) -> Task:
         """Record payment failure with error details."""
         if task.metadata is None:
@@ -155,7 +155,7 @@ class X402Utils:
         task.metadata.pop(self.PAYLOAD_KEY, None)
         return task
     
-    def get_payment_receipts(self, task: Task) -> list[x402SettleResponse]:
+    def get_payment_receipts(self, task: Task) -> list[SettleResponse]:
         """Get all payment receipts from task metadata."""
         if not task or not task.metadata:
             return []
@@ -164,12 +164,12 @@ class X402Utils:
         receipts = []
         for receipt_data in receipts_data:
             try:
-                receipts.append(x402SettleResponse.model_validate(receipt_data))
+                receipts.append(SettleResponse.model_validate(receipt_data))
             except Exception:
                 continue
         return receipts
     
-    def get_latest_receipt(self, task: Task) -> Optional[x402SettleResponse]:
+    def get_latest_receipt(self, task: Task) -> Optional[SettleResponse]:
         """Get the most recent payment receipt from task metadata."""
         receipts = self.get_payment_receipts(task)
         return receipts[-1] if receipts else None

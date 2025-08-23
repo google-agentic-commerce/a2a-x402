@@ -10,7 +10,7 @@ from a2a_x402.types import (
     PaymentStatus,
     X402ExtensionConfig,
     X402_EXTENSION_URI,
-    x402SettleResponse,
+    SettleResponse,
     x402PaymentRequiredResponse,
     VerifyResponse,
     SettleResponse,

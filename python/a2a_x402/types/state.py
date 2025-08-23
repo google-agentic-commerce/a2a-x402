@@ -18,5 +18,5 @@ class X402Metadata:
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse
     PAYLOAD_KEY = "x402.payment.payload"        # Contains PaymentPayload
-    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of x402SettleResponse objects
+    RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of SettleResponse objects
     ERROR_KEY = "x402.payment.error"            # Error code (when failed)

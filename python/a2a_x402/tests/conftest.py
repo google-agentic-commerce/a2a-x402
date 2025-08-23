@@ -8,7 +8,7 @@ from a2a_x402.types import (
     TaskStatus,
     PaymentRequirements,
     x402PaymentRequiredResponse,
-    x402SettleResponse,
+    SettleResponse,
     PaymentPayload,
     ExactPaymentPayload,
     EIP3009Authorization
@@ -87,8 +87,8 @@ def sample_payment_payload():
 
 @pytest.fixture
 def sample_settle_response():
-    """Create sample x402SettleResponse for testing."""
-    return x402SettleResponse(
+    """Create sample SettleResponse for testing."""
+    return SettleResponse(
         success=True,
         transaction="0xtxhash123",
         network="base",

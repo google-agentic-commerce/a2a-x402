@@ -5,7 +5,7 @@ from typing import Optional
 from ..types import (
     PaymentPayload,
     PaymentRequirements,
-    x402SettleResponse,
+    SettleResponse,
     VerifyResponse,
     FacilitatorClient
 )
@@ -39,7 +39,7 @@ async def settle_payment(
     payment_payload: PaymentPayload,
     payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
-) -> x402SettleResponse:
+) -> SettleResponse:
     """Settle payment on blockchain using facilitator.
     
     Args:
@@ -48,7 +48,7 @@ async def settle_payment(
         facilitator_client: Optional FacilitatorClient instance
         
     Returns:
-        x402SettleResponse with settlement result and transaction hash
+        SettleResponse with settlement result and transaction hash
     """
     if facilitator_client is None:
         facilitator_client = FacilitatorClient()
@@ -60,7 +60,7 @@ async def settle_payment(
     )
     
     # Convert to A2A-specific response format
-    return x402SettleResponse(
+    return SettleResponse(
         success=settle_response.success,
         transaction=settle_response.transaction,
         network=settle_response.network or payment_requirements.network,

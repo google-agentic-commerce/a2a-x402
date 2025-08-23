@@ -13,7 +13,7 @@ from a2a_x402.types import (
     X402_EXTENSION_URI,
     x402PaymentRequiredResponse,
     PaymentPayload,
-    x402SettleResponse,
+    SettleResponse,
     X402ErrorCode
 )
 

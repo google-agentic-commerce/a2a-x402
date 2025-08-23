@@ -6,7 +6,7 @@ from a2a_x402.core.protocol import verify_payment, settle_payment
 from a2a_x402.types import (
     VerifyResponse,
     SettleResponse,
-    x402SettleResponse,
+    SettleResponse,
     FacilitatorClient
 )
 
@@ -94,7 +94,7 @@ class TestSettlePayment:
         )
         
         # Verify conversion to A2A format
-        assert isinstance(result, x402SettleResponse)
+        assert isinstance(result, SettleResponse)
         assert result.success is True
         assert result.transaction == "0xtxhash123"
         assert result.network == "base"
@@ -116,7 +116,7 @@ class TestSettlePayment:
         
         result = await settle_payment(sample_payment_payload, sample_payment_requirements, mock_client)
         
-        assert isinstance(result, x402SettleResponse)
+        assert isinstance(result, SettleResponse)
         assert result.success is False
         assert result.transaction is None
         assert result.network == sample_payment_requirements.network  # Fallback
@@ -149,6 +149,6 @@ class TestSettlePayment:
                 sample_payment_requirements
             )
             
-            assert isinstance(result, x402SettleResponse)
+            assert isinstance(result, SettleResponse)
             assert result.success is True
             assert result.transaction == "0xtxhash456"
