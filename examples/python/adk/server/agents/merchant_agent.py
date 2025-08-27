@@ -63,6 +63,9 @@ class LowesMerchantAgent(ABC):
 
         # Load product data
         self.product_data = self._load_product_data()
+        
+        # Cache payment requirements
+        self.payment_requirements_store = {}
 
     def _load_product_data(self) -> Dict[str, Any]:
         """Load product data from products.json file.
@@ -190,20 +193,12 @@ Remember:
             - message: Human readable description
             - data: Settlement data if successful
         """
-        logger.info(f"Starting payment settlement for network: {self.network}")
-
-
         payment_dict = json.loads(payment_data)
         
-
-        # Check for both camelCase (new x402 format) and snake_case (old format)
         if ("x402Version" in payment_dict or "x402_version" in payment_dict) and "payload" in payment_dict:
-            # Create standard PaymentPayload from x402 package
-            # The x402 package expects x402Version (camelCase)
             if "x402_version" in payment_dict and "x402Version" not in payment_dict:
                 payment_dict["x402Version"] = payment_dict["x402_version"]
             
-            # Create PaymentPayload using the standard x402 type
             payment_payload = PaymentPayload(**payment_dict)
 
             if not payment_payload:
@@ -213,50 +208,21 @@ Remember:
                     "data": None
                 }
 
-            # Parse original requirements if provided, otherwise create from payload
             payment_requirements = None
-            if original_requirements:
-                payment_requirements = PaymentRequirements(**original_requirements)
+            if self.payment_requirements_store:
+                payment_requirements = list(self.payment_requirements_store.values())[-1]
             else:
-                try:
-                    # Check if this is a Sui transaction (has transaction field in payload)
-                    if hasattr(payment_payload.payload, 'transaction') or (isinstance(payment_payload.payload, dict) and 'transaction' in payment_payload.payload):
-                        # For Sui, we need to create requirements from the payment data
-                        # This is a simplified approach - in production you'd want to store the original requirements
-                        payment_requirements = PaymentRequirements(
-                            network=payment_payload.network,
-                            scheme=payment_payload.scheme,
-                            max_amount_required="90000",  # Default for demo
-                            pay_to=self.merchant_address,
-                            description="Product purchase",
-                            asset="0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
-                            mime_type="application/json",
-                            max_timeout_seconds=1200,
-                            resource="https://lowes.com/products",
-                            extra=None,
-                            output_schema={}
-                        )
-                    else:
-                        # For EVM, we'd need the original requirements
-                        return {
-                            "status": "error",
-                            "message": "Payment requirements required for EVM payments",
-                            "data": None
-                        }
-                except Exception as e:
-                    logger.error(f"Failed to create payment requirements: {e}")
-                    return {
-                        "status": "error",
-                        "message": f"Failed to create payment requirements: {e}",
-                        "data": None
-                    }
+                return {
+                    "status": "error",
+                    "message": "No payment requirements found.",
+                    "data": None
+                }
 
             try:
                 facilitator_url = os.getenv("FACILITATOR_URL", "http://localhost:3000")
                 facilitator_config = FacilitatorConfig(url=facilitator_url)
                 facilitator_client = FacilitatorClient(facilitator_config)
 
-                # 1. Verify payment
                 verify_result = await asyncio.wait_for(
                     verify_payment(
                         payment_payload=payment_payload,
@@ -273,7 +239,6 @@ Remember:
                         "data": None
                     }
 
-                # 2. Settle the payment
                 result = await settle_payment(
                     payment_payload=payment_payload,
                     payment_requirements=payment_requirements,
@@ -287,28 +252,28 @@ Remember:
                         "data": None
                     }
 
-                # Create success message with transaction details
                 success_message = "Payment processed successfully"
+                explorer_link = None
                 if result.transaction:
-                    # Create explorer link for Sui transactions
                     if payment_requirements.network.lower() in ['sui', 'sui-testnet']:
                         explorer_link = f"https://testnet.suivision.xyz/txblock/{result.transaction}"
-                        success_message = f"Thank you for your purchase! Payment confirmed on blockchain. Transaction: {result.transaction[:16]}... View details: {explorer_link}"
-                    else:
-                        success_message = f"Thank you for your purchase! Payment confirmed on blockchain. Transaction: {result.transaction}"
+                        success_message = f"Thank you for your purchase! Payment confirmed on blockchain."
 
-                # Skip LLM summarization since this is structured data
                 if tool_context:
                     tool_context.actions.skip_summarization = True
 
                 return {
                     "status": "success",
                     "message": success_message,
-                    "data": result.model_dump()
+                    "data": {
+                        "success": True,
+                        "message": "Payment processed successfully on blockchain",
+                        "transaction": result.transaction,
+                        "explorer_link": explorer_link
+                    }
                 }
 
             except Exception as e:
-                logger.error(f"Unexpected error in settle_payment: {str(e)}")
                 return {
                     "status": "error",
                     "message": str(e),
@@ -322,7 +287,8 @@ Remember:
         description: str = "",
         mime_type: str = "application/json",
         max_timeout_seconds: int = 60,
-        output_schema: Dict[str, Any] = None
+        output_schema: Dict[str, Any] = None,
+        nonce: str = None
     ) -> PaymentRequirements:
         """Create payment requirements for a resource.
 
@@ -333,16 +299,27 @@ Remember:
             mime_type: MIME type of the resource
             max_timeout_seconds: Payment timeout in seconds
             output_schema: Optional schema for the response
+            nonce: Optional nonce for payment uniqueness (taskId for Sui)
 
         Returns:
             PaymentRequirements object
         """
-        logger.info(f"Creating payment requirements for: {description} (${price_usd})")
 
         # Convert USD price to USDC atomic units (6 decimals)
         price_in_atomic = str(int(price_usd * 1_000_000))
 
-        # Create payment requirements with extra fields for EIP-712 signing
+        extra = None
+        if self.network.lower() in ['sui', 'sui-testnet']:
+            if nonce:
+                extra = {"nonce": nonce}
+        else:
+            extra = {
+                "name": "USD Coin",
+                "version": "2"
+            }
+            if nonce:
+                extra["nonce"] = nonce
+
         payment_req = create_payment_requirements(
             price=price_in_atomic,
             resource=resource,
@@ -351,15 +328,9 @@ Remember:
             description=description,
             mime_type=mime_type,
             max_timeout_seconds=max_timeout_seconds,
-            output_schema=output_schema or {}
+            output_schema=output_schema or {},
+            extra=extra
         )
-
-        # Add extra fields needed for EIP-712 domain (only for EVM networks)
-        if self.network.lower() not in ['sui', 'sui-testnet'] and not payment_req.extra:
-            payment_req.extra = {
-                "name": "USD Coin",
-                "version": "2"
-            }
 
         return payment_req
 
@@ -382,10 +353,8 @@ Remember:
             - payment_requirements: Payment requirements data
         """
         try:
-            logger.info(f"Looking up product: {product_name}")
 
             if not product_name:
-                logger.warning(f"Product name is empty")
                 return {
                     "status": "error",
                     "message": "Product name cannot be empty.",
@@ -437,15 +406,23 @@ Remember:
             safe_product_name = product_name.upper().replace(" ", "-")
             sku = f"SKU-{safe_product_name}"
 
-            # Create payment requirements
+            nonce = None
+            if tool_context and hasattr(tool_context, 'invocation_id'):
+                nonce = tool_context.invocation_id
+                
             payment_requirements = self.create_payment_requirements(
                 price_usd=product['price'],
                 resource=f"https://lowes.com/products/{safe_product_name}",
                 description=f"{product['brand']} {product['name']}",
                 mime_type="application/json",
                 max_timeout_seconds=1200,
-                output_schema={}
+                output_schema={},
+                nonce=nonce
             )
+            
+            # Cache the payment requirements
+            if nonce:
+                self.payment_requirements_store[nonce] = payment_requirements
 
             # Skip LLM summarization since this is structured data
             if tool_context:

@@ -135,7 +135,18 @@ class ADKAgentExecutor(AgentExecutor):
                         if tool:
                             print(f"[adk_executor] Found tool: {tool.__name__}")
                             # Execute the tool with the provided arguments
-                            result = await tool(**function_call.args)
+                            # For tools that expect tool_context, create and pass it
+                            tool_args = function_call.args.copy()
+                            if 'tool_context' in tool.__code__.co_varnames:
+                                from google.adk.tools.tool_context import ToolContext
+                                from google.adk.core.agents.invocation_context import InvocationContext
+                                # Create a minimal tool context with invocation_id
+                                invocation_context = InvocationContext(invocation_id=context.invocation_id)
+                                tool_context = ToolContext(invocation_context)
+                                tool_args['tool_context'] = tool_context
+                                print(f"[adk_executor] Added tool_context with invocation_id: {context.invocation_id}")
+                            
+                            result = await tool(**tool_args)
                             print(f"[adk_executor] Tool result: {result}")
                             
                             # For merchant agent's get_product_details_and_payment_info, return structured data directly
@@ -369,41 +380,25 @@ class ADKAgentExecutor(AgentExecutor):
             else:
                 success_data = result.get('data', {})
                 if success_data:
-                    # Create user-friendly message with explorer link for Sui transactions
+                    # Use the merchant's response data directly
                     transaction_hash = success_data.get('transaction')
-                    network = success_data.get('network', '').lower()
+                    explorer_link = success_data.get('explorer_link')
+                    settlement_message = success_data.get('message', 'Payment processed successfully on blockchain')
                     
-                    if transaction_hash and network in ['sui', 'sui-testnet']:
-                        explorer_link = f"https://testnet.suivision.xyz/txblock/{transaction_hash}"
+                    if transaction_hash and explorer_link:
                         summary_for_llm = f"Payment successful! Thank you for your purchase! Your transaction is now on the blockchain. Transaction hash: {transaction_hash} - View on explorer: {explorer_link}"
-                        
-                        # Create structured response for the host agent
-                        await self._add_settlement_artifact(updater, {
-                            "success": True,
-                            "message": "Payment processed successfully on blockchain",
-                            "transaction": transaction_hash,
-                            "explorer_link": explorer_link
-                        })
                     elif transaction_hash:
                         summary_for_llm = f"Payment successful! Thank you for your purchase! Your transaction is now on the blockchain. Transaction hash: {transaction_hash}"
-                        
-                        # Create structured response for the host agent
-                        await self._add_settlement_artifact(updater, {
-                            "success": True,
-                            "message": "Payment processed successfully on blockchain", 
-                            "transaction": transaction_hash,
-                            "explorer_link": None
-                        })
                     else:
                         summary_for_llm = f"Payment was successful! Transaction completed. Thank the user and confirm their purchase was processed successfully."
-                        
-                        # Create structured response for the host agent
-                        await self._add_settlement_artifact(updater, {
-                            "success": True,
-                            "message": "Payment processed successfully",
-                            "transaction": None,
-                            "explorer_link": None
-                        })
+                    
+                    # Create structured response for the host agent using merchant's data
+                    await self._add_settlement_artifact(updater, {
+                        "success": True,
+                        "message": settlement_message,
+                        "transaction": transaction_hash,
+                        "explorer_link": explorer_link
+                    })
                 else:
                     summary_for_llm = f"Payment was successful! Thank the user and confirm their purchase was processed successfully."
                     
