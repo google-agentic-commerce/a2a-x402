@@ -12,12 +12,11 @@ from a2a_x402.types import (
     TaskStatus,
     PaymentStatus,
     X402ExtensionConfig,
+    X402ServerConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredResponse,
-    PaymentPayload,
     SettleResponse,
-    VerifyResponse,
-    SettleResponse
+    VerifyResponse
 )
 
 
@@ -25,20 +24,20 @@ class TestExecutorE2E:
     """End-to-end tests for executor middleware in agent commerce scenarios."""
     
     @pytest.mark.asyncio
-    async def test_selling_agent_with_server_executor(self):
+    async def test_selling_agent_with_server_executor(self, sample_server_config):
         """Test selling agent using X402ServerExecutor middleware."""
         # Selling agent provides image generation service
         mock_business_agent = Mock()
         mock_business_agent.execute = AsyncMock(return_value="generated_image.png")
         
         config = X402ExtensionConfig()
-        selling_agent = X402ServerExecutor(mock_business_agent, config)
+        selling_agent = X402ServerExecutor(mock_business_agent, config, sample_server_config)
         
         # Create a payment submission task (buyer has already paid)
         requirements = create_payment_requirements(
-            price="2500000",  # $2.50
+            price="$2.50",  # $2.50 USD
             resource="/generate-image",
-            merchant_address="0xseller123",
+            pay_to_address="0xseller123",
             description="AI image generation"
         )
         
@@ -65,8 +64,7 @@ class TestExecutorE2E:
         task = Task(
             id="image-generation-task",
             contextId="buyer-context",
-            status=TaskStatus(state=TaskState.working),
-            metadata={}
+            status=TaskStatus(state=TaskState.working)
         )
         
         # Setup payment requirements before payment submission
@@ -76,6 +74,8 @@ class TestExecutorE2E:
             error=""
         )
         task_with_requirements = selling_agent.utils.create_payment_required_task(task, payment_required)
+        # Store the payment requirements in the server's store
+        selling_agent._payment_requirements_store[task_with_requirements.id] = [requirements]
         task = selling_agent.utils.record_payment_submission(task_with_requirements, payment_payload)
         
         # Mock facilitator success
@@ -115,7 +115,7 @@ class TestExecutorE2E:
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
         
         # 5. Payment receipt is available
-        receipt = final_task.metadata[selling_agent.utils.RECEIPTS_KEY][0]
+        receipt = final_task.status.message.metadata[selling_agent.utils.RECEIPTS_KEY][0]
         assert receipt["success"] is True
         assert receipt["transaction"] == "0xpayment123"
     
@@ -134,15 +134,14 @@ class TestExecutorE2E:
         task = Task(
             id="service-request-task",
             contextId="buyer-context",
-            status=TaskStatus(state=TaskState.submitted),
-            metadata={}
+            status=TaskStatus(state=TaskState.submitted)
         )
         
         # Service responds with payment required
         requirements = create_payment_requirements(
-            price="1500000",  # $1.50
+            price="$1.50",  # $1.50 USD
             resource="/premium-analysis",
-            merchant_address="0xanalysisservice",
+            pay_to_address="0xanalysisservice",
             description="Premium data analysis"
         )
         
@@ -207,7 +206,7 @@ class TestExecutorE2E:
             assert final_status == PaymentStatus.PAYMENT_SUBMITTED
     
     @pytest.mark.asyncio
-    async def test_agent_commerce_full_flow_with_executors(self):
+    async def test_agent_commerce_full_flow_with_executors(self, sample_server_config):
         """Test complete agent commerce flow using both server and client executors."""
         # Setup: Two agents - image generator (seller) and content creator (buyer)
         
@@ -216,7 +215,15 @@ class TestExecutorE2E:
         mock_image_generator.execute = AsyncMock(return_value="beautiful_image.png")
         
         seller_config = X402ExtensionConfig()
-        image_service = X402ServerExecutor(mock_image_generator, seller_config)
+        # Create custom server config for this test
+        image_service_config = X402ServerConfig(
+            price="$2.50",
+            pay_to_address="0xmerchant456",
+            network="base",
+            description="AI image generation service",
+            resource="/generate"
+        )
+        image_service = X402ServerExecutor(mock_image_generator, seller_config, image_service_config)
         
         # 2. Buyer Agent Setup  
         mock_content_creator = Mock()
@@ -228,9 +235,9 @@ class TestExecutorE2E:
         
         # 3. Service Definition
         image_requirements = create_payment_requirements(
-            price="5000000",  # $5.00 for premium image
+            price="$5.00",  # $5.00 USD for premium image
             resource="/generate-premium-image",
-            merchant_address="0ximageservice999",
+            pay_to_address="0ximageservice999",
             description="Premium AI image generation",
             network="base"
         )
@@ -239,8 +246,7 @@ class TestExecutorE2E:
         initial_task = Task(
             id="content-creation-project",
             contextId="creator-context",
-            status=TaskStatus(state=TaskState.submitted),
-            metadata={}
+            status=TaskStatus(state=TaskState.submitted)
         )
         
         payment_required = x402PaymentRequiredResponse(
@@ -292,6 +298,10 @@ class TestExecutorE2E:
         # Extract the payment submission from buyer
         paid_task = buyer_final_task
         
+        # Store the payment requirements in the seller's executor store
+        # (In a real scenario, this would have been stored when the seller first issued the payment request)
+        image_service._payment_requirements_store[paid_task.id] = [image_requirements]
+        
         # Mock successful verification and settlement
         mock_verify_response = VerifyResponse(is_valid=True, payer=buyer_account.address)
         mock_settle_response = SettleResponse(
@@ -329,18 +339,18 @@ class TestExecutorE2E:
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
         
         # Commerce transaction complete!
-        receipt = seller_final_task.metadata[image_service.utils.RECEIPTS_KEY][0]
+        receipt = seller_final_task.status.message.metadata[image_service.utils.RECEIPTS_KEY][0]
         assert receipt["success"] is True
         assert receipt["transaction"] == "0xcommerce_success"
         assert receipt["payer"] == buyer_account.address
     
-    def test_executor_value_proposition(self):
+    def test_executor_value_proposition(self, sample_server_config):
         """Test that executors provide clear developer value."""
         config = X402ExtensionConfig()
         account = Account.from_key("0x" + "4" * 64)
         
         # Server executor for selling agents
-        server = X402ServerExecutor(Mock(), config)
+        server = X402ServerExecutor(Mock(), config, sample_server_config)
         
         # Value: Automatic payment wall for any business logic
         assert server is not None

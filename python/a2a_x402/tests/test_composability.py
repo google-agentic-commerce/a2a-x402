@@ -18,19 +18,22 @@ from a2a_x402.types import (
     TaskStatus,
     PaymentStatus,
     X402ExtensionConfig,
+    X402ServerConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredResponse,
     PaymentPayload,
     VerifyResponse,
-    SettleResponse
+    SettleResponse,
+    Message
 )
+from a2a.types import TextPart
 
 
 class TestComposabilityPatterns:
     """Test that executors and core functions compose well together."""
     
     @pytest.mark.asyncio
-    async def test_server_executor_with_manual_client(self):
+    async def test_server_executor_with_manual_client(self, sample_server_config):
         """Test server executor receiving payment from manual client processing."""
         # 1. Manual Client Side (using core functions)
         buyer_account = Account.from_key("0x" + "5" * 64)
@@ -38,9 +41,9 @@ class TestComposabilityPatterns:
         
         # Client manually creates payment requirements
         requirements = create_payment_requirements(
-            price="3000000",
+            price="$3.00",  # $3.00 USD
             resource="/manual-client-test",
-            merchant_address="0xautoserver456"
+            pay_to_address="0xautoserver456"
         )
         
         payment_required = x402PaymentRequiredResponse(
@@ -84,18 +87,19 @@ class TestComposabilityPatterns:
         mock_business_service.execute = AsyncMock(return_value="auto_server_result")
         
         config = X402ExtensionConfig()
-        auto_server = X402ServerExecutor(mock_business_service, config)
+        auto_server = X402ServerExecutor(mock_business_service, config, sample_server_config)
         
         # Create task with payment requirements first (simulating the full flow)
         task = Task(
             id="mixed-approach-task",
             contextId="mixed-context",
-            status=TaskStatus(state=TaskState.working),
-            metadata={}
+            status=TaskStatus(state=TaskState.working)
         )
         
         # Setup payment requirements before payment submission
         task_with_requirements = utils.create_payment_required_task(task, payment_required)
+        # Store the payment requirements in the server's store
+        auto_server._payment_requirements_store[task_with_requirements.id] = [requirements]
         task = utils.record_payment_submission(task_with_requirements, payment_payload)
         
         # Mock facilitator for auto server
@@ -142,9 +146,9 @@ class TestComposabilityPatterns:
         
         # Setup payment required scenario
         requirements = create_payment_requirements(
-            price="1800000",
+            price="$1.80",  # $1.80 USD
             resource="/manual-server-test",
-            merchant_address="0xmanualserver789"
+            pay_to_address="0xmanualserver789"
         )
         
         payment_required = x402PaymentRequiredResponse(
@@ -156,8 +160,7 @@ class TestComposabilityPatterns:
         task = Task(
             id="auto-client-task",
             contextId="auto-client-context",
-            status=TaskStatus(state=TaskState.submitted),
-            metadata={}
+            status=TaskStatus(state=TaskState.submitted)
         )
         
         task = auto_client.utils.create_payment_required_task(task, payment_required)
@@ -242,9 +245,9 @@ class TestComposabilityPatterns:
         # Auto client payment + manual server processing = success
         final_status = utils.get_payment_status(final_task)
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
-        assert final_task.metadata[utils.RECEIPTS_KEY][0]["transaction"] == "0xmanual_server_tx"
+        assert final_task.status.message.metadata[utils.RECEIPTS_KEY][0]["transaction"] == "0xmanual_server_tx"
     
-    def test_composability_assessment(self):
+    def test_composability_assessment(self, sample_server_config):
         """Assess overall composability of the a2a_x402 package."""
         # Test that all approaches use the same foundation
         utils = X402Utils()
@@ -252,11 +255,11 @@ class TestComposabilityPatterns:
         account = Account.from_key("0x" + "7" * 64)
         
         # 1. Pure core functions approach
-        requirements = create_payment_requirements("1000", "/test", "0x123")
+        requirements = create_payment_requirements("$0.001", "/test", "0x123")
         assert requirements is not None
         
         # 2. Server executor approach
-        server = X402ServerExecutor(Mock(), config)
+        server = X402ServerExecutor(Mock(), config, sample_server_config)
         assert server.utils.STATUS_KEY == utils.STATUS_KEY  # Same utilities
         
         # 3. Client executor approach  
@@ -272,7 +275,7 @@ class TestComposabilityPatterns:
         assert server.utils.STATUS_KEY == client.utils.STATUS_KEY == utils.STATUS_KEY
         
     @pytest.mark.asyncio
-    async def test_mixed_approach_flexibility(self):
+    async def test_mixed_approach_flexibility(self, sample_server_config):
         """Test that developers can mix and match approaches flexibly."""
         utils = X402Utils()
         
@@ -280,15 +283,15 @@ class TestComposabilityPatterns:
         
         # 1. Start with manual payment requirements (core functions)
         requirements = create_payment_requirements(
-            price="2000000",
+            price="$2.00",  # $2.00 USD
             resource="/flexible-service",
-            merchant_address="0xflexible123"
+            pay_to_address="0xflexible123"
         )
         
         # 2. Later wrap with server executor for automation
         config = X402ExtensionConfig()
         mock_delegate = Mock()
-        server_executor = X402ServerExecutor(mock_delegate, config)
+        server_executor = X402ServerExecutor(mock_delegate, config, sample_server_config)
         
         # 3. Manual client can still work with automated server
         manual_payment_required = x402PaymentRequiredResponse(
@@ -301,8 +304,7 @@ class TestComposabilityPatterns:
         task = Task(
             id="flexible-task",
             contextId="flexible-context", 
-            status=TaskStatus(state=TaskState.input_required),
-            metadata={}
+            status=TaskStatus(state=TaskState.input_required)
         )
         
         # Manual approach can create same task state as executor would

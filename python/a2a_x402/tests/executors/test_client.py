@@ -215,8 +215,8 @@ class TestX402ClientExecutor:
             final_task = mock_event_queue.enqueue_event.call_args[0][0]
             final_status = executor.utils.get_payment_status(final_task)
             assert final_status == PaymentStatus.PAYMENT_FAILED
-            assert final_task.metadata[executor.utils.ERROR_KEY] == X402ErrorCode.INVALID_SIGNATURE
-            assert "Payment failed: Signing failed" in final_task.metadata[executor.utils.RECEIPTS_KEY][0]["errorReason"]
+            assert final_task.status.message.metadata[executor.utils.ERROR_KEY] == X402ErrorCode.INVALID_SIGNATURE
+            assert "Payment failed: Signing failed" in final_task.status.message.metadata[executor.utils.RECEIPTS_KEY][0]["errorReason"]
     
     @pytest.mark.asyncio
     async def test_execute_with_no_current_task(self, test_account):
@@ -248,7 +248,14 @@ class TestX402ClientExecutor:
         executor = X402ClientExecutor(mock_delegate, config, test_account)
         
         # Setup task with payment required status but no actual requirements
-        sample_task.metadata = {executor.utils.STATUS_KEY: PaymentStatus.PAYMENT_REQUIRED.value}
+        from a2a_x402.types import Message
+        from a2a.types import TextPart
+        sample_task.status.message = Message(
+            messageId="test-msg",
+            role="agent",
+            parts=[TextPart(kind="text", text="test")],
+            metadata={executor.utils.STATUS_KEY: PaymentStatus.PAYMENT_REQUIRED.value}
+        )
         
         mock_context = Mock()
         mock_context.headers = {"X-A2A-Extensions": X402_EXTENSION_URI}
