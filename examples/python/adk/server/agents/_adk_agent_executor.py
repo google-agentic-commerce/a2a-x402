@@ -139,7 +139,7 @@ class ADKAgentExecutor(AgentExecutor):
                             tool_args = function_call.args.copy()
                             if 'tool_context' in tool.__code__.co_varnames:
                                 from google.adk.tools.tool_context import ToolContext
-                                from google.adk.core.agents.invocation_context import InvocationContext
+                                from google.adk.agents.invocation_context import InvocationContext
                                 # Create a minimal tool context with invocation_id
                                 invocation_context = InvocationContext(invocation_id=context.invocation_id)
                                 tool_context = ToolContext(invocation_context)

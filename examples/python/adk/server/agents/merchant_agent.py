@@ -305,9 +305,6 @@ Remember:
             PaymentRequirements object
         """
 
-        # Convert USD price to USDC atomic units (6 decimals)
-        price_in_atomic = str(int(price_usd * 1_000_000))
-
         extra = None
         if self.network.lower() in ['sui', 'sui-testnet']:
             if nonce:
@@ -321,9 +318,9 @@ Remember:
                 extra["nonce"] = nonce
 
         payment_req = create_payment_requirements(
-            price=price_in_atomic,
+            price=str(price_usd),
+            pay_to_address=self.merchant_address,
             resource=resource,
-            merchant_address=self.merchant_address,
             network=self.network,
             description=description,
             mime_type=mime_type,

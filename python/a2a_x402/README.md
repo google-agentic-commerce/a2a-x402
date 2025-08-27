@@ -79,7 +79,8 @@ These types are specific to the A2A protocol extension:
 from a2a_x402.types import (
     PaymentStatus,        # A2A payment state enum
     X402MessageType,      # A2A message type enum
-    X402Metadata         # A2A metadata key constants
+    X402Metadata,         # A2A metadata key constants
+    X402ServerConfig      # Server payment configuration
 )
 ```
 
@@ -102,6 +103,20 @@ class X402MessageType(str, Enum):
     PAYMENT_REQUIRED = "x402.payment.required"      # Initial payment request
     PAYMENT_PAYLOAD = "x402.payment.payload"        # Signed payment submission
     PAYMENT_SETTLED = "x402.payment.settled"        # Settlement completion
+```
+
+**`X402ServerConfig`** - Server payment configuration (a2a_x402.types.config):
+```python
+class X402ServerConfig(BaseModel):
+    """Configuration for how a server expects to be paid"""
+    price: Union[str, int, TokenAmount]        # Payment price (Money or TokenAmount)
+    pay_to_address: str                        # Ethereum address to receive payment
+    network: str = "base"                      # Blockchain network
+    description: str = "Payment required..."   # Human-readable description
+    mime_type: str = "application/json"        # Expected response type
+    max_timeout_seconds: int = 600             # Payment validity timeout
+    resource: Optional[str] = None             # Resource identifier (e.g., '/api/generate')
+    asset_address: Optional[str] = None        # Token contract (auto-derived for USDC if None)
 ```
 
 ### 2.3. Required Metadata Keys
@@ -152,7 +167,8 @@ def add_extension_activation_header(response_headers: dict) -> dict:
 def create_payment_submission_message(
     task_id: str,  # CRITICAL: Original task ID for correlation
     payment_payload: PaymentPayload,
-    text: str = "Payment authorization provided"
+    text: str = "Payment authorization provided",
+    message_id: Optional[str] = None  # Optional specific message ID
 ) -> Message:
     """Creates correlated payment submission message per spec."""
     return Message(
@@ -165,7 +181,7 @@ def create_payment_submission_message(
         }
     )
 
-def extract_task_correlation(message: Message) -> Optional[str]:
+def extract_task_id(message: Message) -> Optional[str]:
     """Extracts task ID for correlation from payment message."""
     return getattr(message, 'task_id', None)
 ```
@@ -333,14 +349,18 @@ Functions implemented in `a2a_x402.core`:
 ```python
 # Payment Requirements Creation (a2a_x402.core.merchant)
 def create_payment_requirements(
-    price: str,
+    price: Union[str, int, TokenAmount],  # Price can be Money or TokenAmount
+    pay_to_address: str,
     resource: str,
-    merchant_address: str,
     network: str = "base",
     description: str = "",
+    mime_type: str = "application/json",
+    scheme: str = "exact",
+    max_timeout_seconds: int = 600,
+    output_schema: Optional[Any] = None,
     **kwargs
 ) -> PaymentRequirements:
-    """Creates PaymentRequirements object."""
+    """Creates PaymentRequirements object using x402's price processing."""
 
 # Payment Processing (a2a_x402.core.wallet)  
 def process_payment_required(
@@ -395,41 +415,77 @@ class X402Utils:
     RECEIPTS_KEY = "x402.payment.receipts"      # Contains array of SettleResponse objects
     ERROR_KEY = "x402.payment.error"            # Error code string
 
-    def get_payment_status(self, task: Task) -> Optional[PaymentStatus]:
-        """Extract payment status from task metadata."""
-        if not task or not task.metadata:
+    def get_payment_status_from_message(self, message: Message) -> Optional[PaymentStatus]:
+        """Extract payment status from message metadata."""
+        if not message or not hasattr(message, 'metadata') or not message.metadata:
             return None
-        status_value = task.metadata.get(self.STATUS_KEY)
+        status_value = message.metadata.get(self.STATUS_KEY)
         if status_value:
             try:
                 return PaymentStatus(status_value)
             except ValueError:
                 return None
         return None
-
-    def get_payment_requirements(self, task: Task) -> Optional[x402PaymentRequiredResponse]:
-        """Extract payment requirements from task metadata."""
-        if not task or not task.metadata:
+    
+    def get_payment_status_from_task(self, task: Task) -> Optional[PaymentStatus]:
+        """Extract payment status from task's status message metadata."""
+        if not task or not hasattr(task, 'status') or not task.status:
             return None
-        req_data = task.metadata.get(self.REQUIRED_KEY)
+        if not hasattr(task.status, 'message') or not task.status.message:
+            return None
+        return self.get_payment_status_from_message(task.status.message)
+    
+    def get_payment_status(self, task: Task) -> Optional[PaymentStatus]:
+        """Extract payment status from task (updated to use task status message)."""
+        return self.get_payment_status_from_task(task)
+
+    def get_payment_requirements_from_message(self, message: Message) -> Optional[x402PaymentRequiredResponse]:
+        """Extract payment requirements from message metadata."""
+        if not message or not hasattr(message, 'metadata') or not message.metadata:
+            return None
+        req_data = message.metadata.get(self.REQUIRED_KEY)
         if req_data:
             try:
                 return x402PaymentRequiredResponse.model_validate(req_data)
             except Exception:
                 return None
         return None
-
-    def get_payment_payload(self, task: Task) -> Optional[PaymentPayload]:
-        """Extract payment payload from task metadata."""
-        if not task or not task.metadata:
+    
+    def get_payment_requirements_from_task(self, task: Task) -> Optional[x402PaymentRequiredResponse]:
+        """Extract payment requirements from task's status message metadata."""
+        if not task or not hasattr(task, 'status') or not task.status:
             return None
-        payload_data = task.metadata.get(self.PAYLOAD_KEY)
+        if not hasattr(task.status, 'message') or not task.status.message:
+            return None
+        return self.get_payment_requirements_from_message(task.status.message)
+    
+    def get_payment_requirements(self, task: Task) -> Optional[x402PaymentRequiredResponse]:
+        """Extract payment requirements from task (updated to use task status message)."""
+        return self.get_payment_requirements_from_task(task)
+
+    def get_payment_payload_from_message(self, message: Message) -> Optional[PaymentPayload]:
+        """Extract payment payload from message metadata."""
+        if not message or not hasattr(message, 'metadata') or not message.metadata:
+            return None
+        payload_data = message.metadata.get(self.PAYLOAD_KEY)
         if payload_data:
             try:
                 return PaymentPayload.model_validate(payload_data)
             except Exception:
                 return None
         return None
+    
+    def get_payment_payload_from_task(self, task: Task) -> Optional[PaymentPayload]:
+        """Extract payment payload from task's status message metadata."""
+        if not task or not hasattr(task, 'status') or not task.status:
+            return None
+        if not hasattr(task.status, 'message') or not task.status.message:
+            return None
+        return self.get_payment_payload_from_message(task.status.message)
+    
+    def get_payment_payload(self, task: Task) -> Optional[PaymentPayload]:
+        """Extract payment payload from task (updated to use task status message)."""
+        return self.get_payment_payload_from_task(task)
 
     def create_payment_required_task(
         self,
@@ -437,10 +493,24 @@ class X402Utils:
         payment_required: x402PaymentRequiredResponse
     ) -> Task:
         """Set task to payment required state with proper metadata."""
-        if task.metadata is None:
-            task.metadata = {}
-        task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_REQUIRED.value
-        task.metadata[self.REQUIRED_KEY] = payment_required.model_dump(by_alias=True)
+        # Set task status to input-required as per A2A spec
+        task.status = TaskStatus(state=TaskState.input_required)
+        
+        # Ensure task has a status message for metadata
+        if not hasattr(task.status, 'message') or not task.status.message:
+            task.status.message = Message(
+                messageId=f"{task.id}-status",
+                role="agent",
+                parts=[TextPart(kind="text", text="Payment is required for this service.")],
+                metadata={}
+            )
+        
+        # Ensure message has metadata
+        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
+            task.status.message.metadata = {}
+            
+        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_REQUIRED.value
+        task.status.message.metadata[self.REQUIRED_KEY] = payment_required.model_dump(by_alias=True)
         return task
     
     def record_payment_submission(
@@ -449,12 +519,22 @@ class X402Utils:
         payment_payload: PaymentPayload
     ) -> Task:
         """Record payment submission in task metadata."""  
-        if task.metadata is None:
-            task.metadata = {}
-        task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
-        task.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
-        # Clean up requirements after submission
-        task.metadata.pop(self.REQUIRED_KEY, None)
+        # Ensure task has a status message for metadata
+        if not hasattr(task.status, 'message') or not task.status.message:
+            task.status.message = Message(
+                messageId=f"{task.id}-status",
+                role="agent",
+                parts=[TextPart(kind="text", text="Payment submission recorded.")],
+                metadata={}
+            )
+        
+        # Ensure message has metadata
+        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
+            task.status.message.metadata = {}
+            
+        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
+        task.status.message.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
+        # Note: Keep requirements for verification - will be cleaned up after settlement
         return task
 
     def record_payment_success(
@@ -463,15 +543,27 @@ class X402Utils:
         settle_response: SettleResponse
     ) -> Task:
         """Record successful payment with settlement response."""
-        if task.metadata is None:
-            task.metadata = {}
-        task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_COMPLETED.value
+        # Ensure task has a status message for metadata
+        if not hasattr(task.status, 'message') or not task.status.message:
+            task.status.message = Message(
+                messageId=f"{task.id}-status",
+                role="agent",
+                parts=[TextPart(kind="text", text="Payment completed successfully.")],
+                metadata={}
+            )
+        
+        # Ensure message has metadata
+        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
+            task.status.message.metadata = {}
+            
+        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_COMPLETED.value
         # Append to receipts array (spec requirement for complete history)
-        if self.RECEIPTS_KEY not in task.metadata:
-            task.metadata[self.RECEIPTS_KEY] = []
-        task.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
+        if self.RECEIPTS_KEY not in task.status.message.metadata:
+            task.status.message.metadata[self.RECEIPTS_KEY] = []
+        task.status.message.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
         # Clean up intermediate data
-        task.metadata.pop(self.PAYLOAD_KEY, None)
+        task.status.message.metadata.pop(self.PAYLOAD_KEY, None)
+        task.status.message.metadata.pop(self.REQUIRED_KEY, None)
         return task
 
     def record_payment_failure(
@@ -481,16 +573,27 @@ class X402Utils:
         settle_response: SettleResponse
     ) -> Task:
         """Record payment failure with error details."""
-        if task.metadata is None:
-            task.metadata = {}
-        task.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_FAILED.value
-        task.metadata[self.ERROR_KEY] = error_code
+        # Ensure task has a status message for metadata
+        if not hasattr(task.status, 'message') or not task.status.message:
+            task.status.message = Message(
+                messageId=f"{task.id}-status",
+                role="agent",
+                parts=[TextPart(kind="text", text="Payment failed.")],
+                metadata={}
+            )
+        
+        # Ensure message has metadata
+        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
+            task.status.message.metadata = {}
+            
+        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_FAILED.value
+        task.status.message.metadata[self.ERROR_KEY] = error_code
         # Append to receipts array (spec requirement for complete history)
-        if self.RECEIPTS_KEY not in task.metadata:
-            task.metadata[self.RECEIPTS_KEY] = []
-        task.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
+        if self.RECEIPTS_KEY not in task.status.message.metadata:
+            task.status.message.metadata[self.RECEIPTS_KEY] = []
+        task.status.message.metadata[self.RECEIPTS_KEY].append(settle_response.model_dump(by_alias=True))
         # Clean up intermediate data
-        task.metadata.pop(self.PAYLOAD_KEY, None)
+        task.status.message.metadata.pop(self.PAYLOAD_KEY, None)
         return task
 ```
 
@@ -669,11 +772,11 @@ utils = X402Utils()
 
 # Handle payment request
 async def handle_payment_request(task: Task, price: str, resource: str):
-# Create requirements
+    # Create requirements
     requirements = create_payment_requirements(
-    price=price,
+        price=price,  # Can be "$1.00", 1.00, or TokenAmount
+        pay_to_address="0x...",  # Merchant's address
         resource=resource,
-    merchant_address="0x...",
         network="base",
         description="Service payment"
     )
@@ -690,9 +793,8 @@ async def handle_payment_request(task: Task, price: str, resource: str):
 
 # Handle payment submission
 async def handle_payment_submission(task: Task, payment_requirements: PaymentRequirements):
-    # Get payment payload from task metadata
-    payload_data = task.metadata.get(utils.PAYLOAD_KEY)
-    payment_payload = PaymentPayload.model_validate(payload_data)
+    # Get payment payload from task using utility method
+    payment_payload = utils.get_payment_payload(task)
     
     # Verify payment first
     facilitator_client = FacilitatorClient({"url": "https://x402.org/facilitator"})
@@ -750,8 +852,7 @@ from eth_account import Account
 async def handle_payment_requirements(task: Task, account: Account):
     # Get requirements from task metadata
     utils = X402Utils()
-    required_data = task.metadata.get(utils.REQUIRED_KEY)
-    payment_required = x402PaymentRequiredResponse.model_validate(required_data)
+    payment_required = utils.get_payment_requirements(task)
     
     # Use x402Client for payment selection and signing
     from x402.clients.base import x402Client
@@ -778,9 +879,16 @@ The `/executors` module provides optional middleware for common integration patt
 class X402ServerExecutor(X402BaseExecutor):
     """Server-side middleware - inspired by Flask middleware pattern."""
     
-    def __init__(self, delegate: AgentExecutor, config: X402ExtensionConfig):
+    def __init__(
+        self, 
+        delegate: AgentExecutor, 
+        config: X402ExtensionConfig,
+        server_config: X402ServerConfig,  # Required: defines payment expectations
+        facilitator_client: Optional[FacilitatorClient] = None
+    ):
         super().__init__(delegate, config)
-        self.facilitator_client = FacilitatorClient()
+        self.server_config = server_config
+        self.facilitator_client = facilitator_client or FacilitatorClient()
     
     async def execute(self, context: RequestContext, event_queue: EventQueue):
         if not self.is_active(context):
@@ -790,9 +898,9 @@ class X402ServerExecutor(X402BaseExecutor):
         status = self.utils.get_payment_status(task)
 
         if status == PaymentStatus.PAYMENT_SUBMITTED:
-            payload_data = task.metadata.get(self.utils.PAYLOAD_KEY)
-            payment_payload = PaymentPayload.model_validate(payload_data)
-            # Note: Payment requirements would need to be retrieved from original task correlation
+            payment_payload = self.utils.get_payment_payload(task)
+            # Note: Server executor uses in-memory storage for taskId correlation
+            # Payment requirements are stored when created and retrieved by taskId
             
             # Verify → Process → Settle pattern (like HTTP middleware)
             verify_response = await self.facilitator_client.verify(
@@ -843,10 +951,9 @@ class X402ClientExecutor(X402BaseExecutor):
             return await self._delegate.execute(context, event_queue)
 
         task = context.current_task
-        required_data = task.metadata.get(self.utils.REQUIRED_KEY)
+        payment_required = self.utils.get_payment_requirements(task)
         
-        if required_data:
-            payment_required = x402PaymentRequiredResponse.model_validate(required_data)
+        if payment_required:
             
             # Use x402Client for selection (reuses existing logic)
             selected_requirement = self.x402_client.select_payment_requirements(payment_required.accepts)
@@ -930,8 +1037,21 @@ from a2a_x402 import (
 from x402.facilitator import FacilitatorClient
 from eth_account import Account
 
+# Server configuration
+server_config = X402ServerConfig(
+    price="$1.00",  # or 1.00, or TokenAmount
+    pay_to_address="0xmerchant123",
+    network="base",
+    description="API service payment",
+    resource="/api/generate"
+)
+
 # Wrap your existing executors
-server_executor = X402ServerExecutor(delegate=your_executor, config=config)
+server_executor = X402ServerExecutor(
+    delegate=your_executor, 
+    config=config,
+    server_config=server_config
+)
 client_executor = X402ClientExecutor(
     delegate=client_executor,
     config=config,
@@ -1016,6 +1136,7 @@ from a2a_x402 import (
     
     # Configuration
     X402ExtensionConfig,
+    X402ServerConfig,
     
     # Architecture Examples (Documentation Only)
     # Note: Client/Merchant/Signing/Facilitator are separate systems
@@ -1029,7 +1150,7 @@ from a2a_x402 import (
     check_extension_activation,
     add_extension_activation_header,
     create_payment_submission_message,
-    extract_task_correlation,
+    extract_task_id,
     map_error_to_code
 )
 

@@ -1,6 +1,6 @@
 """Core protocol operations for x402 payment verification and settlement."""
 
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from ..types import (
     PaymentPayload,
@@ -10,6 +10,7 @@ from ..types import (
     FacilitatorClient
 )
 
+
 async def verify_payment(
     payment_payload: PaymentPayload,
     payment_requirements: PaymentRequirements,
@@ -18,7 +19,7 @@ async def verify_payment(
     """Verify payment signature and requirements using facilitator.
     
     Args:
-        payment_payload: Signed payment authorization (PaymentPayload)
+        payment_payload: Signed payment authorization
         payment_requirements: Payment requirements to verify against
         facilitator_client: Optional FacilitatorClient instance
         
@@ -42,7 +43,7 @@ async def settle_payment(
     """Settle payment on blockchain using facilitator.
     
     Args:
-        payment_payload: Signed payment authorization (PaymentPayload)
+        payment_payload: Signed payment authorization
         payment_requirements: Payment requirements for settlement
         facilitator_client: Optional FacilitatorClient instance
         

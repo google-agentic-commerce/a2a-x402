@@ -12,9 +12,9 @@ requires-python = ">=3.13"
 keywords = ["a2a", "x402", "payments", "ethereum", "coinbase", "google"]
 dependencies = [
     "a2a-sdk",  # For A2A protocol integration
-    "x402>=0.2.0",  # For x402 payment protocol
+    "x402>=0.2.0",  # For x402 payment protocol with Sui support
     "eth-account>=0.13.7",  # For Ethereum account management
-    "httpx",  # For async HTTP client
+    "httpx>=0.28.1",  # For async HTTP client
     "pydantic>=2.0.0",  # For data validation
     "pytest>=8.4.1",  # For testing
 ]
@@ -34,10 +34,18 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["a2a_x402"]
+[tool.hatch.build.targets.wheel.force-include]
+"core" = "a2a_x402/core"
+"executors" = "a2a_x402/executors"
+"types" = "a2a_x402/types"
+"extension.py" = "a2a_x402/extension.py"
+"__init__.py" = "a2a_x402/__init__.py"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.uv.sources]
+x402 = { git = "https://github.com/hayes-mysten/x402.git", branch = "pr-releases", subdirectory = "python/x402" }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -48,7 +56,7 @@ python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "--cov=.",
+    "--cov=a2a_x402",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
 ]

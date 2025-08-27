@@ -10,8 +10,9 @@ from a2a_x402.types import (
     x402PaymentRequiredResponse,
     SettleResponse,
     PaymentPayload,
-    ExactPaymentPayload,
-    EIP3009Authorization
+    ExactEvmPaymentPayload,
+    EIP3009Authorization,
+    X402ServerConfig
 )
 
 
@@ -55,7 +56,7 @@ def sample_payment_required_response(sample_payment_requirements):
 @pytest.fixture
 def test_account():
     """Create a test Ethereum account."""
-    # Use a deterministic private key for consistent testing
+
     private_key = "0x" + "1" * 64
     return Account.from_key(private_key)
 
@@ -72,7 +73,7 @@ def sample_payment_payload():
         nonce="0x" + "1" * 64
     )
     
-    exact_payload = ExactPaymentPayload(
+    exact_payload = ExactEvmPaymentPayload(
         signature="0x" + "a" * 130,
         authorization=authorization
     )
@@ -94,4 +95,16 @@ def sample_settle_response():
         network="base",
         payer="0xclient456",
         error_reason=None
+    )
+
+
+@pytest.fixture
+def sample_server_config():
+    """Create sample X402ServerConfig for testing."""
+    return X402ServerConfig(
+        price="$1.00",  # $1.00 USD
+        pay_to_address="0xmerchant123",
+        network="base",
+        description="Test service payment",
+        resource="/test-service"
     )

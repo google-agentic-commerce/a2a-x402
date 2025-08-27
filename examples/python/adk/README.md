@@ -38,7 +38,7 @@ This will start the server listening on port 10000 and serve the agents in this 
 ### Run the ADK dev UI
 
 ```bash
-uv --directory=client run adk web
+uv run adk web
 ```
 
 This will start the ADK dev UI listening on port 8000. The host agent acts as an

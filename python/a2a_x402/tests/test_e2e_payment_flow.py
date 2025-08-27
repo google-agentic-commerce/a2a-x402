@@ -20,8 +20,10 @@ from a2a_x402.types import (
     PaymentStatus,
     VerifyResponse,
     SettleResponse,
-    FacilitatorClient
+    FacilitatorClient,
+    Message
 )
+from a2a.types import TextPart
 
 
 class TestE2EPaymentFlow:
@@ -32,9 +34,9 @@ class TestE2EPaymentFlow:
         """Step 1: Seller creates payment requirements for a service."""
         # Seller wants to charge for image generation service
         requirements = create_payment_requirements(
-            price="2500000",  # $2.50 in USDC (6 decimals)
+            price="$2.50",  # $2.50 USD
             resource="/generate-image",
-            merchant_address="0xseller123456789",
+            pay_to_address="0xseller123456789",
             network="base",
             description="AI image generation service",
             mime_type="image/png",
@@ -60,8 +62,7 @@ class TestE2EPaymentFlow:
         task = Task(
             id="service-task-123",
             contextId="context-456",
-            status=TaskStatus(state=TaskState.input_required),
-            metadata={}
+            status=TaskStatus(state=TaskState.input_required)
         )
         
         task = utils.create_payment_required_task(task, payment_required)
@@ -77,9 +78,9 @@ class TestE2EPaymentFlow:
         """Step 2: Buyer processes payment requirements and creates settle request."""
         # Setup payment requirements from seller
         requirements = create_payment_requirements(
-            price="2500000",
+            price="$2.50",
             resource="/generate-image",
-            merchant_address="0xseller123456789",
+            pay_to_address="0xseller123456789",
             network="base",
             description="AI image generation service"
         )
@@ -102,12 +103,12 @@ class TestE2EPaymentFlow:
             # Mock the signing process to avoid real crypto operations
             with patch('a2a_x402.core.wallet.process_payment') as mock_process_payment:
                 # Create a realistic mock payment payload
-                from a2a_x402.types import PaymentPayload, ExactPaymentPayload, EIP3009Authorization
+                from a2a_x402.types import PaymentPayload, ExactEvmPaymentPayload, EIP3009Authorization
                 mock_payload = PaymentPayload(
                     x402_version=1,
                     scheme="exact", 
                     network="base",
-                    payload=ExactPaymentPayload(
+                    payload=ExactEvmPaymentPayload(
                         signature="0x" + "b" * 130,
                         authorization=EIP3009Authorization(
                             from_=buyer_account.address,
@@ -142,12 +143,12 @@ class TestE2EPaymentFlow:
     async def test_seller_processes_settlement(self):
         """Step 3: Seller verifies and settles the payment."""
         # Setup settle request from buyer
-        from a2a_x402.types import PaymentPayload, ExactPaymentPayload, EIP3009Authorization
+        from a2a_x402.types import PaymentPayload, ExactEvmPaymentPayload, EIP3009Authorization
         
         requirements = create_payment_requirements(
-            price="2500000",
+            price="$2.50",
             resource="/generate-image", 
-            merchant_address="0xseller123456789",
+            pay_to_address="0xseller123456789",
             network="base"
         )
         
@@ -156,7 +157,7 @@ class TestE2EPaymentFlow:
             x402_version=1,
             scheme="exact",
             network="base",
-            payload=ExactPaymentPayload(
+            payload=ExactEvmPaymentPayload(
                 signature="0x" + "a" * 130,
                 authorization=EIP3009Authorization(
                     from_="0xbuyer456",
@@ -221,9 +222,9 @@ class TestE2EPaymentFlow:
         """Complete end-to-end payment flow - success case."""
         # Step 1: Seller creates payment requirements
         seller_requirements = create_payment_requirements(
-            price="1000000",  # $1.00 USDC
+            price="$1.00",  # $1.00 USD
             resource="/premium-api-call",
-            merchant_address="0xseller999",
+            pay_to_address="0xseller999",
             description="Premium API access",
             network="base"
         )
@@ -245,12 +246,12 @@ class TestE2EPaymentFlow:
             mock_client.select_payment_requirements.return_value = seller_requirements
             mock_client_class.return_value = mock_client
             
-            from a2a_x402.types import PaymentPayload, ExactPaymentPayload, EIP3009Authorization
+            from a2a_x402.types import PaymentPayload, ExactEvmPaymentPayload, EIP3009Authorization
             mock_payload = PaymentPayload(
                 x402_version=1,
                 scheme="exact",
                 network="base",
-                payload=ExactPaymentPayload(
+                payload=ExactEvmPaymentPayload(
                     signature="0x" + "c" * 130,
                     authorization=EIP3009Authorization(
                         from_=buyer_account.address,
@@ -293,16 +294,15 @@ class TestE2EPaymentFlow:
             task = Task(
                 id="final-task-789",
                 contextId="context-final",
-                status=TaskStatus(state=TaskState.working),
-                metadata={}
+                status=TaskStatus(state=TaskState.working)
             )
             
             completed_task = utils.record_payment_success(task, settle_result)
             
             # Verify final state
             assert utils.get_payment_status(completed_task) == PaymentStatus.PAYMENT_COMPLETED
-            assert completed_task.metadata[utils.RECEIPTS_KEY][0]["success"] is True
-            assert completed_task.metadata[utils.RECEIPTS_KEY][0]["transaction"] == "0xfinal789"
+            assert completed_task.status.message.metadata[utils.RECEIPTS_KEY][0]["success"] is True
+            assert completed_task.status.message.metadata[utils.RECEIPTS_KEY][0]["transaction"] == "0xfinal789"
     
     @pytest.mark.integration
     @pytest.mark.asyncio
@@ -310,9 +310,9 @@ class TestE2EPaymentFlow:
         """Complete payment flow - verification failure case."""
         # Setup payment requirements
         requirements = create_payment_requirements(
-            price="5000000",
+            price="$5.00",
             resource="/expensive-service", 
-            merchant_address="0xseller456",
+            pay_to_address="0xseller456",
             network="base"
         )
         
@@ -332,12 +332,12 @@ class TestE2EPaymentFlow:
             mock_client.select_payment_requirements.return_value = requirements
             mock_client_class.return_value = mock_client
             
-            from a2a_x402.types import PaymentPayload, ExactPaymentPayload, EIP3009Authorization
+            from a2a_x402.types import PaymentPayload, ExactEvmPaymentPayload, EIP3009Authorization
             mock_payload = PaymentPayload(
                 x402_version=1,
                 scheme="exact",
                 network="base", 
-                payload=ExactPaymentPayload(
+                payload=ExactEvmPaymentPayload(
                     signature="0xinvalidsig",
                     authorization=EIP3009Authorization(
                         from_=buyer_account.address,
@@ -372,8 +372,7 @@ class TestE2EPaymentFlow:
             task = Task(
                 id="failed-task-456",
                 contextId="context-failed",
-                status=TaskStatus(state=TaskState.working),
-                metadata={}
+                status=TaskStatus(state=TaskState.working)
             )
             
             failure_response = SettleResponse(
@@ -386,8 +385,8 @@ class TestE2EPaymentFlow:
             
             # Verify failure state
             assert utils.get_payment_status(failed_task) == PaymentStatus.PAYMENT_FAILED
-            assert failed_task.metadata[utils.ERROR_KEY] == "INVALID_SIGNATURE"
-            assert failed_task.metadata[utils.RECEIPTS_KEY][0]["success"] is False
+            assert failed_task.status.message.metadata[utils.ERROR_KEY] == "INVALID_SIGNATURE"
+            assert failed_task.status.message.metadata[utils.RECEIPTS_KEY][0]["success"] is False
     
     @pytest.mark.integration
     def test_seller_buyer_interaction_with_task_correlation(self):
@@ -398,15 +397,14 @@ class TestE2EPaymentFlow:
         original_task = Task(
             id="original-service-request-123",
             contextId="buyer-context-789", 
-            status=TaskStatus(state=TaskState.submitted),
-            metadata={}
+            status=TaskStatus(state=TaskState.submitted)
         )
         
         # Seller determines payment is needed
         requirements = create_payment_requirements(
-            price="3000000",
+            price="$3.00",
             resource="/ai-analysis",
-            merchant_address="0xanalysismerchant",
+            pay_to_address="0xanalysismerchant",
             description="AI data analysis service"
         )
         
@@ -434,12 +432,12 @@ class TestE2EPaymentFlow:
             mock_client.select_payment_requirements.return_value = requirements
             mock_client_class.return_value = mock_client
             
-            from a2a_x402.types import PaymentPayload, ExactPaymentPayload, EIP3009Authorization
+            from a2a_x402.types import PaymentPayload, ExactEvmPaymentPayload, EIP3009Authorization
             mock_payload = PaymentPayload(
                 x402_version=1,
                 scheme="exact",
                 network="base",
-                payload=ExactPaymentPayload(
+                payload=ExactEvmPaymentPayload(
                     signature="0x" + "d" * 130,
                     authorization=EIP3009Authorization(
                         from_=buyer_account.address,
@@ -477,15 +475,14 @@ class TestE2EPaymentFlow:
         task = Task(
             id="state-transition-test",
             contextId="context-state",
-            status=TaskStatus(state=TaskState.submitted),
-            metadata={}
+            status=TaskStatus(state=TaskState.submitted)
         )
         
         # State 1: Payment Required
         requirements = create_payment_requirements(
-            price="1500000",
+            price="$1.50",
             resource="/state-test",
-            merchant_address="0xstatemerchant"
+            pay_to_address="0xstatemerchant"
         )
         
         payment_required = x402PaymentRequiredResponse(
@@ -496,16 +493,16 @@ class TestE2EPaymentFlow:
         
         task = utils.create_payment_required_task(task, payment_required)
         assert utils.get_payment_status(task) == PaymentStatus.PAYMENT_REQUIRED
-        assert utils.REQUIRED_KEY in task.metadata
-        assert utils.PAYLOAD_KEY not in task.metadata
+        assert utils.REQUIRED_KEY in task.status.message.metadata
+        assert utils.PAYLOAD_KEY not in task.status.message.metadata
         
         # State 2: Payment Submitted (simulate buyer signing - new spec uses PaymentPayload directly)
-        from a2a_x402.types import PaymentPayload, ExactPaymentPayload, EIP3009Authorization
+        from a2a_x402.types import PaymentPayload, ExactEvmPaymentPayload, EIP3009Authorization
         payment_payload = PaymentPayload(
             x402_version=1,
             scheme="exact",
             network="base",
-            payload=ExactPaymentPayload(
+            payload=ExactEvmPaymentPayload(
                 signature="0x" + "e" * 130,
                 authorization=EIP3009Authorization(
                     from_="0xbuyer999",
@@ -520,8 +517,8 @@ class TestE2EPaymentFlow:
 
         task = utils.record_payment_submission(task, payment_payload)
         assert utils.get_payment_status(task) == PaymentStatus.PAYMENT_SUBMITTED
-        assert utils.REQUIRED_KEY in task.metadata  # Kept for verification
-        assert utils.PAYLOAD_KEY in task.metadata
+        assert utils.REQUIRED_KEY in task.status.message.metadata  # Kept for verification
+        assert utils.PAYLOAD_KEY in task.status.message.metadata
         
         # State 3: Payment Completed
         success_response = SettleResponse(
@@ -533,12 +530,12 @@ class TestE2EPaymentFlow:
         
         task = utils.record_payment_success(task, success_response)
         assert utils.get_payment_status(task) == PaymentStatus.PAYMENT_COMPLETED
-        assert utils.PAYLOAD_KEY not in task.metadata  # Cleaned up after settlement
-        assert utils.REQUIRED_KEY not in task.metadata  # Cleaned up after settlement
-        assert utils.RECEIPTS_KEY in task.metadata
+        assert utils.PAYLOAD_KEY not in task.status.message.metadata  # Cleaned up after settlement
+        assert utils.REQUIRED_KEY not in task.status.message.metadata  # Cleaned up after settlement
+        assert utils.RECEIPTS_KEY in task.status.message.metadata
         
         # Verify final receipt
-        receipt = task.metadata[utils.RECEIPTS_KEY][0]
+        receipt = task.status.message.metadata[utils.RECEIPTS_KEY][0]
         assert receipt["success"] is True
         assert receipt["transaction"] == "0xstatesuccess123"
         
@@ -546,8 +543,7 @@ class TestE2EPaymentFlow:
         failed_task = Task(
             id="failure-test", 
             contextId="context-fail",
-            status=TaskStatus(state=TaskState.working),
-            metadata={}
+            status=TaskStatus(state=TaskState.working)
         )
         
         failed_task = utils.record_payment_submission(failed_task, payment_payload)
@@ -560,4 +556,4 @@ class TestE2EPaymentFlow:
         
         failed_task = utils.record_payment_failure(failed_task, "INSUFFICIENT_FUNDS", failure_response)
         assert utils.get_payment_status(failed_task) == PaymentStatus.PAYMENT_FAILED
-        assert failed_task.metadata[utils.ERROR_KEY] == "INSUFFICIENT_FUNDS"
+        assert failed_task.status.message.metadata[utils.ERROR_KEY] == "INSUFFICIENT_FUNDS"
