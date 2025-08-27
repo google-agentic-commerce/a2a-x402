@@ -3,52 +3,52 @@
     {
       "name": "DeWalt 20V MAX Cordless Drill",
       "brand": "DeWalt",
-      "price": 0.09
+      "price": 149.99
     },
     {
       "name": "Craftsman 2000 Series Tool Cabinet",
       "brand": "Craftsman",
-      "price": 0.08
+      "price": 299.99
     },
     {
       "name": "Nest Learning Thermostat",
       "brand": "Google",
-      "price": 0.07
+      "price": 249.99
     },
     {
       "name": "Samsung French Door Refrigerator",
       "brand": "Samsung",
-      "price": 0.06
+      "price": 1999.99
     },
     {
       "name": "Kohler Wellworth Toilet",
       "brand": "Kohler",
-      "price": 0.05
+      "price": 189.99
     },
     {
       "name": "GE Profile Smart Dishwasher",
       "brand": "GE",
-      "price": 0.04
+      "price": 899.99
     },
     {
       "name": "Whirlpool Top Load Washer",
       "brand": "Whirlpool",
-      "price": 0.03
+      "price": 699.99
     },
     {
       "name": "Valspar Interior Paint Gallon",
       "brand": "Valspar",
-      "price": 0.02
+      "price": 32.99
     },
     {
       "name": "Philips Hue Smart Bulb Starter Kit",
       "brand": "Philips",
-      "price": 0.01
+      "price": 199.99
     },
     {
       "name": "Milwaukee M18 Impact Driver",
       "brand": "Milwaukee",
-      "price": 0.05
+      "price": 179.99
     }
   ]
 }
