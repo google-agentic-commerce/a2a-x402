@@ -41,14 +41,14 @@ allow-direct-references = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["a2a_x402/tests"]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "--cov=a2a_x402",
+    "--cov=.",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
 ]
