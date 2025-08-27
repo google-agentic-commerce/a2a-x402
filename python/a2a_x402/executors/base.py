@@ -39,15 +39,14 @@ class X402BaseExecutor(ABC):
         Returns:
             True if x402 extension should be active
         """
-        # Check if extension is requested via headers
+
         headers = getattr(context, 'headers', {})
         if isinstance(headers, dict):
             extensions_header = headers.get("X-A2A-Extensions", "")
             if X402_EXTENSION_URI in extensions_header:
                 return True
-        
-        # Fallback: active if extension is required
-        return self.config.required
+
+        return False
 
     @abstractmethod
     async def execute(

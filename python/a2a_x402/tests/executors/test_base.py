@@ -76,8 +76,8 @@ class TestX402BaseExecutor:
         context_no_headers = Mock()
         context_no_headers.headers = {}
         
-        # Should fallback to required=True
-        assert executor.is_active(context_no_headers) is True
+        # Should return False when extension header is missing (per PR review)
+        assert executor.is_active(context_no_headers) is False
         
         # Execute to cover return statement
         import asyncio
@@ -88,6 +88,7 @@ class TestX402BaseExecutor:
         config_optional = X402ExtensionConfig(required=False)
         executor_optional = ConcreteExecutor(mock_delegate, config_optional)
         
+        # Should still return False without extension header
         assert executor_optional.is_active(context_no_headers) is False
         
         # Execute optional executor to cover its return statement too
@@ -132,8 +133,8 @@ class TestX402BaseExecutor:
         context_no_headers_attr = Mock()
         del context_no_headers_attr.headers  # Remove headers attribute
         
-        # Should fallback to required config
-        assert executor.is_active(context_no_headers_attr) is True
+        # Should return False when headers are missing (per PR review)
+        assert executor.is_active(context_no_headers_attr) is False
         
         # Execute to cover return statement
         import asyncio
