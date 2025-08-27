@@ -63,7 +63,7 @@ class LowesMerchantAgent(ABC):
 
         # Load product data
         self.product_data = self._load_product_data()
-        
+
         # Cache payment requirements
         self.payment_requirements_store = {}
 
@@ -194,11 +194,11 @@ Remember:
             - data: Settlement data if successful
         """
         payment_dict = json.loads(payment_data)
-        
+
         if ("x402Version" in payment_dict or "x402_version" in payment_dict) and "payload" in payment_dict:
             if "x402_version" in payment_dict and "x402Version" not in payment_dict:
                 payment_dict["x402Version"] = payment_dict["x402_version"]
-            
+
             payment_payload = PaymentPayload(**payment_dict)
 
             if not payment_payload:
@@ -219,7 +219,7 @@ Remember:
                 }
 
             try:
-                facilitator_url = os.getenv("FACILITATOR_URL", "http://localhost:3000")
+                facilitator_url = os.getenv("FACILITATOR_URL", "https://x402-facilitator-sui.vercel.app")
                 facilitator_config = FacilitatorConfig(url=facilitator_url)
                 facilitator_client = FacilitatorClient(facilitator_config)
 
@@ -409,7 +409,7 @@ Remember:
             nonce = None
             if tool_context and hasattr(tool_context, 'invocation_id'):
                 nonce = tool_context.invocation_id
-                
+
             payment_requirements = self.create_payment_requirements(
                 price_usd=product['price'],
                 resource=f"https://lowes.com/products/{safe_product_name}",
@@ -419,7 +419,7 @@ Remember:
                 output_schema={},
                 nonce=nonce
             )
-            
+
             # Cache the payment requirements
             if nonce:
                 self.payment_requirements_store[nonce] = payment_requirements
