@@ -37,12 +37,16 @@ def create_payment_requirements(
     """
     # Auto-derive asset address based on network if not provided
     if asset is None:
-        # Default USDC addresses for supported networks
+        # Default asset addresses for supported networks
         asset_map = {
+            # EVM networks - USDC addresses
             "base": "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913",
             "base-sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
             "avalanche": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
             "avalanche-fuji": "0x5425890298aed601595a70AB815c96711a31Bc65",
+            # Sui networks - USDC on Sui
+            "sui": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+            "sui-testnet": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
         }
         asset = asset_map.get(network, "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913")
     

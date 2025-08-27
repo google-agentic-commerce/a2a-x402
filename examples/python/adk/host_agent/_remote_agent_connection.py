@@ -19,11 +19,8 @@ from a2a.types import (
 )
 from google.adk.tools.tool_context import ToolContext
 
-from a2a_x402.core import (
-    PROCESS_PAYMENT_SKILL,
-    create_agent_card as create_x402_agent_card,
-)
-from a2a_x402.types.config import X402ExtensionConfig
+from a2a_x402.types import X402ExtensionConfig
+from a2a_x402.extension import get_extension_declaration
 
 class RemoteAgentConnection:
     """Remote agent connection."""
@@ -40,10 +37,10 @@ class RemoteAgentConnection:
 
     def _prepare_outbound_part(self, message: str) -> Part:
         """Prepare outbound message part.
-        
+
         Args:
             message: Message text
-            
+
         Returns:
             Message part
         """
@@ -51,10 +48,10 @@ class RemoteAgentConnection:
 
     def _prepare_outbound_message(self, message: str) -> Message:
         """Prepare outbound message.
-        
+
         Args:
             message: Message text
-            
+
         Returns:
             Message object
         """
@@ -79,33 +76,24 @@ class RemoteAgentConnection:
         Returns:
             Message response or None
         """
-        print(f"[remote_agent] Sending message: {request}")
         try:
             # Prefer non-streaming mode to avoid connection issues
             response = await self.agent_client.send_message(
                 SendMessageRequest(id=id, params=request)
             )
-            print(f"[remote_agent] Got response: {response}")
 
             if isinstance(response.root, JSONRPCErrorResponse):
-                print("[remote_agent] Got error response")
                 return response.root.error
 
             if isinstance(response.root.result, Message):
-                print("[remote_agent] Got message response")
                 return response.root.result
 
             # Check for task artifacts in the response
             if response.root.result:
-                print(f"[remote_agent] Got result: {response.root.result}")
                 if hasattr(response.root.result, 'artifacts'):
-                    print(f"[remote_agent] Has artifacts: {response.root.result.artifacts}")
                     if response.root.result.artifacts and len(response.root.result.artifacts) > 0:
-                        print(f"[remote_agent] First artifact: {response.root.result.artifacts[0]}")
                         if hasattr(response.root.result.artifacts[0], 'parts'):
-                            print(f"[remote_agent] First artifact parts: {response.root.result.artifacts[0].parts}")
                             if len(response.root.result.artifacts[0].parts) > 0:
-                                print(f"[remote_agent] First part root: {response.root.result.artifacts[0].parts[0].root}")
                                 if hasattr(response.root.result.artifacts[0].parts[0].root, 'data'):
                                     return response.root.result.artifacts[0].parts[0].root.data
 
@@ -114,52 +102,66 @@ class RemoteAgentConnection:
             return response.root.result
 
         except Exception as e:
-            print(f"[remote_agent] Error sending message: {e}")
             raise
 
     def create_agent_card(self, url: str, name: str, description: str) -> AgentCard:
         """Creates the AgentCard metadata for discovery.
-        
+
         Args:
             url: Base URL for this agent
             name: Agent name
             description: Agent description
-            
+
         Returns:
             Agent card
         """
         config = X402ExtensionConfig()
-        return create_x402_agent_card(
+        extension_declaration = get_extension_declaration(config)
+
+        skills = [
+            # Wallet capability
+            AgentSkill(
+                id="process_payment",
+                name="Process Payment",
+                description="Process x402 payment requirements",
+                tags=["x402", "payment", "wallet"]
+            ),
+
+            # Orchestration capabilities
+            AgentSkill(
+                id="list_remote_agents",
+                name="List Remote Agents",
+                description="Lists available remote merchant agents",
+                tags=["discovery", "merchant", "x402"],
+                examples=[
+                    "List available merchants",
+                    "Show me who I can talk to",
+                    "Find merchants that accept x402"
+                ]
+            ),
+            AgentSkill(
+                id="send_message",
+                name="Send Message to Agent",
+                description="Send a message to a remote merchant agent",
+                tags=["communication", "merchant", "x402"],
+                examples=[
+                    "Ask merchant about a product",
+                    "Send message to Lowes",
+                    "Talk to merchant agent"
+                ]
+            )
+        ]
+
+        from a2a.types import AgentCapabilities
+
+        return AgentCard(
             name=name,
             description=description,
             url=url,
-            config=config,
-            skills=[
-                # Wallet capability
-                PROCESS_PAYMENT_SKILL,
-                
-                # Orchestration capabilities
-                AgentSkill(
-                    id="list_remote_agents",
-                    name="List Remote Agents",
-                    description="Lists available remote merchant agents",
-                    tags=["discovery", "merchant", "x402"],
-                    examples=[
-                        "List available merchants",
-                        "Show me who I can talk to",
-                        "Find merchants that accept x402"
-                    ]
-                ),
-                AgentSkill(
-                    id="send_message",
-                    name="Send Message to Agent",
-                    description="Send a message to a remote merchant agent",
-                    tags=["communication", "merchant", "x402"],
-                    examples=[
-                        "Ask merchant about a product",
-                        "Send message to Lowes",
-                        "Talk to merchant agent"
-                    ]
-                )
-            ]
+            version="1.0.0",
+            skills=skills,
+            capabilities=AgentCapabilities(skills=skills),
+            defaultInputModes=["text"],
+            defaultOutputModes=["text"],
+            extensions=[extension_declaration] if extension_declaration else []
         )

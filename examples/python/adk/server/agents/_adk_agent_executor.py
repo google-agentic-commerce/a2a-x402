@@ -5,9 +5,7 @@ from collections import namedtuple
 from collections.abc import AsyncGenerator
 from urllib.parse import parse_qs, urlparse
 
-from a2a.server.agent_execution import AgentExecutor
-from a2a.server.agent_execution.context import RequestContext
-from a2a.server.events.event_queue import EventQueue
+from a2a_x402.types import AgentExecutor, RequestContext, EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
     AgentCard,
@@ -197,25 +195,68 @@ class ADKAgentExecutor(AgentExecutor):
 
     async def _preprocess_and_find_payment_payload(self, context: RequestContext) -> tuple[str | None, dict | None]:
         """
-        Inspects incoming message parts to find a JSON string containing an
-        x402_payment_object and original_payment_requirements, extracting both values.
+        Inspects incoming message metadata and parts to find x402 payment data.
+        First checks metadata (per A2A x402 spec), then falls back to DataPart parsing.
         """
+        # First check message metadata per A2A x402 spec
+        if context.message.metadata:
+            payment_status = context.message.metadata.get("x402.payment.status")
+            if payment_status == "payment-submitted":
+                payment_payload = context.message.metadata.get("x402.payment.payload")
+                payment_requirements = context.message.metadata.get("x402.payment.requirements")
+                if payment_payload and payment_requirements:
+                    # Convert to JSON strings for compatibility with existing code
+                    payment_header = json.dumps(payment_payload)
+                    original_requirements = payment_requirements
+                    logger.info("[ADK] Found payment data in message metadata (bypassing LLM)")
+                    return payment_header, original_requirements
+        
+        # Fall back to checking DataParts for backward compatibility
         for part in context.message.parts:
             part = part.root
-            # The payload arrives as a TextPart containing a JSON string
+            # The payload arrives as a DataPart containing structured data
             if isinstance(part, DataPart):
                 try:
-                    # Attempt to parse the text as JSON
+                    # Attempt to parse the data
                     data = part.data
-                    # Check if the parsed dict contains our key
-                    if isinstance(data, dict) and "x_payment_header" in data:
-                        # Return both the base64 encoded payload string and original requirements
-                        payment_payload = data["x_payment_header"]
-                        original_requirements = data.get("original_payment_requirements")
-                        return payment_payload, original_requirements
+                    # Check if the parsed dict contains our key (checking both possible field names)
+                    if isinstance(data, dict):
+                        # Try different possible field names for the payment header
+                        payment_header = data.get("x_payment_header") or data.get("X-Payment") or data.get("payment_header")
+                        original_requirements = data.get("original_payment_requirements") or data.get("payment_requirements")
+                        if payment_header:
+                            return payment_header, original_requirements
+                except (json.JSONDecodeError, TypeError):
+                    continue
+            # Also check TextPart in case it's sent as JSON text
+            elif isinstance(part, TextPart):
+                try:
+                    # Try to parse as JSON
+                    data = json.loads(part.text)
+                    if isinstance(data, dict):
+                        payment_header = data.get("x_payment_header") or data.get("X-Payment") or data.get("payment_header")
+                        original_requirements = data.get("original_payment_requirements") or data.get("payment_requirements")
+                        if payment_header:
+                            return payment_header, original_requirements
+                        
+                        # Also check if this is a direct x402 PaymentPayload
+                        if "x402_version" in data and "payload" in data and "scheme" in data:
+                            print(f"[executor] Found direct x402 PaymentPayload: {data}")
+                            # This is a raw PaymentPayload - return it as the payment header
+                            return json.dumps(data), None
+                        
                 except (json.JSONDecodeError, TypeError):
                     continue
         return None, None
+    
+    async def _add_settlement_artifact(self, updater, settlement_data):
+        """Add structured settlement data as an artifact for host agent parsing."""
+        try:
+            # Create a DataPart with the settlement data
+            settlement_part = DataPart(data={"data": settlement_data})
+            await updater.add_artifact([settlement_part])
+        except Exception as e:
+            logger.error(f"Failed to add settlement artifact: {e}")
 
     def _prepare_auth_request(
         self, auth_request_function_call: types.FunctionCall
@@ -311,12 +352,68 @@ class ADKAgentExecutor(AgentExecutor):
             await updater.start_work()
             session.state['payment_state'] = 'PAYLOAD_FOUND'
             
-            result = await self.runner.agent.tools[1](payment_payload_str, original_requirements)
+            # Call the settle_payment tool with the payment header and original requirements
+            result = await self.runner.agent.tools[0](payment_payload_str, original_requirements)
             
-            if "error" in result:
-                summary_for_llm = f"Payment processing failed: {result['error']}. Please inform the user."
+            if result.get("status") == "error":
+                error_message = result.get('message', 'Unknown error')
+                summary_for_llm = f"Payment processing failed with error: {error_message}. Tell the user exactly what went wrong: '{error_message}'. Do not give a generic apology - give the specific error details."
+                
+                # Also create a structured error response for the host agent
+                await self._add_settlement_artifact(updater, {
+                    "success": False,
+                    "message": error_message,
+                    "transaction": None,
+                    "explorer_link": None
+                })
             else:
-                summary_for_llm = f"Payment was successful. Confirmation: {json.dumps(result)}. Please thank the user and confirm their purchase. No more actions are required."
+                success_data = result.get('data', {})
+                if success_data:
+                    # Create user-friendly message with explorer link for Sui transactions
+                    transaction_hash = success_data.get('transaction')
+                    network = success_data.get('network', '').lower()
+                    
+                    if transaction_hash and network in ['sui', 'sui-testnet']:
+                        explorer_link = f"https://testnet.suivision.xyz/txblock/{transaction_hash}"
+                        summary_for_llm = f"Payment successful! Thank you for your purchase! Your transaction is now on the blockchain. Transaction hash: {transaction_hash} - View on explorer: {explorer_link}"
+                        
+                        # Create structured response for the host agent
+                        await self._add_settlement_artifact(updater, {
+                            "success": True,
+                            "message": "Payment processed successfully on blockchain",
+                            "transaction": transaction_hash,
+                            "explorer_link": explorer_link
+                        })
+                    elif transaction_hash:
+                        summary_for_llm = f"Payment successful! Thank you for your purchase! Your transaction is now on the blockchain. Transaction hash: {transaction_hash}"
+                        
+                        # Create structured response for the host agent
+                        await self._add_settlement_artifact(updater, {
+                            "success": True,
+                            "message": "Payment processed successfully on blockchain", 
+                            "transaction": transaction_hash,
+                            "explorer_link": None
+                        })
+                    else:
+                        summary_for_llm = f"Payment was successful! Transaction completed. Thank the user and confirm their purchase was processed successfully."
+                        
+                        # Create structured response for the host agent
+                        await self._add_settlement_artifact(updater, {
+                            "success": True,
+                            "message": "Payment processed successfully",
+                            "transaction": None,
+                            "explorer_link": None
+                        })
+                else:
+                    summary_for_llm = f"Payment was successful! Thank the user and confirm their purchase was processed successfully."
+                    
+                    # Create structured response for the host agent
+                    await self._add_settlement_artifact(updater, {
+                        "success": True,
+                        "message": "Payment processed successfully",
+                        "transaction": None,
+                        "explorer_link": None
+                    })
             
             await self._process_request(types.UserContent(parts=[types.Part(text=summary_for_llm)]), session.id, updater)
         

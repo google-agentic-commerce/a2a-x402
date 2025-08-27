@@ -2,11 +2,15 @@
 
 import json
 import os
-import hashlib
-import traceback
-from typing import Dict, Any, List
+import logging
+import asyncio
+from typing import Dict, Any, List, Optional
 from abc import ABC
 from dotenv import load_dotenv
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ADK imports for LLM integration
 from google.adk.agents import LlmAgent
@@ -15,23 +19,24 @@ from a2a.types import AgentSkill, AgentCard
 
 # a2a_x402 imports
 from a2a_x402.core import (
-    X402Protocol,
-    create_agent_card,
     create_payment_requirements,
     settle_payment,
-    SETTLE_PAYMENT_SKILL,
-    PaymentRequirementsConfig
+    verify_payment
 )
 from a2a_x402.types import (
-    X402A2AMessage,
-    PaymentPayload,
-    PaymentRequired,
     PaymentRequirements,
-    SettleResponse,
+    PaymentPayload,
     X402ExtensionConfig,
-    X402MessageMetadata
+    AgentSkill,
+    FacilitatorConfig,
+    FacilitatorClient
 )
-from a2a_x402.extension import X402Extension
+from a2a_x402.extension import (
+    get_extension_declaration,
+)
+
+# Load environment variables
+load_dotenv()
 
 class LowesMerchantAgent(ABC):
     """A Lowes merchant agent for the ADK demo."""
@@ -39,13 +44,13 @@ class LowesMerchantAgent(ABC):
     def __init__(
         self,
         merchant_address: str,
-        network: str = "base-sepolia"
+        network: str = "sui-testnet"
     ):
         """Initialize the Lowes merchant agent.
 
         Args:
-            merchant_address: The merchant's Ethereum address
-            network: The network to use (e.g. 'base-sepolia')
+            merchant_address: The merchant's address (Sui or Ethereum format)
+            network: The network to use (e.g. 'sui-testnet', 'base-sepolia')
         """
         # Store merchant info
         self.merchant_address = merchant_address
@@ -54,11 +59,7 @@ class LowesMerchantAgent(ABC):
         self.description = "A Lowes merchant that accepts x402 payments"
 
         # Initialize x402 config
-        self.config = X402ExtensionConfig(
-            scheme="exact",
-            version=X402Extension.VERSION,
-            x402_version=X402Protocol.VERSION
-        )
+        self.config = X402ExtensionConfig()
 
         # Load product data
         self.product_data = self._load_product_data()
@@ -71,50 +72,65 @@ class LowesMerchantAgent(ABC):
         """
         try:
             products_path = os.path.join(os.path.dirname(__file__), "..", "products.json")
-            print(f"[merchant_agent] Loading products from: {products_path}")
-            print(f"[merchant_agent] Current directory: {os.getcwd()}")
-            print(f"[merchant_agent] __file__: {__file__}")
-            
+            logger.info(f"Loading products from: {products_path}")
+
             with open(products_path, 'r') as f:
                 data = json.load(f)
-                print(f"[merchant_agent] Loaded {len(data.get('products', []))} products")
+                logger.info(f"Loaded {len(data.get('products', []))} products")
                 return data
         except Exception as e:
-            print(f"[merchant_agent] Failed to load products.json: {e}")
-            print(f"[merchant_agent] Stack trace: {traceback.format_exc()}")
+            logger.error(f"Failed to load products.json: {e}")
             return {"products": []}
 
     def create_agent_card(self, url: str) -> AgentCard:
         """Create the AgentCard metadata for discovery.
-        
+
         Args:
             url: The URL where this agent can be reached
-            
+
         Returns:
             AgentCard with x402 extension capabilities
         """
-        return create_agent_card(
+        # Get the x402 extension declaration
+        extension_declaration = get_extension_declaration(self.config)
+
+        from a2a.types import AgentCapabilities
+
+        skills = [
+            # Payment capability
+            AgentSkill(
+                id="settle_payment",
+                name="Settle Payment",
+                description="Process x402 payment settlements",
+                tags=["x402", "payment", "settlement"]
+            ),
+
+            # Lowes-specific capabilities
+            AgentSkill(
+                id="get_product_details_and_payment_info",
+                name="Get Product Details and Payment Info",
+                description="Get price and payment requirements for Lowes products",
+                tags=["lowes", "product", "price", "x402"],
+                examples=[
+                    "How much for a DeWalt drill?",
+                    "I want to buy a Nest thermostat",
+                    "Get me the price for the Samsung refrigerator"
+                ]
+            )
+        ]
+
+        return AgentCard(
             name=self.name,
             description=self.description,
             url=url,
-            config=self.config,
-            skills=[
-                # Payment capability
-                SETTLE_PAYMENT_SKILL,
-                
-                # Lowes-specific capabilities
-                AgentSkill(
-                    id="get_product_details_and_payment_info",
-                    name="Get Product Details and Payment Info",
-                    description="Get price and payment requirements for Lowes products",
-                    tags=["lowes", "product", "price", "x402"],
-                    examples=[
-                        "How much for a DeWalt drill?",
-                        "I want to buy a Nest thermostat",
-                        "Get me the price for the Samsung refrigerator"
-                    ]
-                )
-            ]
+            version="1.0.0",
+            skills=skills,  # skills at top level
+            capabilities=AgentCapabilities(
+                skills=skills  # also in capabilities for compatibility
+            ),
+            defaultInputModes=["text"],
+            defaultOutputModes=["text"],
+            extensions=[extension_declaration] if extension_declaration else []
         )
 
     def create_agent(self) -> LlmAgent:
@@ -135,14 +151,16 @@ Available Products:
 {product_context}
 
 When helping customers:
-1. Only recommend products from the available catalog above
-2. Use exact product names and prices from the catalog
-3. When a user wants to buy something, use get_product_details_and_payment_info with the exact product name
-4. When you receive payment data, return it exactly as received
+1. When a user asks about product details, prices, or wants to purchase something, ALWAYS use get_product_details_and_payment_info with the exact product name
+2. Only recommend products from the available catalog above
+3. Use exact product names from the catalog when calling tools
+4. When you receive a settlement request with JSON data containing "action": "settle_payment", "payment_data", and "original_requirements", ALWAYS use the settle_payment tool with the payment_data and original_requirements from the JSON
 5. For successful payments, relay the confirmation message
 6. For failed payments, explain the error clearly
 
 Remember:
+- ALWAYS call get_product_details_and_payment_info for any product inquiry (price, details, purchase)
+- ALWAYS call settle_payment when you receive a settlement request JSON with action "settle_payment"
 - If a user asks about a product not in the catalog, politely explain we only have the listed items
 - Always use exact product names when calling get_product_details_and_payment_info
 - Be helpful and professional in explaining product features
@@ -156,41 +174,14 @@ Remember:
     async def settle_payment(
         self,
         payment_data: str,
+        original_requirements: Optional[Dict[str, Any]] = None,
         tool_context: ToolContext = None
     ) -> Dict[str, Any]:
-        """Process an x402 payment authorization.
-
-        Expects a JSON string containing an X402A2AMessage[PaymentPayload]:
-        {
-            "metadata": {
-                "type": "PAYMENT_PAYLOAD",
-                "requirements": {
-                    "scheme": "exact",
-                    "network": "base-sepolia",
-                    "asset": "0x...",
-                    "payTo": "0x...",
-                    "maxAmountRequired": "1000000",
-                    "resource": "https://lowes.com/products/...",
-                    "description": "Product description",
-                    "maxTimeoutSeconds": 1200,
-                    "mimeType": "application/json",
-                    "outputSchema": {},
-                    "extra": {}
-                }
-            },
-            "data": {
-                "scheme": "exact",
-                "network": "base-sepolia",
-                "asset": "0x...",
-                "payTo": "0x...",
-                "amount": "1000000",
-                "signature": "0x...",
-                "signedMessage": "0x..."
-            }
-        }
+        """Process an x402 payment authorization using the original working approach.
 
         Args:
-            payment_data: JSON string containing X402A2AMessage[PaymentPayload]
+            payment_data: Base64 encoded payment header string or PaymentPayload JSON
+            original_requirements: Original payment requirements dict
             tool_context: Optional context for controlling tool behavior
 
         Returns:
@@ -198,63 +189,179 @@ Remember:
             - status: 'success' or 'error'
             - message: Human readable description
             - data: Settlement data if successful
-            - error: Error message if status is 'error'
         """
-        try:
-            # Parse and process the payment
-            payment_message = X402A2AMessage[PaymentPayload].model_validate_json(payment_data)
-            result = await settle_payment(payment_message, None)  # No facilitator config for demo
+        logger.info(f"Starting payment settlement for network: {self.network}")
+
+
+        payment_dict = json.loads(payment_data)
+        
+
+        # Check for both camelCase (new x402 format) and snake_case (old format)
+        if ("x402Version" in payment_dict or "x402_version" in payment_dict) and "payload" in payment_dict:
+            # Create standard PaymentPayload from x402 package
+            # The x402 package expects x402Version (camelCase)
+            if "x402_version" in payment_dict and "x402Version" not in payment_dict:
+                payment_dict["x402Version"] = payment_dict["x402_version"]
             
-            # Skip LLM summarization since this is structured data
-            if tool_context:
-                tool_context.actions.skip_summarization = True
-            
-            return {
-                "status": "success",
-                "message": "Payment processed successfully",
-                "data": result.model_dump()
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": str(e),
-                "data": None
-            }
+            # Create PaymentPayload using the standard x402 type
+            payment_payload = PaymentPayload(**payment_dict)
+
+            if not payment_payload:
+                return {
+                    "status": "error",
+                    "message": "Invalid payment data format",
+                    "data": None
+                }
+
+            # Parse original requirements if provided, otherwise create from payload
+            payment_requirements = None
+            if original_requirements:
+                payment_requirements = PaymentRequirements(**original_requirements)
+            else:
+                try:
+                    # Check if this is a Sui transaction (has transaction field in payload)
+                    if hasattr(payment_payload.payload, 'transaction') or (isinstance(payment_payload.payload, dict) and 'transaction' in payment_payload.payload):
+                        # For Sui, we need to create requirements from the payment data
+                        # This is a simplified approach - in production you'd want to store the original requirements
+                        payment_requirements = PaymentRequirements(
+                            network=payment_payload.network,
+                            scheme=payment_payload.scheme,
+                            max_amount_required="90000",  # Default for demo
+                            pay_to=self.merchant_address,
+                            description="Product purchase",
+                            asset="0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+                            mime_type="application/json",
+                            max_timeout_seconds=1200,
+                            resource="https://lowes.com/products",
+                            extra=None,
+                            output_schema={}
+                        )
+                    else:
+                        # For EVM, we'd need the original requirements
+                        return {
+                            "status": "error",
+                            "message": "Payment requirements required for EVM payments",
+                            "data": None
+                        }
+                except Exception as e:
+                    logger.error(f"Failed to create payment requirements: {e}")
+                    return {
+                        "status": "error",
+                        "message": f"Failed to create payment requirements: {e}",
+                        "data": None
+                    }
+
+            try:
+                facilitator_url = os.getenv("FACILITATOR_URL", "http://localhost:3000")
+                facilitator_config = FacilitatorConfig(url=facilitator_url)
+                facilitator_client = FacilitatorClient(facilitator_config)
+
+                # 1. Verify payment
+                verify_result = await asyncio.wait_for(
+                    verify_payment(
+                        payment_payload=payment_payload,
+                        payment_requirements=payment_requirements,
+                        facilitator_client=facilitator_client
+                    ),
+                    timeout=15.0
+                )
+
+                if not verify_result.is_valid:
+                    return {
+                        "status": "error",
+                        "message": f"Payment verification failed: {verify_result.invalid_reason}",
+                        "data": None
+                    }
+
+                # 2. Settle the payment
+                result = await settle_payment(
+                    payment_payload=payment_payload,
+                    payment_requirements=payment_requirements,
+                    facilitator_client=facilitator_client
+                )
+
+                if not result.success:
+                    return {
+                        "status": "error",
+                        "message": f"Payment settlement failed: {result.error_reason or 'Unknown settlement error'}",
+                        "data": None
+                    }
+
+                # Create success message with transaction details
+                success_message = "Payment processed successfully"
+                if result.transaction:
+                    # Create explorer link for Sui transactions
+                    if payment_requirements.network.lower() in ['sui', 'sui-testnet']:
+                        explorer_link = f"https://testnet.suivision.xyz/txblock/{result.transaction}"
+                        success_message = f"Thank you for your purchase! Payment confirmed on blockchain. Transaction: {result.transaction[:16]}... View details: {explorer_link}"
+                    else:
+                        success_message = f"Thank you for your purchase! Payment confirmed on blockchain. Transaction: {result.transaction}"
+
+                # Skip LLM summarization since this is structured data
+                if tool_context:
+                    tool_context.actions.skip_summarization = True
+
+                return {
+                    "status": "success",
+                    "message": success_message,
+                    "data": result.model_dump()
+                }
+
+            except Exception as e:
+                logger.error(f"Unexpected error in settle_payment: {str(e)}")
+                return {
+                    "status": "error",
+                    "message": str(e),
+                    "data": None
+                }
 
     def create_payment_requirements(
         self,
-        price: str,
+        price_usd: float,
         resource: str,
         description: str = "",
-        mime_type: str = "",
+        mime_type: str = "application/json",
         max_timeout_seconds: int = 60,
         output_schema: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+    ) -> PaymentRequirements:
         """Create payment requirements for a resource.
-        
+
         Args:
-            price: Price in USD (e.g. "$0.10")
+            price_usd: Price in USD as float (e.g. 0.10)
             resource: Resource identifier
             description: Description of what's being purchased
             mime_type: MIME type of the resource
             max_timeout_seconds: Payment timeout in seconds
             output_schema: Optional schema for the response
-            
+
         Returns:
-            Dictionary containing payment requirements
+            PaymentRequirements object
         """
-        config = PaymentRequirementsConfig(
-            price=price,
+        logger.info(f"Creating payment requirements for: {description} (${price_usd})")
+
+        # Convert USD price to USDC atomic units (6 decimals)
+        price_in_atomic = str(int(price_usd * 1_000_000))
+
+        # Create payment requirements with extra fields for EIP-712 signing
+        payment_req = create_payment_requirements(
+            price=price_in_atomic,
             resource=resource,
             merchant_address=self.merchant_address,
             network=self.network,
             description=description,
             mime_type=mime_type,
             max_timeout_seconds=max_timeout_seconds,
-            output_schema=output_schema
+            output_schema=output_schema or {}
         )
-        requirements = create_payment_requirements(config, self.config)
-        return requirements.model_dump()
+
+        # Add extra fields needed for EIP-712 domain (only for EVM networks)
+        if self.network.lower() not in ['sui', 'sui-testnet'] and not payment_req.extra:
+            payment_req.extra = {
+                "name": "USD Coin",
+                "version": "2"
+            }
+
+        return payment_req
 
     async def get_product_details_and_payment_info(
         self,
@@ -275,36 +382,56 @@ Remember:
             - payment_requirements: Payment requirements data
         """
         try:
-            print(f"[merchant_agent] Looking up product: {product_name}")
-            print(f"[merchant_agent] Available products: {[p['name'] for p in self.product_data.get('products', [])]}")
-            
+            logger.info(f"Looking up product: {product_name}")
+
             if not product_name:
-                print("[merchant_agent] Product name is empty")
+                logger.warning(f"Product name is empty")
                 return {
                     "status": "error",
                     "message": "Product name cannot be empty.",
                     "data": None
                 }
 
-            # Find the product in our catalog
-            product = next(
-                (p for p in self.product_data.get("products", [])
-                 if p["name"].lower() == product_name.lower()),
-                None
-            )
+            # Find the best matching product from our catalog using fuzzy matching
+            products_list = self.product_data.get("products", [])
+
+            # Use a simple fuzzy matching approach first - find products that contain key words
+            product_name_lower = product_name.lower()
+
+            # Try to find exact matches first
+            product = None
+            for p in products_list:
+                full_name = f"{p['name']} by {p['brand']}".lower()
+                if product_name_lower == full_name or product_name_lower == p['name'].lower():
+                    product = p
+                    break
+
+            # If no exact match, try partial matching
+            if not product:
+                # Split search terms and match against product words
+                search_words = set(product_name_lower.replace(' by ', ' ').split())
+                best_match = None
+                best_score = 0
+
+                for p in products_list:
+                    product_words = set((p['name'] + ' ' + p['brand']).lower().split())
+                    # Count how many search words match product words
+                    match_score = len(search_words.intersection(product_words))
+                    if match_score > best_score and match_score > 0:
+                        best_score = match_score
+                        best_match = p
+
+                product = best_match
 
             if not product:
-                print(f"[merchant_agent] Product not found: {product_name}")
                 return {
                     "status": "error",
                     "message": f"Product not found: {product_name}",
                     "data": None
                 }
 
-            print(f"[merchant_agent] Found product: {product}")
-
-            # Format the price
-            price = f"${product['price']:.2f}"
+            # Format the price for display
+            price_display = f"${product['price']:.2f}"
 
             # Generate a simple SKU
             safe_product_name = product_name.upper().replace(" ", "-")
@@ -312,44 +439,26 @@ Remember:
 
             # Create payment requirements
             payment_requirements = self.create_payment_requirements(
-                price=price,
+                price_usd=product['price'],
                 resource=f"https://lowes.com/products/{safe_product_name}",
                 description=f"{product['brand']} {product['name']}",
                 mime_type="application/json",
-                max_timeout_seconds=1200,  # 20 minutes
+                max_timeout_seconds=1200,
                 output_schema={}
             )
-
-            # Format as X402A2AMessage[PaymentRequired]
-            payment_message = X402A2AMessage[PaymentRequired](
-                metadata=X402MessageMetadata(
-                    type="PAYMENT_REQUIRED",
-                    requirements=payment_requirements
-                ),
-                data=PaymentRequired(
-                    amount=product['price'],
-                    item=product['name']
-                )
-            )
-
-            print(f"[merchant_agent] Created payment requirements: {payment_requirements}")
 
             # Skip LLM summarization since this is structured data
             if tool_context:
                 tool_context.actions.skip_summarization = True
 
-            result = {
+            return {
                 "status": "success",
                 "sku": sku,
-                "price": price,
-                "payment_requirements": payment_message.model_dump()
+                "price": price_display,
+                "payment_requirements": payment_requirements.model_dump()
             }
-            print(f"[merchant_agent] Returning result: {result}")
-            return result
 
         except Exception as e:
-            print(f"[merchant_agent] Error getting product details: {e}")
-            traceback.print_exc()
             return {
                 "status": "error",
                 "message": f"Failed to get product details: {str(e)}",

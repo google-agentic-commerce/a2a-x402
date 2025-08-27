@@ -42,7 +42,7 @@ dev = [
 requires-dist = [
     { name = "a2a-sdk" },
     { name = "eth-account", specifier = ">=0.13.7" },
-    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "httpx" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "x402", specifier = ">=0.2.0" },

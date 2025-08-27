@@ -5,8 +5,7 @@ from unittest.mock import Mock, patch
 from eth_account import Account
 from a2a_x402.core.wallet import (
     process_payment_required,
-    process_payment,
-    _generate_nonce
+    process_payment
 )
 from a2a_x402.types import (
     PaymentRequirements,

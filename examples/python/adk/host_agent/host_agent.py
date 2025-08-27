@@ -2,28 +2,38 @@
 
 import os
 import uuid
-from typing import Dict, Any, List
+import logging
+from typing import Dict, Any, List, Union
 from dotenv import load_dotenv
 import httpx
-from eth_account import Account
 
-from google.adk import Agent
-from google.adk.tools.tool_context import ToolContext
+# Set up logging
+logger = logging.getLogger(__name__)
 
-from a2a.client import A2ACardResolver
-from a2a.types import (
-    AgentCard,
-    AgentSkill,
-    Message,
-    MessageSendConfiguration,
-    MessageSendParams,
-    Part,
-    TextPart,
-)
+# Conditional imports for testing
+try:
+    from google.adk import Agent
+    from google.adk.tools.tool_context import ToolContext
 
-from a2a_x402.types import X402ExtensionConfig, X402A2AMessage, PaymentRequired
-from a2a_x402.core import process_payment
-from ._remote_agent_connection import RemoteAgentConnection
+    from a2a.client import A2ACardResolver
+    from a2a.types import (
+        AgentCard,
+        AgentSkill,
+        Message,
+        MessageSendConfiguration,
+        MessageSendParams,
+        Part,
+        TextPart,
+    )
+
+    from a2a_x402.types import X402ExtensionConfig, PaymentRequirements, PaymentPayload
+    from a2a_x402.core import process_payment
+    from ._remote_agent_connection import RemoteAgentConnection
+    FULL_IMPORTS = True
+except ImportError:
+    # For testing purposes when some packages aren't available
+    FULL_IMPORTS = False
+    logger.warning("Some imports not available - running in test mode")
 
 class HostAgent:
     """Host agent implementation."""
@@ -31,6 +41,7 @@ class HostAgent:
     def __init__(
         self,
         private_key: str,
+        network: str,
         remote_agent_addresses: List[str],
         http_client: httpx.Client,
         max_value: int = None,
@@ -40,7 +51,8 @@ class HostAgent:
         """Initialize host agent.
 
         Args:
-            private_key: Ethereum private key for signing payments
+            private_key: Private key for signing payments (format depends on network)
+            network: Network to use (e.g., 'sui-testnet', 'base-sepolia')
             remote_agent_addresses: List of remote agent addresses
             http_client: HTTP client
             max_value: Optional maximum payment value
@@ -48,11 +60,48 @@ class HostAgent:
             description: Agent description
         """
         # Wallet capabilities
-        self.account = Account.from_key(private_key)
+        self.network = network
+        if network.lower() in ['sui', 'sui-testnet']:
+            # For Sui networks, create a pysui SyncClient
+            try:
+                from pysui import SuiConfig, SyncClient
+
+                # Determine the RPC endpoint based on network
+                if network.lower() == 'sui':
+                    rpc_url = "https://fullnode.mainnet.sui.io:443"
+                else:  # sui-testnet
+                    rpc_url = os.getenv("SUI_TESTNET_RPC_URL", "https://fullnode.testnet.sui.io:443")
+
+                logger.info(f"Connecting to Sui network at: {rpc_url}")
+
+                # Create configuration with the RPC URL
+                config = SuiConfig.user_config(
+                    rpc_url=rpc_url,
+                    prv_keys=[private_key]
+                )
+
+                # Create a SyncClient
+                self.account = SyncClient(config=config)
+                logger.info(f"Initialized Sui client for network: {network}")
+                logger.info(f"Active address: {self.account.config.active_address}")
+
+            except ImportError:
+                raise ImportError("pysui package is required for Sui networks. Install with: uv add pysui")
+            except Exception as e:
+                raise Exception(f"Error initializing Sui client: {str(e)}")
+        else:
+            # For EVM networks, use eth_account
+            from eth_account import Account
+            self.account = Account.from_key(private_key)
+            logger.info(f"Initialized EVM account: {self.account.address}")
+
         self.max_value = max_value
         self.name = name
         self.description = description
-        self.config = X402ExtensionConfig()
+        if FULL_IMPORTS:
+            self.config = X402ExtensionConfig()
+        else:
+            self.config = None
 
         # Orchestration capabilities
         self.http_client = http_client
@@ -61,12 +110,12 @@ class HostAgent:
         self.cards: Dict[str, AgentCard] = {}
         self._initialized = False
 
-    def create_agent_card(self, url: str) -> AgentCard:
+    def create_agent_card(self, url: str):
         """Creates the AgentCard metadata for discovery.
-        
+
         Args:
             url: Base URL for this agent
-            
+
         Returns:
             Agent card
         """
@@ -76,7 +125,7 @@ class HostAgent:
 
     def get_skills(self) -> List[AgentSkill]:
         """Get agent skills.
-        
+
         Returns:
             List of skills
         """
@@ -107,7 +156,7 @@ class HostAgent:
                 id="process_payment",
                 name="Process x402 Payment",
                 description="Process and sign an x402 payment request",
-                tags=["payment", "x402", "ethereum"],
+                tags=["payment", "x402", "sui"],
                 examples=[
                     "Pay for the item",
                     "Process payment request",
@@ -121,16 +170,15 @@ class HostAgent:
         if self._initialized:
             return
 
-        print("[host_agent] Starting initialization")
-        print(f"[host_agent] Remote agent addresses: {self.remote_agent_addresses}")
+        logger.info(f"Starting initialization for {len(self.remote_agent_addresses)} remote agents")
 
         for address in self.remote_agent_addresses:
-            print(f"[host_agent] Connecting to {address}")
             try:
+                logger.info(f"Connecting to {address}")
                 # Get agent card using resolver
                 card_resolver = A2ACardResolver(self.http_client, address)
                 agent_card = await card_resolver.get_agent_card()
-                print(f"[host_agent] Connected to {address}, got agent card: {agent_card}")
+                logger.info(f"Connected to {address}, got agent card: {agent_card.name}")
 
                 # Create remote connection with card
                 remote_connection = RemoteAgentConnection(
@@ -138,12 +186,12 @@ class HostAgent:
                     agent_card=agent_card
                 )
                 self.remote_agent_connections[agent_card.name] = remote_connection
-                print(f"[host_agent] Added connection for {agent_card.name}")
+                logger.info(f"Added connection for {agent_card.name}")
 
             except Exception as e:
-                print(f"[host_agent] Failed to connect to {address}: {e}")
+                logger.error(f"Failed to connect to {address}: {e}")
 
-        print(f"[host_agent] Initialization complete. Connected agents: {list(self.remote_agent_connections.keys())}")
+        logger.info(f"Initialization complete. Connected agents: {list(self.remote_agent_connections.keys())}")
         self._initialized = True
 
     async def before_agent_callback(self, callback_context: Any):
@@ -152,7 +200,7 @@ class HostAgent:
 
     def create_agent(self) -> Agent:
         """Create the LLM agent instance.
-        
+
         Returns:
             Configured LLM agent
         """
@@ -160,9 +208,24 @@ class HostAgent:
             model="gemini-1.5-flash-latest",
             name=self.name,
             description=self.description,
-            instruction="This agent orchestrates the decomposition of the user request into"
-                " tasks that can be performed by the child agents. It also handles the creation of"
-                " the payment object and the signing of the payment object.",
+            instruction="""You are a host agent that can communicate with remote merchant agents and process x402 payments.
+
+Your workflow:
+1. Use list_remote_agents to see available merchants
+2. Use send_message to communicate with merchants (ask about products, get prices, etc.)
+3. When a merchant returns payment_requirements in their response, use process_payment to create and sign the payment
+4. ALWAYS provide clear feedback to the user about payment results
+
+For payments:
+- Merchants will return structured data with "payment_requirements" containing price, merchant address, etc.
+- When you detect payment_requirements in the merchant response, extract ONLY the payment_requirements object and pass it as a JSON string to process_payment
+- The process_payment tool will handle all the cryptographic signing and send the payment to the merchant
+- IMPORTANT: After process_payment completes, always tell the user clearly whether the payment succeeded or failed
+- If successful: Include transaction details and blockchain explorer link if available. Example: "Payment successful! Transaction: abc123... View on explorer: https://testnet.suivision.xyz/txblock/abc123"
+- If failed: Explain what went wrong and suggest next steps
+- Always look for transaction hashes and explorer links in the payment response data and share them with the user
+
+Always be helpful, provide clear updates about what's happening, and ensure users know the final result of their actions.""",
             tools=[
                 self.list_remote_agents,
                 self.send_message,
@@ -173,37 +236,33 @@ class HostAgent:
 
     def list_remote_agents(self, tool_context: Any) -> Dict[str, Any]:
         """List available remote agents.
-        
+
         Args:
             tool_context: Tool context
-            
+
         Returns:
             Dictionary with agent information
         """
-        print("[host_agent] Listing remote agents")
-        print(f"[host_agent] Initialized: {self._initialized}")
-        
         if not self._initialized:
-            print("[host_agent] Not initialized, initializing now...")
-            self.initialize()
-            
-        print(f"[host_agent] Remote connections: {list(self.remote_agent_connections.keys())}")
+            return {
+                "status": "error",
+                "message": "Remote agents not initialized. This should happen automatically on first use.",
+                "available_agents": []
+            }
 
         agents = []
         for name, conn in self.remote_agent_connections.items():
-            print(f"[host_agent] Adding agent {name} to list")
             agents.append({
                 "name": name,
                 "description": conn.card.description,
                 "url": conn.card.url
             })
 
-        print(f"[host_agent] Found {len(agents)} agents")
         return {"agents": agents}
 
     async def send_message(self, agent_name: str, message: str, tool_context: Any):
         """Send message to remote agent.
-        
+
         Args:
             agent_name: The name of the agent to send the task to.
             message: The message to send to the agent for the task.
@@ -214,9 +273,13 @@ class HostAgent:
         """
         if agent_name not in self.remote_agent_connections:
             raise ValueError(f"Agent {agent_name} not found")
-        
-        state = tool_context.state
-        state["agent"] = agent_name
+
+        # Handle None tool_context
+        if tool_context and hasattr(tool_context, 'state'):
+            state = tool_context.state
+            state["agent"] = agent_name
+        else:
+            state = {"agent": agent_name}
         client = self.remote_agent_connections[agent_name]
 
         # Prepare the A2A message Part based on the LLM's instruction
@@ -246,17 +309,76 @@ class HostAgent:
             request=request
         )
 
+    async def send_message_with_metadata(
+        self,
+        agent_name: str,
+        message: str,
+        metadata: Dict[str, Any],
+        tool_context: Any = None
+    ) -> Any:
+        """Send message to remote agent with metadata.
+        
+        Args:
+            agent_name: Name of the agent to send to
+            message: Message text
+            metadata: Message metadata 
+            tool_context: Optional tool context
+            
+        Returns:
+            Response from agent
+        """
+        if agent_name not in self.remote_agent_connections:
+            raise ValueError(f"Agent {agent_name} not found")
+
+        # Handle None tool_context
+        if tool_context and hasattr(tool_context, 'state'):
+            state = tool_context.state
+            state["agent"] = agent_name
+        else:
+            state = {"agent": agent_name}
+        client = self.remote_agent_connections[agent_name]
+
+        # Prepare the A2A message Part with metadata
+        part = TextPart(text=message)
+        messageId = state.get("message_id", None)
+        taskId = state.get("task_id")
+        if not messageId:
+            messageId = str(uuid.uuid4())
+
+        # Create message with metadata
+        message_obj = Message(
+            role="user",
+            parts=[part],
+            messageId=messageId,
+            contextId=state.get("context_id"),
+            taskId=taskId,
+            metadata=metadata  # Include the metadata here
+        )
+
+        request = MessageSendParams(
+            id=messageId,
+            message=message_obj,
+            configuration=MessageSendConfiguration(
+                acceptedOutputModes=["text", "text/plain", "image/png"],
+            ),
+        )
+
+        return await client.send_message(
+            messageId,
+            request=request
+        )
+
     async def process_payment(
         self,
         payment_requirements: str,
         tool_context: Any = None
     ) -> Dict[str, Any]:
         """Process a payment request by signing the authorization.
-        
+
         Args:
             payment_requirements: JSON string containing payment requirements
             tool_context: Optional tool context
-            
+
         Returns:
             Dictionary containing:
             - status: 'success' or 'error'
@@ -264,32 +386,128 @@ class HostAgent:
             - data: Payment data if successful
         """
         try:
-            print(f"[host_agent] Processing payment requirements: {payment_requirements}")
-            
-            # Parse the requirements message
+            # Parse the requirements
+            import json
+            logger.info(f"Processing payment requirements")
             if isinstance(payment_requirements, str):
-                requirements_message = X402A2AMessage[PaymentRequired].model_validate_json(payment_requirements)
+                try:
+                    # Try to parse as JSON
+                    requirements_dict = json.loads(payment_requirements)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON decode error: {e}")
+                    logger.debug(f"Raw string: {repr(payment_requirements)}")
+
+                    # Try to fix common issues - sometimes the LLM sends malformed JSON
+                    # Check if it's missing opening brace
+                    if not payment_requirements.strip().startswith('{'):
+                        fixed_json = '{' + payment_requirements.strip()
+                        try:
+                            requirements_dict = json.loads(fixed_json)
+                            logger.info(f"Fixed JSON by adding opening brace")
+                        except:
+                            raise e
+                    else:
+                        raise e
             else:
-                requirements_message = X402A2AMessage[PaymentRequired].model_validate(payment_requirements)
+                requirements_dict = payment_requirements
+
+            # Extract the actual payment requirements
+            if 'payment_requirements' in requirements_dict:
+                actual_requirements = PaymentRequirements(**requirements_dict['payment_requirements'])
+            else:
+                actual_requirements = PaymentRequirements(**requirements_dict)
+
+            # Process the payment - the a2a_x402 process_payment function now handles both account types
+            result = process_payment(actual_requirements, self.account, self.max_value)
             
-            print(f"[host_agent] Parsed requirements message: {requirements_message}")
-            
-            # Process the payment
-            result = await process_payment(requirements_message, self.account, self.max_value, self.config.scheme)
-            print(f"[host_agent] Got payment result: {result}")
-            
-            # Skip LLM summarization since this is structured data
-            if tool_context:
-                tool_context.actions.skip_summarization = True
-            
-            # Return simplified result
+
+            # Find the merchant agent
+            merchant_agent = None
+            for name in self.remote_agent_connections.keys():
+                merchant_agent = name
+                break
+
+            if not merchant_agent:
+                return {
+                    "status": "error",
+                    "message": "No merchant agent found to settle payment with",
+                    "data": None
+                }
+
+            # Send payment data as metadata (following A2A x402 spec)
+            # This avoids LLM text processing that corrupts base64 signatures
+            payment_metadata = {
+                "x402.payment.status": "payment-submitted",
+                "x402.payment.payload": result.model_dump(),
+                "x402.payment.requirements": actual_requirements.model_dump()
+            }
+
+            settlement_response = await self.send_message_with_metadata(
+                agent_name=merchant_agent,
+                message="Payment authorization submitted for settlement.",
+                metadata=payment_metadata,
+                tool_context=tool_context
+            )
+
+            # Parse the settlement response to extract payment receipt data
+            settlement_success = False
+            settlement_message = "Unknown response from merchant"
+            transaction_hash = None
+            explorer_link = None
+
+            # Check if we got artifacts with settlement response data
+            if hasattr(settlement_response, 'artifacts') and settlement_response.artifacts:
+                for artifact in settlement_response.artifacts:
+                    if hasattr(artifact, 'parts') and artifact.parts:
+                        for part in artifact.parts:
+                            # Check for settlement response data from ADK executor
+                            if hasattr(part, 'root') and hasattr(part.root, 'data') and part.root.data:
+                                data = part.root.data
+                                
+                                # Handle nested data format: {"data": {"success": true, ...}}
+                                if isinstance(data, dict) and 'data' in data and data['data']:
+                                    data = data['data']
+                                
+                                # Handle direct ADK executor format: {"success": true, "transaction": "hash", "explorer_link": "url"}
+                                if isinstance(data, dict) and 'success' in data:
+                                    settlement_success = data['success']
+                                    if settlement_success:
+                                        transaction_hash = data.get('transaction')
+                                        explorer_link = data.get('explorer_link')
+                                        # Create explorer link if not provided and we have transaction hash
+                                        if transaction_hash and not explorer_link and actual_requirements.network.lower() in ['sui', 'sui-testnet']:
+                                            explorer_link = f"https://testnet.suivision.xyz/txblock/{transaction_hash}"
+                                        settlement_message = data.get('message', 'Payment processed successfully on blockchain')
+                                    else:
+                                        settlement_message = data.get('message', 'Payment failed')
+
+
+            # Create final user-friendly message with transaction details
+            if settlement_success:
+                if transaction_hash and explorer_link:
+                    final_message = f"Payment processed successfully! Your purchase is complete. Transaction hash: {transaction_hash[:16]}... View on explorer: {explorer_link}"
+                else:
+                    final_message = "Payment processed successfully! Your purchase is complete. The merchant has confirmed your transaction."
+                status = "success"
+            else:
+                final_message = f"Payment failed: {settlement_message}"
+                status = "error"
+
             return {
-                "status": "success",
-                "message": "Payment processed successfully",
-                "data": result.model_dump()
+                "status": status,
+                "message": final_message,
+                "data": {
+                    "signed_payment": result.model_dump(),
+                    "settlement_response": settlement_response,
+                    "settlement_parsed": {
+                        "success": settlement_success,
+                        "message": settlement_message,
+                        "transaction": transaction_hash,
+                        "explorer_link": explorer_link
+                    }
+                }
             }
         except Exception as e:
-            print(f"[host_agent] Error processing payment: {e}")
             return {
                 "status": "error",
                 "message": str(e),

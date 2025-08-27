@@ -108,7 +108,7 @@ def _create_routes(
         agent_card=agent_card, http_handler=request_handler
     )
     routes = a2a_app.routes(
-        agent_card_url=f"{full_path}/.well-known/agent.json", rpc_url=full_path
+        agent_card_url=f"{full_path}/.well-known/agent-card.json", rpc_url=full_path
     )
     routes.append(
         Route(
