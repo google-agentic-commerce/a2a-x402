@@ -119,6 +119,20 @@ wheels = [
 ]
 
 [[package]]
+name = "alembic"
+version = "1.16.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mako" },
+    { name = "sqlalchemy" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9a/ca/4dc52902cf3491892d464f5265a81e9dff094692c8a049a3ed6a05fe7ee8/alembic-1.16.5.tar.gz", hash = "sha256:a88bb7f6e513bd4301ecf4c7f2206fe93f9913f9b48dac3b78babde2d6fe765e", size = 1969868, upload-time = "2025-08-27T18:02:05.668Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/39/4a/4c61d4c84cfd9befb6fa08a702535b27b21fff08c946bc2f6139decbf7f7/alembic-1.16.5-py3-none-any.whl", hash = "sha256:e845dfe090c5ffa7b92593ae6687c5cb1a101e91fa53868497dbd79847f9dbe3", size = 247355, upload-time = "2025-08-27T18:02:07.37Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -713,7 +727,7 @@ wheels = [
 
 [[package]]
 name = "google-adk"
-version = "1.12.0"
+version = "1.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absolufy-imports" },
@@ -740,6 +754,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "sqlalchemy" },
+    { name = "sqlalchemy-spanner" },
     { name = "starlette" },
     { name = "tenacity" },
     { name = "typing-extensions" },
@@ -748,9 +763,9 @@ dependencies = [
     { name = "watchdog" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cf/12/960b2b92803be18ba8a04906c8f6ccd74f6f3b4353da43e223a0970513b4/google_adk-1.12.0.tar.gz", hash = "sha256:4ff8e70f63a65ad9e147ec180e5ffe16970721936ec34eda40ae9e1621f70605", size = 1953975, upload-time = "2025-08-20T21:12:25.734Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/73/ca5a24153a42eaf188ac71087d77cdf93a4bfbccf3615be6a52cddf23112/google_adk-1.13.0.tar.gz", hash = "sha256:a305d2c83031dc8582cb17088b26b19efdb9c81894bc61ddaab95e5690d8196a", size = 1638252, upload-time = "2025-08-27T22:21:11.859Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8f/0c/661ce1d40ea4e6649b99a133b33b46aeda5a037f98da02d6ddd371848f4c/google_adk-1.12.0-py3-none-any.whl", hash = "sha256:3b0efedc2dc053532d73bf328d87ac1b8e0467cbfe8d5468e9df52c4de587e88", size = 2216570, upload-time = "2025-08-20T21:12:23.901Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/41/f7bc40b0dc1de876d0212add5c023898c1f5f076125b39bc79a932b47529/google_adk-1.13.0-py3-none-any.whl", hash = "sha256:bfb1ef47f617d697066d260827efa7ad8b8957b34a3a130d89837c0535290513", size = 1858194, upload-time = "2025-08-27T22:21:09.797Z" },
 ]
 
 [[package]]
@@ -1065,7 +1080,7 @@ wheels = [
 
 [[package]]
 name = "google-genai"
-version = "1.31.0"
+version = "1.32.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1077,9 +1092,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/1b/da30fa6e2966942d7028a58eb7aa7d04544dcc3aa66194365b2e0adac570/google_genai-1.31.0.tar.gz", hash = "sha256:8572b47aa684357c3e5e10d290ec772c65414114939e3ad2955203e27cd2fcbc", size = 233482, upload-time = "2025-08-18T23:40:21.733Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/ab/e6cdd8fa957c647ef00c4da7c59d0e734354bd49ed8d98c860732d8e1944/google_genai-1.32.0.tar.gz", hash = "sha256:349da3f5ff0e981066bd508585fcdd308d28fc4646f318c8f6d1aa6041f4c7e3", size = 240802, upload-time = "2025-08-27T22:16:32.781Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/27/1525bc9cbec58660f0842ebcbfe910a1dde908c2672373804879666e0bb8/google_genai-1.31.0-py3-none-any.whl", hash = "sha256:5c6959bcf862714e8ed0922db3aaf41885bacf6318751b3421bf1e459f78892f", size = 231876, upload-time = "2025-08-18T23:40:20.385Z" },
+    { url = "https://files.pythonhosted.org/packages/59/55/be09472f7a656af1208196d2ef9a3d2710f3cbcf695f51acbcbe28b9472b/google_genai-1.32.0-py3-none-any.whl", hash = "sha256:c0c4b1d45adf3aa99501050dd73da2f0dea09374002231052d81a6765d15e7f6", size = 241680, upload-time = "2025-08-27T22:16:31.409Z" },
 ]
 
 [[package]]
@@ -1437,6 +1452,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/bf/ce/46fbd9c8119cfc3581ee5643ea49464d168028cfb5caff5fc0596d0cf914/jsonschema_specifications-2025.4.1.tar.gz", hash = "sha256:630159c9f4dbea161a6a2205c3011cc4f18ff381b189fff48bb39b9bf26ae608", size = 15513, upload-time = "2025-04-23T12:34:07.418Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/01/0e/b27cdbaccf30b890c40ed1da9fd4a3593a5cf94dae54fb34f8a4b74fcd3f/jsonschema_specifications-2025.4.1-py3-none-any.whl", hash = "sha256:4653bffbd6584f7de83a67e0d620ef16900b390ddc7939d56684d6c81e33f1af", size = 18437, upload-time = "2025-04-23T12:34:05.422Z" },
+]
+
+[[package]]
+name = "mako"
+version = "1.3.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/38/bd5b78a920a64d708fe6bc8e0a2c075e1389d53bef8413725c63ba041535/mako-1.3.10.tar.gz", hash = "sha256:99579a6f39583fa7e5630a28c3c1f440e4e97a414b80372649c0ce338da2ea28", size = 392474, upload-time = "2025-04-10T12:44:31.16Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/fb/99f81ac72ae23375f22b7afdb7642aba97c00a713c217124420147681a2f/mako-1.3.10-py3-none-any.whl", hash = "sha256:baef24a52fc4fc514a0887ac600f9f1cff3d82c61d4d700a1fa84d597b88db59", size = 78509, upload-time = "2025-04-10T12:50:53.297Z" },
 ]
 
 [[package]]
@@ -2276,33 +2303,6 @@ wheels = [
 ]
 
 [[package]]
-name = "server"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "a2a-sdk" },
-    { name = "a2a-x402" },
-    { name = "click" },
-    { name = "google-adk" },
-    { name = "python-dotenv" },
-    { name = "starlette" },
-    { name = "uvicorn" },
-    { name = "x402", extra = ["sui"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "a2a-sdk", specifier = ">=0.3.3" },
-    { name = "a2a-x402", editable = "../../../python/a2a_x402" },
-    { name = "click", specifier = ">=8.2.0" },
-    { name = "google-adk", specifier = ">=1.12.0" },
-    { name = "python-dotenv" },
-    { name = "starlette", specifier = ">=0.47.3" },
-    { name = "uvicorn", specifier = ">=0.34.2" },
-    { name = "x402", extras = ["sui"], git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases" },
-]
-
-[[package]]
 name = "shapely"
 version = "2.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2378,6 +2378,20 @@ wheels = [
 ]
 
 [[package]]
+name = "sqlalchemy-spanner"
+version = "1.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alembic" },
+    { name = "google-cloud-spanner" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/28/b7/8c343fee4014b2e317a1fe3715e82ea172a079eab04567bd0a212d78096c/sqlalchemy_spanner-1.15.0.tar.gz", hash = "sha256:55a2e4a8a22ac99e204f9aa94aa69f6543e7152578548f0bfa6d5e59189205ba", size = 82643, upload-time = "2025-08-19T15:33:43.188Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/6c/c7fff16518889d54af2bbd39ae49f6357758a3293a96f63fcd80bff1cbfc/sqlalchemy_spanner-1.15.0-py3-none-any.whl", hash = "sha256:d1903089ac301e7c1d7da5d2e5febfd707cb18d22b26a3da90e7872c69ffc5cd", size = 31978, upload-time = "2025-08-19T15:33:41.827Z" },
+]
+
+[[package]]
 name = "sqlparse"
 version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2408,6 +2422,39 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/15/b9/cc3017f9a9c9b6e27c5106cc10cc7904653c3eec0729793aec10479dd669/starlette-0.47.3.tar.gz", hash = "sha256:6bc94f839cc176c4858894f1f8908f0ab79dfec1a6b8402f6da9be26ebea52e9", size = 2584144, upload-time = "2025-08-24T13:36:42.122Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/fd/901cfa59aaa5b30a99e16876f11abe38b59a1a2c51ffb3d7142bb6089069/starlette-0.47.3-py3-none-any.whl", hash = "sha256:89c0778ca62a76b826101e7c709e70680a1699ca7da6b44d38eb0a7e61fe4b51", size = 72991, upload-time = "2025-08-24T13:36:40.887Z" },
+]
+
+[[package]]
+name = "sui-demo"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "a2a-sdk" },
+    { name = "a2a-x402" },
+    { name = "click" },
+    { name = "fastapi" },
+    { name = "google-adk" },
+    { name = "httpx" },
+    { name = "pysui" },
+    { name = "python-dotenv" },
+    { name = "starlette" },
+    { name = "uvicorn" },
+    { name = "x402", extra = ["sui"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "a2a-sdk", specifier = ">=0.3.3" },
+    { name = "a2a-x402", editable = "../../../python/a2a_x402" },
+    { name = "click", specifier = ">=8.2.0" },
+    { name = "fastapi" },
+    { name = "google-adk", specifier = ">=1.12.0" },
+    { name = "httpx" },
+    { name = "pysui", specifier = ">=0.88.0" },
+    { name = "python-dotenv" },
+    { name = "starlette", specifier = ">=0.47.3" },
+    { name = "uvicorn", specifier = ">=0.34.2" },
+    { name = "x402", extras = ["sui"], git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases" },
 ]
 
 [[package]]

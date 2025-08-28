@@ -18,6 +18,10 @@ from starlette.routing import BaseRoute, Route
 from ._adk_agent_executor import ADKAgentExecutor
 from .merchant_agent import LowesMerchantAgent
 
+# x402 imports
+from a2a_x402.executors import X402ServerExecutor
+from a2a_x402.types import X402ExtensionConfig, X402ServerConfig
+
 # Load environment variables
 load_dotenv()
 
@@ -92,7 +96,21 @@ def _create_routes(
         session_service=session_service,
         memory_service=memory_service,
     )
-    agent_executor = ADKAgentExecutor(runner, agent_card)
+    
+    # Create base ADK executor
+    adk_executor = ADKAgentExecutor(runner, agent_card)
+    
+    # Wrap with X402ServerExecutor for proper payment handling
+    agent_executor = X402ServerExecutor(
+        delegate=adk_executor,
+        config=X402ExtensionConfig(),
+        server_config=X402ServerConfig(
+            price="0.05",  # Default price for demo products
+            pay_to_address=MERCHANT_ADDRESS,
+            network=NETWORK,
+            description="AI assistant service payment"
+        )
+    )
 
     async def handle_auth(request: Request) -> PlainTextResponse:
         await agent_executor.on_auth_callback(
@@ -108,7 +126,7 @@ def _create_routes(
         agent_card=agent_card, http_handler=request_handler
     )
     routes = a2a_app.routes(
-        agent_card_url=f"{full_path}/.well-known/agent.json", rpc_url=full_path
+        agent_card_url=f"{full_path}/.well-known/agent-card.json", rpc_url=full_path
     )
     routes.append(
         Route(

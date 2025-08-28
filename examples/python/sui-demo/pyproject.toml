@@ -1,7 +1,7 @@
 [project]
-name = "server"
-version = "0.1.0"
-description = "Code for the x402<>A2A Payments Demo"
+name = "sui-demo"
+version = "1.0.0"
+description = "Simple SUI X402 payment demo with host and merchant agents"
 requires-python = ">=3.13"
 dependencies = [
     "click>=8.2.0",
@@ -12,6 +12,9 @@ dependencies = [
     "google-adk>=1.12.0",
     "x402[sui]",
     "a2a-x402",
+    "fastapi",
+    "httpx",
+    "pysui>=0.88.0",
 ]
 
 [build-system]
@@ -20,6 +23,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["client", "server"]
 
 [tool.uv]
 override-dependencies = [

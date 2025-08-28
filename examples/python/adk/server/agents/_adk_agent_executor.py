@@ -5,9 +5,7 @@ from collections import namedtuple
 from collections.abc import AsyncGenerator
 from urllib.parse import parse_qs, urlparse
 
-from a2a.server.agent_execution import AgentExecutor
-from a2a.server.agent_execution.context import RequestContext
-from a2a.server.events.event_queue import EventQueue
+from a2a_x402.types import AgentExecutor, RequestContext, EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
     AgentCard,
@@ -137,20 +135,34 @@ class ADKAgentExecutor(AgentExecutor):
                         if tool:
                             print(f"[adk_executor] Found tool: {tool.__name__}")
                             # Execute the tool with the provided arguments
-                            result = await tool(**function_call.args)
+                            # For tools that expect tool_context, create and pass it
+                            tool_args = function_call.args.copy()
+                            if 'tool_context' in tool.__code__.co_varnames:
+                                from google.adk.tools.tool_context import ToolContext
+                                from google.adk.agents.invocation_context import InvocationContext
+                                # Create a minimal tool context with invocation_id
+                                invocation_context = InvocationContext(invocation_id=event.invocation_id)
+                                tool_context = ToolContext(invocation_context)
+                                tool_args['tool_context'] = tool_context
+                                print(f"[adk_executor] Added tool_context with invocation_id: {event.invocation_id}")
+                            
+                            result = await tool(**tool_args)
                             print(f"[adk_executor] Tool result: {result}")
                             
-                            # For merchant agent's get_product_details_and_payment_info, return structured data directly
+                            # For merchant agent's get_product_details_and_payment_info, return structured data
                             if function_call.name == 'get_product_details_and_payment_info' and isinstance(result, dict) and 'payment_requirements' in result:
-                                print("[adk_executor] Creating DataPart for product details")
-                                # Create a DataPart with the payment requirements
+                                print("[adk_executor] Product requires payment")
+                                # Create a DataPart with the payment requirements  
                                 data_part = Part(root=DataPart(data=result))
                                 print(f"[adk_executor] Created DataPart: {data_part}")
                                 await task_updater.add_artifact([data_part])
-                                print("[adk_executor] Added artifact")
-                                await task_updater.complete()
-                                print("[adk_executor] Completed task")
-                                return
+                                print("[adk_executor] Added artifact with payment requirements")
+                                
+                                # CRITICAL: Don't complete the task!
+                                # Throw an exception to trigger X402ServerExecutor's payment required flow
+                                # The X402ServerExecutor will catch this and set the proper payment_required state
+                                print("[adk_executor] Triggering payment required flow")
+                                raise Exception("Payment required for this service")
                             
                             # Create a function response
                             function_response = types.FunctionResponse(
@@ -197,25 +209,32 @@ class ADKAgentExecutor(AgentExecutor):
 
     async def _preprocess_and_find_payment_payload(self, context: RequestContext) -> tuple[str | None, dict | None]:
         """
-        Inspects incoming message parts to find a JSON string containing an
-        x402_payment_object and original_payment_requirements, extracting both values.
+        Inspects incoming message metadata and parts to find x402 payment data.
+        First checks metadata (per A2A x402 spec), then falls back to DataPart parsing.
         """
-        for part in context.message.parts:
-            part = part.root
-            # The payload arrives as a TextPart containing a JSON string
-            if isinstance(part, DataPart):
-                try:
-                    # Attempt to parse the text as JSON
-                    data = part.data
-                    # Check if the parsed dict contains our key
-                    if isinstance(data, dict) and "x_payment_header" in data:
-                        # Return both the base64 encoded payload string and original requirements
-                        payment_payload = data["x_payment_header"]
-                        original_requirements = data.get("original_payment_requirements")
-                        return payment_payload, original_requirements
-                except (json.JSONDecodeError, TypeError):
-                    continue
+        # First check message metadata per A2A x402 spec
+        if context.message.metadata:
+            payment_status = context.message.metadata.get("x402.payment.status")
+            if payment_status == "payment-submitted":
+                payment_payload = context.message.metadata.get("x402.payment.payload")
+                payment_requirements = context.message.metadata.get("x402.payment.requirements")
+                if payment_payload and payment_requirements:
+                    # Convert to JSON strings
+                    payment_header = json.dumps(payment_payload)
+                    original_requirements = payment_requirements
+                    logger.info("[ADK] Found payment data in message metadata (bypassing LLM)")
+                    return payment_header, original_requirements
+        
         return None, None
+    
+    async def _add_settlement_artifact(self, updater, settlement_data):
+        """Add structured settlement data as an artifact for host agent parsing."""
+        try:
+            # Create a DataPart with the settlement data
+            settlement_part = DataPart(data={"data": settlement_data})
+            await updater.add_artifact([settlement_part])
+        except Exception as e:
+            logger.error(f"Failed to add settlement artifact: {e}")
 
     def _prepare_auth_request(
         self, auth_request_function_call: types.FunctionCall
@@ -302,8 +321,17 @@ class ADKAgentExecutor(AgentExecutor):
         # Run the agent until either complete or the task is suspended.
         updater = TaskUpdater(event_queue, context.task_id, context.context_id)
         session = await self._upsert_session(context.context_id)
+        
+        # IMPORTANT: Check if this is a payment submission
+        # If it is, let X402ServerExecutor handle it completely
+        if context.message and context.message.metadata:
+            payment_status = context.message.metadata.get("x402.payment.status")
+            if payment_status == "payment-submitted":
+                print("[adk_executor] Payment submission detected, delegating to X402ServerExecutor")
+                # Don't process this - X402ServerExecutor will handle verification and settlement
+                return
+        
         payment_payload_str, original_requirements = await self._preprocess_and_find_payment_payload(context)
-
 
         if payment_payload_str and not 'payment_state' in session.state:
             # STATE: Awaiting Payment & Payload Received
@@ -311,20 +339,67 @@ class ADKAgentExecutor(AgentExecutor):
             await updater.start_work()
             session.state['payment_state'] = 'PAYLOAD_FOUND'
             
-            result = await self.runner.agent.tools[1](payment_payload_str, original_requirements)
+            # Call the settle_payment tool with the payment header and original requirements
+            result = await self.runner.agent.tools[0](payment_payload_str, original_requirements)
             
-            if "error" in result:
-                summary_for_llm = f"Payment processing failed: {result['error']}. Please inform the user."
+            if result.get("status") == "error":
+                error_message = result.get('message', 'Unknown error')
+                summary_for_llm = f"Payment processing failed with error: {error_message}. Tell the user exactly what went wrong: '{error_message}'. Do not give a generic apology - give the specific error details."
+                
+                # Also create a structured error response for the host agent
+                await self._add_settlement_artifact(updater, {
+                    "success": False,
+                    "message": error_message,
+                    "transaction": None,
+                    "explorer_link": None
+                })
             else:
-                summary_for_llm = f"Payment was successful. Confirmation: {json.dumps(result)}. Please thank the user and confirm their purchase. No more actions are required."
+                success_data = result.get('data', {})
+                if success_data:
+                    # Use the merchant's response data directly
+                    transaction_hash = success_data.get('transaction')
+                    explorer_link = success_data.get('explorer_link')
+                    settlement_message = success_data.get('message', 'Payment processed successfully on blockchain')
+                    
+                    if transaction_hash and explorer_link:
+                        summary_for_llm = f"Payment successful! Thank you for your purchase! Your transaction is now on the blockchain. Transaction hash: {transaction_hash} - View on explorer: {explorer_link}"
+                    elif transaction_hash:
+                        summary_for_llm = f"Payment successful! Thank you for your purchase! Your transaction is now on the blockchain. Transaction hash: {transaction_hash}"
+                    else:
+                        summary_for_llm = f"Payment was successful! Transaction completed. Thank the user and confirm their purchase was processed successfully."
+                    
+                    # Create structured response for the host agent using merchant's data
+                    await self._add_settlement_artifact(updater, {
+                        "success": True,
+                        "message": settlement_message,
+                        "transaction": transaction_hash,
+                        "explorer_link": explorer_link
+                    })
+                else:
+                    summary_for_llm = f"Payment was successful! Thank the user and confirm their purchase was processed successfully."
+                    
+                    # Create structured response for the host agent
+                    await self._add_settlement_artifact(updater, {
+                        "success": True,
+                        "message": "Payment processed successfully",
+                        "transaction": None,
+                        "explorer_link": None
+                    })
             
+            # Process the summary through the LLM to generate a response
             await self._process_request(types.UserContent(parts=[types.Part(text=summary_for_llm)]), session.id, updater)
+            # The task should complete after processing the settlement response
         
         else:
+            # Regular request processing (not a payment submission)
             # Immediately notify that the task is submitted.
             if not context.current_task:
                 await updater.submit()
             await updater.start_work()
+            
+            # Process the request normally
+            # If this generates payment requirements, we'll throw an exception
+            # to trigger X402ServerExecutor's payment required handling
             await self._process_request(
                 types.UserContent(
                     parts=convert_a2a_parts_to_genai(context.message.parts),
