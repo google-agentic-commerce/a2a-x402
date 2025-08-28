@@ -7,7 +7,6 @@ from x402.common import find_matching_payment_requirements
 
 from .base import X402BaseExecutor
 from ..core import verify_payment, settle_payment
-from ..core.merchant import create_payment_requirements
 from ..types import (
     AgentExecutor,
     RequestContext,
@@ -16,9 +15,9 @@ from ..types import (
     PaymentRequirements,
     SettleResponse,
     X402ExtensionConfig,
-    X402ServerConfig,
     FacilitatorClient,
     X402ErrorCode,
+    X402PaymentRequiredException,
     Message,
     Task,
     TaskStatus,
@@ -30,18 +29,25 @@ from ..types import (
 class X402ServerExecutor(X402BaseExecutor):
     """Server-side payment middleware for merchant agents.
     
-    Automatically handles: verify payment → execute service → settle payment
+    Exception-based payment requirements:
+    Delegate agents throw X402PaymentRequiredException to request payment dynamically.
     
     Example:
+        # Create executor (no configuration needed)
         server = X402ServerExecutor(my_agent, config)
-        # Your agent now accepts payments automatically!
+        
+        # In your delegate agent:
+        raise X402PaymentRequiredException.for_service(
+            price="$1.00",
+            pay_to_address="0x123...",
+            resource="/premium-feature"
+        )
     """
     
     def __init__(
         self,
         delegate: AgentExecutor,
         config: X402ExtensionConfig,
-        server_config: X402ServerConfig,
         facilitator_client: Optional[FacilitatorClient] = None
     ):
         """Initialize server executor.
@@ -49,11 +55,9 @@ class X402ServerExecutor(X402BaseExecutor):
         Args:
             delegate: Underlying agent executor for business logic
             config: x402 extension configuration
-            server_config: Server payment requirements configuration
             facilitator_client: Optional facilitator client for payment operations
         """
         super().__init__(delegate, config)
-        self.server_config = server_config
         self.facilitator_client = facilitator_client or FacilitatorClient()
         
         # In-memory storage for payment requirements arrays by taskId
@@ -68,7 +72,7 @@ class X402ServerExecutor(X402BaseExecutor):
         if not self.is_active(context):
             try:
                 return await self._delegate.execute(context, event_queue)
-            except Exception as e:
+            except X402PaymentRequiredException as e:
                 # Handle payment required exceptions when extension is not active
                 await self._handle_payment_required_exception(e, context, event_queue)
                 return
@@ -77,7 +81,7 @@ class X402ServerExecutor(X402BaseExecutor):
         if not task:
             try:
                 return await self._delegate.execute(context, event_queue)
-            except Exception as e:
+            except X402PaymentRequiredException as e:
                 # Handle payment required exceptions when no task context
                 await self._handle_payment_required_exception(e, context, event_queue)
                 return
@@ -91,7 +95,7 @@ class X402ServerExecutor(X402BaseExecutor):
         # Normal business logic for non-payment requests
         try:
             return await self._delegate.execute(context, event_queue)
-        except Exception as e:
+        except X402PaymentRequiredException as e:
             # Handle payment required exceptions during normal execution
             await self._handle_payment_required_exception(e, context, event_queue)
             return
@@ -175,8 +179,12 @@ class X402ServerExecutor(X402BaseExecutor):
         
         return matching_requirement
     
-    async def _handle_payment_required_exception(self, exception: Exception, context: RequestContext, event_queue: EventQueue):
-        """Handle exceptions that indicate payment is required."""
+    async def _handle_payment_required_exception(self, exception: X402PaymentRequiredException, context: RequestContext, event_queue: EventQueue):
+        """Handle X402PaymentRequiredException to request payment.
+        
+        Extracts payment requirements directly from the exception and creates
+        a payment required response for the client.
+        """
 
         task = getattr(context, 'current_task', None)
         if not task:
@@ -187,48 +195,25 @@ class X402ServerExecutor(X402BaseExecutor):
                 metadata={}
             )
         
+        # Extract payment requirements directly from the exception
+        accepts_array = exception.get_accepts_array()
+        error_message = str(exception)
 
-        payment_requirements = self._create_payment_requirements_from_config(context=context)
-        
-
-        accepts_array = [payment_requirements]
+        # Store payment requirements for later correlation
         self._payment_requirements_store[task.id] = accepts_array
         
         payment_required = x402PaymentRequiredResponse(
             x402_version=1,
             accepts=accepts_array,
-            error=str(exception)
+            error=error_message
         )
         
-
+        # Update task with payment requirements
         task = self.utils.create_payment_required_task(task, payment_required)
         
-
+        # Send the payment required response
         await event_queue.enqueue_event(task)
     
-    def _create_payment_requirements_from_config(self, context: Optional[RequestContext] = None) -> PaymentRequirements:
-        """Create payment requirements from server configuration.
-        
-        Args:
-            context: Optional request context to extract dynamic resource path from.
-        """
-
-        resource = self.server_config.resource
-        if not resource and context:
-            if hasattr(context, 'request') and hasattr(context.request, 'url') and hasattr(context.request.url, 'path'):
-                resource = context.request.url.path
-        if not resource:
-            resource = "/service"
-            
-        return create_payment_requirements(
-            price=self.server_config.price,
-            pay_to_address=self.server_config.pay_to_address,
-            resource=resource,
-            network=self.server_config.network,
-            description=self.server_config.description,
-            mime_type=self.server_config.mime_type,
-            max_timeout_seconds=self.server_config.max_timeout_seconds
-        )
 
     async def _fail_payment(self, task, error_code: str, error_reason: str, event_queue: EventQueue):
         """Handle payment failure."""

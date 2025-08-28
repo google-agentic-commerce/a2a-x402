@@ -42,14 +42,14 @@ from .errors import (
     ValidationError,
     PaymentError,
     StateError,
+    X402PaymentRequiredException,
     X402ErrorCode,
     map_error_to_code
 )
 
 from .config import (
     X402_EXTENSION_URI,
-    X402ExtensionConfig,
-    X402ServerConfig
+    X402ExtensionConfig
 )
 from ..extension import (
     get_extension_declaration,
@@ -94,12 +94,12 @@ __all__ = [
     "ValidationError",
     "PaymentError",
     "StateError",
+    "X402PaymentRequiredException",
     "X402ErrorCode",
     "map_error_to_code",
 
     "X402_EXTENSION_URI",
     "X402ExtensionConfig",
-    "X402ServerConfig",
 
     "get_extension_declaration",
     "check_extension_activation", 

@@ -1,6 +1,37 @@
 # x402 A2A Payment Protocol Extension
 
-This package provides a complete implementation of the x402 payment protocol extension for A2A, following a "functional core, imperative shell" architecture. The core protocol is implementation-agnostic and can be used independently, while executors provide optional middleware for common integration patterns.
+This package provides a complete implementation of the x402 payment protocol extension for A2A using an **exception-based approach** for dynamic payment requirements. 
+
+## 🚀 Exception-Based Payment Requirements
+
+Instead of static configuration, delegate agents throw `X402PaymentRequiredException` to request payment dynamically:
+
+```python
+from a2a_x402 import X402PaymentRequiredException
+
+# In your agent logic:
+if is_premium_feature(request):
+    raise X402PaymentRequiredException.for_service(
+        price="$5.00",
+        pay_to_address="0x123...",
+        resource="/premium-feature"
+    )
+
+# Or use helper decorators:
+@require_payment(price="$2.00", pay_to_address="0x456...", resource="/ai-service")
+async def generate_content(prompt):
+    return ai_service.generate(prompt)
+```
+
+This approach enables:
+- **Dynamic pricing** based on request parameters
+- **Per-service payment requirements** without configuration
+- **Multiple payment options** (basic, premium, ultra tiers)
+- **Clean separation** between business logic and payment logic
+
+## Architecture Overview
+
+The package follows a "functional core, imperative shell" architecture. The core protocol is implementation-agnostic and can be used independently, while executors provide optional middleware for common integration patterns.
 
 ## 1. Core Protocol Architecture
 
@@ -872,43 +903,46 @@ async def handle_payment_requirements(task: Task, account: Account):
 
 The `/executors` module provides optional middleware for common integration patterns. **These are convenience wrappers and are not required** if you implement the core functions directly.
 
-### 8.1. Server Executor (Optional)
+### 8.1. Server Executor (Exception-Based)
 
 ```python
 class X402ServerExecutor(X402BaseExecutor):
-    """Server-side middleware - inspired by Flask middleware pattern."""
+    """Server-side middleware with exception-based payment requirements."""
     
     def __init__(
         self, 
         delegate: AgentExecutor, 
         config: X402ExtensionConfig,
-        server_config: X402ServerConfig,  # Required: defines payment expectations
         facilitator_client: Optional[FacilitatorClient] = None
     ):
+        """No server configuration needed - payments defined via exceptions."""
         super().__init__(delegate, config)
-        self.server_config = server_config
         self.facilitator_client = facilitator_client or FacilitatorClient()
     
     async def execute(self, context: RequestContext, event_queue: EventQueue):
         if not self.is_active(context):
-            return await self._delegate.execute(context, event_queue)
+            try:
+                return await self._delegate.execute(context, event_queue)
+            except X402PaymentRequiredException as e:
+                # Handle payment requirements from exceptions
+                await self._handle_payment_required_exception(e, context, event_queue)
+                return
 
         task = context.current_task
         status = self.utils.get_payment_status(task)
 
         if status == PaymentStatus.PAYMENT_SUBMITTED:
+            # Verify → Process → Settle pattern
             payment_payload = self.utils.get_payment_payload(task)
-            # Note: Server executor uses in-memory storage for taskId correlation
-            # Payment requirements are stored when created and retrieved by taskId
+            payment_requirements = self._extract_payment_requirements_from_context(task)
             
-            # Verify → Process → Settle pattern (like HTTP middleware)
             verify_response = await self.facilitator_client.verify(
                 payment_payload, payment_requirements
             )
             
             if not verify_response.is_valid:
-                task = self.utils.record_payment_failure(task, "verification_failed", 
-                    SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason))
+                # Handle verification failure
+                await self._fail_payment(task, "verification_failed", verify_response.invalid_reason, event_queue)
             else:
                 # Process request with delegate
                 await self._delegate.execute(context, event_queue)
@@ -918,19 +952,21 @@ class X402ServerExecutor(X402BaseExecutor):
                     payment_payload, payment_requirements
                 )
                 
-                settle_response_result = SettleResponse(success=settle_response.success, 
-                    transaction=settle_response.transaction, network=settle_response.network or "base",
-                    payer=settle_response.payer, error_reason=settle_response.error_reason)
+                if settle_response.success:
+                    task = self.utils.record_payment_success(task, settle_response)
+                else:
+                    task = self.utils.record_payment_failure(task, "settlement_failed", settle_response)
                 
-            if settle_response.success:
-                    task = self.utils.record_payment_success(task, settle_response_result)
-            else:
-                    task = self.utils.record_payment_failure(task, "settlement_failed", settle_response_result)
-            
-            await event_queue.enqueue_event(task)
+                await event_queue.enqueue_event(task)
             return
 
-        return await self._delegate.execute(context, event_queue)
+        # Normal business logic - catches payment exceptions
+        try:
+            return await self._delegate.execute(context, event_queue)
+        except X402PaymentRequiredException as e:
+            # Delegate threw payment exception - create payment requirements
+            await self._handle_payment_required_exception(e, context, event_queue)
+            return
 ```
 
 ### 8.2. Client Executor (Optional)
@@ -1021,35 +1057,38 @@ from x402.facilitator import FacilitatorClient
 # Implement your own integration logic using core functions
 ```
 
-### 10.2. Executor Middleware (Convenience)
+### 10.2. Executor Middleware (Exception-Based)
 
-Use executors for rapid prototyping or standard patterns:
+Use executors for automatic payment handling with exceptions:
 
 ```python
-# Full middleware stack
+# Server-side middleware
 from a2a_x402.executors import X402ServerExecutor, X402ClientExecutor
 from a2a_x402 import (
     X402ExtensionConfig,
-    X402_EXTENSION_URI
+    X402_EXTENSION_URI,
+    X402PaymentRequiredException
 )
 from x402.facilitator import FacilitatorClient
 from eth_account import Account
 
-# Server configuration
-server_config = X402ServerConfig(
-    price="$1.00",  # or 1.00, or TokenAmount
-    pay_to_address="0xmerchant123",
-    network="base",
-    description="API service payment",
-    resource="/api/generate"
-)
-
-# Wrap your existing executors
+# Wrap your existing executors (no configuration needed)
 server_executor = X402ServerExecutor(
     delegate=your_executor, 
-    config=config,
-    server_config=server_config
+    config=config
 )
+
+# In your delegate agent, throw exceptions for payment:
+class MyAgent:
+    async def execute(self, context, event_queue):
+        if is_premium_feature(context):
+            raise X402PaymentRequiredException.for_service(
+                price="$5.00",
+                pay_to_address="0xmerchant123",
+                resource="/premium-feature"
+            )
+        # Regular logic continues...
+
 client_executor = X402ClientExecutor(
     delegate=client_executor,
     config=config,
@@ -1127,21 +1166,28 @@ from a2a_x402 import (
     X402Utils,
     
     # A2A-Specific Types
-
     PaymentStatus,                # A2A payment states
     X402MessageType,              # A2A message types
     X402Metadata,                 # A2A metadata constants
     
     # Configuration
     X402ExtensionConfig,
-    X402ServerConfig,
     
-    # Architecture Examples (Documentation Only)
-    # Note: Client/Merchant/Signing/Facilitator are separate systems
-    # The classes in Section 3 are architectural examples, not importable code
+    # Exception-Based Payment Requirements
+    X402PaymentRequiredException, # Exception for dynamic payment requirements
+    require_payment,             # Helper function to create payment exceptions
+    require_payment_choice,      # Helper for multiple payment options
+    paid_service,                # Decorator for paid services
+    smart_paid_service,          # Decorator with context awareness
+    create_tiered_payment_options, # Helper for multiple pricing tiers
     
     # Error Handling
     X402ErrorCode,
+    X402Error,
+    MessageError,
+    ValidationError,
+    PaymentError,
+    StateError,
     
     # Integration Utilities
     get_extension_declaration,
@@ -1157,14 +1203,5 @@ from a2a_x402.executors import (
     X402BaseExecutor,
     X402ServerExecutor, 
     X402ClientExecutor
-)
-
-# Error Types
-from a2a_x402.types.errors import (
-    X402Error,
-    MessageError,
-    ValidationError,
-    PaymentError,
-    StateError
 )
 ```
