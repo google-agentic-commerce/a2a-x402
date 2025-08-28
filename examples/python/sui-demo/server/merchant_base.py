@@ -216,15 +216,31 @@ class MerchantX402Executor(X402BaseExecutor):
 
         try:
             try:
+                print(f"[Merchant] Verifying payment for task {task.id}")
+                print(f"[Merchant] Payment amount: {payment_payload}")
+                print(f"[Merchant] Required amount: {requirements.max_amount_required}")
+                
                 verify_response = await asyncio.wait_for(
                     verify_payment(payment_payload, requirements, self.facilitator_client),
                     timeout=15.0
                 )
+                
+                print(f"[Merchant] Full facilitator response: {verify_response}")
+                print(f"[Merchant] Response type: {type(verify_response)}")
+                print(f"[Merchant] Is valid: {getattr(verify_response, 'is_valid', 'MISSING')}")
+                print(f"[Merchant] Invalid reason: {getattr(verify_response, 'invalid_reason', 'MISSING')}")
+                
                 if not verify_response.is_valid:
+                    print(f"[Merchant] Payment FAILED verification: {verify_response.invalid_reason}")
                     return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, verify_response.invalid_reason or "Invalid payment", event_queue)
+                else:
+                    print(f"[Merchant] Payment PASSED verification")
+                    
             except asyncio.TimeoutError:
+                print(f"[Merchant] Verification timeout for task {task.id}")
                 return await self._fail_payment(task, X402ErrorCode.SETTLEMENT_FAILED, "Verification timeout", event_queue)
         except Exception as e:
+            print(f"[Merchant] Verification exception for task {task.id}: {e}")
             import traceback
             traceback.print_exc()
             return await self._fail_payment(task, X402ErrorCode.SETTLEMENT_FAILED, f"Verification failed: {e}", event_queue)
@@ -261,7 +277,7 @@ class MerchantX402Executor(X402BaseExecutor):
             if settle_response.success:
                 task = self.utils.record_payment_success(task, settle_response)
                 paid_amount = float(requirements.max_amount_required) / 1_000_000  # Convert from microdollars to dollars
-                final_response = f"🛒 Purchase completed successfully!\n\nYour order: {original_request}\n💰 Price Paid: ${paid_amount:.3f}\n\n✅ Payment verified and processed."
+                final_response = f"🛒 Purchase completed successfully!\n\nYour order: {original_request}\n💰 Price Paid: ${paid_amount:.2f}\n\n✅ Payment verified and processed."
                 self._payment_requirements_store.pop(task.id, None)
                 self._task_requests.pop(task.id, None)
                 

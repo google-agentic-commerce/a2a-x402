@@ -1,7 +1,7 @@
 """Core package exports for a2a_x402."""
 
 from .merchant import create_payment_requirements
-from .wallet import process_payment_required, process_payment
+from .wallet import process_payment_required, process_payment, process_batch_payment
 from .protocol import verify_payment, settle_payment
 from .utils import (
     X402Utils,
@@ -15,6 +15,7 @@ __all__ = [
 
     "process_payment_required",
     "process_payment",
+    "process_batch_payment",
 
     "verify_payment",
     "settle_payment",

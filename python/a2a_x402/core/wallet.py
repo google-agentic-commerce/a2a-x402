@@ -108,6 +108,59 @@ def process_payment(
         )
 
 
+def process_batch_payment(
+    payment_requirements_list: list,
+    account,  # Union[Account, SyncClient]
+    max_value: Optional[int] = None
+) -> PaymentPayload:
+    """Create a batch PaymentPayload for multiple payments in a single transaction.
+    
+    This function creates a single transaction that handles multiple payments by:
+    1. Using prepare_batch_payment_header from x402.exact for SUI transactions
+    2. Handling coin merging and splitting logic for efficient batch processing
+    3. Making multiple move calls for each payment in the batch
+    
+    Args:
+        payment_requirements_list: List of PaymentRequirements to process in batch
+        account: Account for signing (pysui.SyncClient for Sui batch transactions)
+        max_value: Maximum payment value willing to pay (total across all payments)
+        
+    Returns:
+        Signed PaymentPayload object for the batch transaction
+    """
+    if not payment_requirements_list:
+        raise ValueError("Payment requirements list cannot be empty")
+    
+    # Validate total payment amount against maximum willingness to pay
+    if max_value is not None:
+        total_required = sum(int(req.max_amount_required) for req in payment_requirements_list)
+        if total_required > max_value:
+            raise ValueError(f"Total payment amount {total_required} exceeds maximum willing to pay {max_value}")
+    
+    # Use x402 library for batch payment processing
+    try:
+        from x402.exact import prepare_batch_payment_header, sign_payment_header, decode_payment
+        from x402.common import x402_VERSION
+        
+        # Use the first requirement for signing context (network, scheme should be same for all)
+        first_req = payment_requirements_list[0]
+        
+        # Prepare batch payment header (builds single transaction with multiple payments)
+        unsigned_header = prepare_batch_payment_header(account, x402_VERSION, payment_requirements_list)
+        
+        # Sign the batch transaction
+        signed_header_b64 = sign_payment_header(account, first_req, unsigned_header)
+        
+        # Decode to get the PaymentPayload structure
+        decoded = decode_payment(signed_header_b64)
+        
+        # Return as PaymentPayload
+        return PaymentPayload(**decoded)
+        
+    except ImportError as e:
+        raise ImportError(f"x402.exact library is required for batch payments: {str(e)}")
+
+
 def _generate_nonce() -> str:
     """Generate a random nonce for payment authorization."""
     return secrets.token_hex(32)

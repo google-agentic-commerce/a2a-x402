@@ -10,7 +10,7 @@ dependencies = [
     "starlette>=0.47.3",
     "a2a-sdk>=0.3.3",
     "google-adk>=1.12.0",
-    "x402[sui]",
+    "x402[sui] @ file:///Users/michaelhayes/x402/python",
     "a2a-x402",
     "fastapi",
     "httpx",
@@ -34,5 +34,5 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
-x402 = { git = "https://github.com/hayes-mysten/x402.git", branch = "pr-releases", subdirectory = "python/x402" }
+x402 = { path = "/Users/michaelhayes/x402/python/x402", editable = true }
 a2a-x402 = { path = "../../../python/a2a_x402", editable = true }

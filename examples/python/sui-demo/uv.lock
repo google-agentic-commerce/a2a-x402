@@ -44,7 +44,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
-    { name = "x402", git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases" },
+    { name = "x402", editable = "../../../../../x402/python/x402" },
 ]
 
 [package.metadata.requires-dev]
@@ -2454,7 +2454,7 @@ requires-dist = [
     { name = "python-dotenv" },
     { name = "starlette", specifier = ">=0.47.3" },
     { name = "uvicorn", specifier = ">=0.34.2" },
-    { name = "x402", extras = ["sui"], git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases" },
+    { name = "x402", extras = ["sui"], editable = "../../../../../x402/python/x402" },
 ]
 
 [[package]]
@@ -2785,7 +2785,7 @@ wheels = [
 [[package]]
 name = "x402"
 version = "0.2.0"
-source = { git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases#10878d6ade739883b7ea96db092524cc272243a8" }
+source = { editable = "../../../../../x402/python/x402" }
 dependencies = [
     { name = "eth-account" },
     { name = "eth-typing" },
@@ -2802,6 +2802,29 @@ dependencies = [
 sui = [
     { name = "httpx" },
     { name = "pysui" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "eth-account", specifier = ">=0.13.7" },
+    { name = "eth-typing", specifier = ">=4.0.0" },
+    { name = "eth-utils", specifier = ">=3.0.0" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.12" },
+    { name = "flask", specifier = ">=3.0.0" },
+    { name = "httpx", marker = "extra == 'sui'", specifier = "<0.28" },
+    { name = "pydantic", specifier = ">=2.10.3" },
+    { name = "pydantic-settings", specifier = ">=2.2.1" },
+    { name = "pysui", marker = "extra == 'sui'", specifier = ">=0.51.2" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "web3", specifier = ">=6.0.0" },
+]
+provides-extras = ["sui"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pytest-asyncio", specifier = ">=1.0.0" },
+    { name = "ruff", specifier = ">=0.11.9" },
 ]
 
 [[package]]

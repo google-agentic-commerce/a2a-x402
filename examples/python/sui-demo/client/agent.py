@@ -52,6 +52,12 @@ Examples:
 - ask_merchant("tiny_tools_merchant", "I want to buy Mini Screwdriver")
 - ask_merchant("digital_bits_merchant", "I want to buy LED Light")
 
+IMPORTANT FOR MULTIPLE PURCHASES:
+When the user asks for multiple items (e.g., "buy me a chocolate bar and a soda"):
+1. Process ALL purchase requests first (they will be collected for batch processing)
+2. After ALL items have been requested, AUTOMATICALLY call process_batch_payments()
+3. This will create a single payment for all items
+
 The merchant will handle payment processing if required (via X402 protocol).
 
 TASK HANDLING:
@@ -73,9 +79,23 @@ IMPORTANT:
 - Use EXACT product names from the catalog - case and spelling must match perfectly
 - Use the exact merchant names returned from discover_merchants() (names will end with "_merchant")
 - Merchants can show products for free, but purchases may require payment
-- Tasks will show complete payment flow including verification and settlement""",
+- Tasks will show complete payment flow including verification and settlement
+
+BATCH PAYMENT MODE:
+When multiple purchases are requested:
+1. Each purchase request collects payment requirements without processing
+2. After ALL items are requested, you MUST call process_batch_payments() 
+3. This creates ONE transaction for the highest amount and uses it for ALL items
+
+Example flow for "Buy me a chocolate bar and a soda":
+Step 1: ask_merchant("penny_snacks_merchant", "I want to buy Chocolate Bar") → Payment collected
+Step 2: ask_merchant("penny_snacks_merchant", "I want to buy Soda Can") → Payment collected  
+Step 3: process_batch_payments() → Automatically processes all payments with single transaction
+
+CRITICAL: Always call process_batch_payments() after collecting multiple payment requirements!""",
     tools=[
         host_agent.discover_merchants,
-        host_agent.ask_merchant
+        host_agent.ask_merchant,
+        host_agent.process_batch_payments
     ]
 )
