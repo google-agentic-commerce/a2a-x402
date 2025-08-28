@@ -466,7 +466,7 @@ class TestX402ServerExecutor:
         executor = X402ServerExecutor(Mock(), config, sample_server_config)
         
         # Test that the new metadata structure is properly created
-        # This simulates what happens when server.py sets PAYMENT_PENDING status
+        # This simulates what happens when server.py keeps PAYMENT_SUBMITTED status
         from a2a_x402.types import Message
         from a2a.types import TextPart
         sample_task.status.message = Message(
@@ -476,13 +476,13 @@ class TestX402ServerExecutor:
             metadata={}
         )
         
-        # Set PAYMENT_PENDING status using new structure
-        sample_task.status.message.metadata[executor.utils.STATUS_KEY] = PaymentStatus.PAYMENT_PENDING.value
+        # Set PAYMENT_SUBMITTED status using new structure
+        sample_task.status.message.metadata[executor.utils.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
         
         # Verify the new structure works correctly
         assert sample_task.status.message.metadata is not None
         assert isinstance(sample_task.status.message.metadata, dict)
-        assert sample_task.status.message.metadata[executor.utils.STATUS_KEY] == PaymentStatus.PAYMENT_PENDING.value
+        assert sample_task.status.message.metadata[executor.utils.STATUS_KEY] == PaymentStatus.PAYMENT_SUBMITTED.value
         
     def test_extract_payment_requirements_from_context_no_payment_required(self, sample_task, sample_server_config):
         """Test _extract_payment_requirements_from_context when no payment required found (line 130)."""
@@ -586,7 +586,6 @@ class TestX402ServerExecutor:
         executor = X402ServerExecutor(mock_delegate, config, sample_server_config)
         
         # Create a task that has payment metadata but no message
-        from a2a.types import TextPart
         task = Task(
             id="task-no-msg",
             contextId="context-123",
