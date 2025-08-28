@@ -11,8 +11,7 @@ from a2a_x402.types import (
     SettleResponse,
     PaymentPayload,
     ExactPaymentPayload,
-    EIP3009Authorization,
-    X402ServerConfig
+    EIP3009Authorization
 )
 
 
@@ -98,13 +97,4 @@ def sample_settle_response():
     )
 
 
-@pytest.fixture
-def sample_server_config():
-    """Create sample X402ServerConfig for testing."""
-    return X402ServerConfig(
-        price="$1.00",  # $1.00 USD
-        pay_to_address="0xmerchant123",
-        network="base",
-        description="Test service payment",
-        resource="/test-service"
-    )
+# X402ServerConfig has been removed. Tests now use X402PaymentRequiredException directly.
