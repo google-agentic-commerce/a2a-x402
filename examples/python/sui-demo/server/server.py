@@ -33,7 +33,7 @@ load_dotenv()
 # Get configuration from environment
 MERCHANT_ADDRESS = os.getenv("MERCHANT_ADDRESS")
 NETWORK = os.getenv("NETWORK", "sui-testnet")
-FACILITATOR_URL = os.getenv("FACILITATOR_URL", "http://localhost:3000")
+FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402-facilitator-sui.vercel.app")
 DEFAULT_PRICE = os.getenv("DEFAULT_PRICE", "0.05")
 
 
@@ -85,19 +85,19 @@ def _create_routes(
 
 def create_merchant_routes(base_url: str, base_path: str) -> List[BaseRoute]:
     """Dynamically create A2A routes for all configured merchants."""
-    
+
     routes: List[BaseRoute] = []
-    
+
     # Dynamically create routes for each merchant in the configuration
     for merchant_id, config in MERCHANTS.items():
         merchant_path = f"{base_path}/{merchant_id}"
         merchant_url = f"{base_url}{merchant_path}"
-        
+
         # Create agent, executor, and card for this merchant
         agent = MerchantAgent(config)
         executor = MerchantExecutor(agent)
         card = create_merchant_card(merchant_id, config, merchant_url)
-        
+
         # Add routes for this merchant
         routes.extend(_create_routes(
             merchant_path,
@@ -106,7 +106,7 @@ def create_merchant_routes(base_url: str, base_path: str) -> List[BaseRoute]:
             executor,
             config.name
         ))
-    
+
     return routes
 
 
@@ -126,13 +126,13 @@ def main():
     print(f"🌐 Network: {NETWORK}")
     print(f"💵 Price per purchase: {DEFAULT_PRICE} SUI")
     print()
-    
+
     # Dynamically print available merchants
     for merchant_id, config in MERCHANTS.items():
         merchant_url = f"{base_url}/agents/{merchant_id}"
         print(f"🏪 {config.name}: {merchant_url}")
         print(f"🃏 Agent card: {merchant_url}/.well-known/agent-card.json")
-    
+
     print()
 
     uvicorn.run(app, host=host, port=port)

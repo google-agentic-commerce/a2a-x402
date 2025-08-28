@@ -95,6 +95,19 @@ class MerchantX402Executor(X402BaseExecutor):
         ]
         return any(keyword in user_message.lower() for keyword in purchase_keywords)
 
+    def _find_requested_product(self, user_message: str) -> Optional[Dict[str, Any]]:
+        """Find the product mentioned in the user's purchase request."""
+        user_message_lower = user_message.lower()
+        
+        # Try to find product by exact name match first
+        for product in self.merchant.config.products:
+            product_name_lower = product['name'].lower()
+            if product_name_lower in user_message_lower:
+                return product
+        
+        # If no exact match, return None and we'll use default price
+        return None
+
     async def execute(self, context: RequestContext, event_queue: EventQueue):
         correlated_task_id = None
         if context.message:
@@ -150,8 +163,20 @@ class MerchantX402Executor(X402BaseExecutor):
     async def _require_payment(self, task, context: RequestContext, event_queue: EventQueue, user_message: str):
         self._task_requests[task.id] = user_message
         
+        # Find the requested product and fail if not found
+        requested_product = self._find_requested_product(user_message)
+        if not requested_product:
+            error_message = f"❌ Product not found in our catalog. Please check the product name and try again.\n\n💡 Use exact product names from our catalog. Ask 'What products do you have?' to see available items."
+            await TaskUpdater(event_queue, task.id, getattr(context, 'context_id', 'unknown')).update_status(
+                TaskState.completed,
+                message=new_agent_text_message(error_message)
+            )
+            return
+        
+        product_price = str(requested_product['price'])
+        
         requirements = create_payment_requirements(
-            price=self.server_config.price,
+            price=product_price,
             pay_to_address=self.server_config.pay_to_address,
             resource=self.server_config.resource,
             network=self.server_config.network,
