@@ -56,7 +56,8 @@ IMPORTANT FOR ALL PURCHASES:
 All purchases are collected for batch processing. Whether single or multiple items:
 1. Process ALL purchase requests first (they will be collected for batch processing)
 2. After ALL items have been requested, AUTOMATICALLY call process_batch_payments()
-3. This will create a single optimized payment transaction
+3. This will create a single optimized payment transaction AND generate the complete receipt
+4. ALWAYS call process_batch_payments() - this is the ONLY way to complete purchases and show receipts
 
 The merchant will handle payment processing if required (via X402 protocol).
 
@@ -105,7 +106,21 @@ Step 2: ask_merchant("penny_snacks_merchant", "I want to buy Soda Can") → Paym
 Step 3: process_batch_payments() → Processes all payments with single transaction (returns summary + task objects)
 
 CRITICAL: Always call process_batch_payments() after collecting payment requirements!
-NOTE: Even single purchases go through batch processing for consistency.""",
+NOTE: Even single purchases go through batch processing for consistency.
+
+RECEIPT GENERATION:
+- process_batch_payments() ALWAYS generates a detailed receipt showing all purchases
+- The receipt includes transaction details, individual item status, and payment totals  
+- Users will see complete purchase history with transaction hashes and explorer links
+- This is the primary way users get confirmation of their purchases
+
+CRITICAL RECEIPT DISPLAY REQUIREMENT:
+After calling process_batch_payments(), you MUST ALWAYS display the complete receipt to the user:
+1. Extract the "message" field from the batch payment response
+2. Display the ENTIRE receipt message exactly as returned - do not summarize or modify it
+3. The receipt contains essential transaction details, payment confirmations, and blockchain links
+4. Users rely on this receipt as their purchase confirmation and transaction record
+5. NEVER skip showing the receipt - it's the most important part of the purchase flow""",
     tools=[
         host_agent.discover_merchants,
         host_agent.ask_merchant,

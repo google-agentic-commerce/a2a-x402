@@ -45,7 +45,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
-    { name = "x402", git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases" },
+    { name = "x402", git = "https://github.com/hayes-mysten/x402?subdirectory=python%2Fx402&rev=pr-releases" },
 ]
 
 [package.metadata.requires-dev]
@@ -1569,7 +1569,7 @@ wheels = [
 [[package]]
 name = "x402"
 version = "0.2.0"
-source = { git = "https://github.com/hayes-mysten/x402.git?subdirectory=python%2Fx402&branch=pr-releases#820c95e33996f51a49656e82e97e8a78b1558be9" }
+source = { git = "https://github.com/hayes-mysten/x402?subdirectory=python%2Fx402&rev=pr-releases#75e87f398555d8898f9b767dac9e17470800b262" }
 dependencies = [
     { name = "eth-account" },
     { name = "eth-typing" },

@@ -45,7 +45,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.uv.sources]
-x402 = { path = "/Users/michaelhayes/x402/python/x402", editable = true }
+x402 = { git = "https://github.com/hayes-mysten/x402", rev = "pr-releases", subdirectory = "python/x402" }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
