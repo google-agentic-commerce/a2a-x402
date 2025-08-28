@@ -16,6 +16,10 @@ from .helpers import (
     create_tiered_payment_options,
     check_payment_context
 )
+from .agent import (
+    create_x402_agent_card,
+    create_merchant_agent_card
+)
 
 __all__ = [
     # Core merchant/wallet functions
@@ -38,5 +42,9 @@ __all__ = [
     "paid_service",
     "smart_paid_service",
     "create_tiered_payment_options",
-    "check_payment_context"
+    "check_payment_context",
+    
+    # Agent utilities
+    "create_x402_agent_card",
+    "create_merchant_agent_card"
 ]
