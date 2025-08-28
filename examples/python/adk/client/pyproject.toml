@@ -1,0 +1,30 @@
+[project]
+name = "client"
+version = "0.1.0"
+description = "Client for the x402<>A2A Payments Demo"
+requires-python = ">=3.13"
+dependencies = [
+    "a2a-sdk",
+    "google-adk>=0.5.0",
+    "x402>=0.1.4",
+    "eth-account>=0.13.7",
+    "httpx>=0.28.1",
+    "web3>=7.10.0",
+    "a2a-x402"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["host_agent"]
+
+[tool.uv.sources]
+a2a_x402 = { path = "../../../../python/a2a_x402", editable = true }
+
+[project.scripts]
+adk = "google.adk.cli:main"

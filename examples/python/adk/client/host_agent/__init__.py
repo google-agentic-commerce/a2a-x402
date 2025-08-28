@@ -1,0 +1,1 @@
+"""Host agent package for the ADK x402 demo client."""
