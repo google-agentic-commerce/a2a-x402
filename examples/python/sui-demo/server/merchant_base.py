@@ -182,7 +182,8 @@ class MerchantX402Executor(X402BaseExecutor):
             network=self.server_config.network,
             description=f"Purchase: {user_message}",
             mime_type=self.server_config.mime_type,
-            max_timeout_seconds=self.server_config.max_timeout_seconds
+            max_timeout_seconds=self.server_config.max_timeout_seconds,
+            extra={"nonce": task.id}
         )
 
         accepts_array = [requirements]
