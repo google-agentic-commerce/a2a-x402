@@ -36,7 +36,7 @@ Examples of when to use discover_merchants():
 
 Examples of when to use ask_merchant():
 - "Ask [merchant] what they have" → ask_merchant("[merchant]_merchant", "What products do you have?")
-- "What does [merchant] sell?" → ask_merchant("[merchant]_merchant", "Show me your products") 
+- "What does [merchant] sell?" → ask_merchant("[merchant]_merchant", "Show me your products")
 - "Buy [item] from [merchant]" → ask_merchant("[merchant]_merchant", "I want to buy [item]")
 - "Purchase [item]" → First discover_merchants(), then ask the appropriate merchant
 
@@ -52,28 +52,34 @@ Examples:
 - ask_merchant("tiny_tools_merchant", "I want to buy Mini Screwdriver")
 - ask_merchant("digital_bits_merchant", "I want to buy LED Light")
 
-IMPORTANT FOR MULTIPLE PURCHASES:
-When the user asks for multiple items (e.g., "buy me a chocolate bar and a soda"):
+IMPORTANT FOR ALL PURCHASES:
+All purchases are collected for batch processing. Whether single or multiple items:
 1. Process ALL purchase requests first (they will be collected for batch processing)
 2. After ALL items have been requested, AUTOMATICALLY call process_batch_payments()
-3. This will create a single payment for all items
+3. This will create a single optimized payment transaction
 
 The merchant will handle payment processing if required (via X402 protocol).
 
 TASK HANDLING:
-The ask_merchant tool returns a structured response with:
-- status: "success" or "error"
-- message: The complete response message from the merchant (including transaction details and explorer links)
-- task_state: The final state of the task 
-- merchant: The merchant name
+The ask_merchant tool now returns actual A2A Task objects (not dictionaries) which contain rich metadata:
+- task.status.state: The final state ("completed", "working", etc.)
+- task.status.message.parts[0].text: The response message from the merchant
+- task.status.message.metadata: Contains X402 payment metadata including:
+  - "x402.payment.status": Payment status
+  - "x402.payment.receipts": Array of payment receipts with transaction hashes
 
 When displaying results to users:
-1. Always show the complete "message" field content - it contains important transaction details and explorer links
-2. Do not summarize or rephrase the message content - show it exactly as returned
-3. The message already includes all necessary details like transaction hashes and blockchain explorer links
-4. If payment was required, it will be processed automatically and included in the message
+1. Extract the message text from task.status.message.parts[0].text (or .root.text)
+2. Show the complete message content - it contains transaction details and explorer links
+3. The task object preserves ALL payment metadata, transaction hashes, and A2A protocol information
+4. For error cases, some tools may still return dictionary objects
 
-IMPORTANT: 
+Example access patterns:
+- Message: task.status.message.parts[0].text or task.status.message.parts[0].root.text
+- Payment status: task.status.message.metadata.get("x402.payment.status")
+- Transaction hash: task.status.message.metadata.get("x402.payment.receipts", [{}])[0].get("transaction")
+
+IMPORTANT:
 - When users want to buy something, first discover merchants if you haven't already
 - Get the merchant's product catalog before making any purchase
 - Use EXACT product names from the catalog - case and spelling must match perfectly
@@ -81,18 +87,25 @@ IMPORTANT:
 - Merchants can show products for free, but purchases may require payment
 - Tasks will show complete payment flow including verification and settlement
 
-BATCH PAYMENT MODE:
-When multiple purchases are requested:
-1. Each purchase request collects payment requirements without processing
-2. After ALL items are requested, you MUST call process_batch_payments() 
+BATCH PAYMENT PROCESSING (DEFAULT BEHAVIOR):
+All purchases are automatically collected for batch processing:
+1. Each purchase request collects payment requirements without processing (returns summary dict)
+2. After ALL items are requested, you MUST call process_batch_payments()
 3. This creates ONE transaction for the highest amount and uses it for ALL items
+4. process_batch_payments() returns both a summary message AND individual A2A task objects
+
+The batch payment response includes:
+- message: Human-readable receipt summary for display
+- results: Array where each result contains a "task" field with the full A2A task object
+- Individual task objects contain complete payment metadata and transaction details
 
 Example flow for "Buy me a chocolate bar and a soda":
-Step 1: ask_merchant("penny_snacks_merchant", "I want to buy Chocolate Bar") → Payment collected
-Step 2: ask_merchant("penny_snacks_merchant", "I want to buy Soda Can") → Payment collected  
-Step 3: process_batch_payments() → Automatically processes all payments with single transaction
+Step 1: ask_merchant("penny_snacks_merchant", "I want to buy Chocolate Bar") → Payment collected (dict)
+Step 2: ask_merchant("penny_snacks_merchant", "I want to buy Soda Can") → Payment collected (dict)
+Step 3: process_batch_payments() → Processes all payments with single transaction (returns summary + task objects)
 
-CRITICAL: Always call process_batch_payments() after collecting multiple payment requirements!""",
+CRITICAL: Always call process_batch_payments() after collecting payment requirements!
+NOTE: Even single purchases go through batch processing for consistency.""",
     tools=[
         host_agent.discover_merchants,
         host_agent.ask_merchant,
