@@ -31,10 +31,26 @@ from merchants import MERCHANTS
 load_dotenv()
 
 # Get configuration from environment
-MERCHANT_ADDRESS = os.getenv("MERCHANT_ADDRESS")
 NETWORK = os.getenv("NETWORK", "sui-testnet")
 FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402-facilitator-sui.vercel.app")
 DEFAULT_PRICE = os.getenv("DEFAULT_PRICE", "0.05")
+
+# Merchant-specific addresses
+MERCHANT_ADDRESSES = {
+    "penny_snacks": os.getenv("MERCHANT_ADDRESS_PENNY_SNACKS"),
+    "tiny_tools": os.getenv("MERCHANT_ADDRESS_TINY_TOOLS"),
+    "digital_bits": os.getenv("MERCHANT_ADDRESS_DIGITAL_BITS"),
+}
+
+def get_merchant_address(merchant_id: str) -> str:
+    """Get the SUI address for a specific merchant."""
+    address = MERCHANT_ADDRESSES.get(merchant_id)
+    if not address:
+        # Fallback to legacy single address if merchant-specific address not found
+        fallback_address = os.getenv("MERCHANT_ADDRESS")
+        print(f"⚠️  Warning: No specific address found for {merchant_id}, using fallback: {fallback_address}")
+        return fallback_address
+    return address
 
 
 def _create_routes(
@@ -42,7 +58,8 @@ def _create_routes(
     resource_url: str,
     agent_card,
     base_agent_executor,
-    merchant_name: str
+    merchant_name: str,
+    merchant_id: str
 ) -> List[Route]:
     """Create routes with X402 payment integration."""
 
@@ -52,12 +69,15 @@ def _create_routes(
         facilitator_config = FacilitatorConfig(url=FACILITATOR_URL)
         facilitator_client = FacilitatorClient(facilitator_config)
 
+    # Get the specific address for this merchant
+    merchant_address = get_merchant_address(merchant_id)
+
     x402_executor = MerchantX402Executor(
         base_merchant_executor=base_agent_executor,
         config=X402ExtensionConfig(),
         server_config=X402ServerConfig(
             price=DEFAULT_PRICE,
-            pay_to_address=MERCHANT_ADDRESS,
+            pay_to_address=merchant_address,
             network=NETWORK,
             description=f"Purchase from {merchant_name}",
             resource=resource_url
@@ -104,7 +124,8 @@ def create_merchant_routes(base_url: str, base_path: str) -> List[BaseRoute]:
             merchant_url,
             card,
             executor,
-            config.name
+            config.name,
+            merchant_id
         ))
 
     return routes
@@ -122,9 +143,14 @@ def main():
     app = Starlette(routes=routes)
 
     print(f"🏪 Starting A2A server with X402 payments on {base_url}")
-    print(f"💰 Merchant Address: {MERCHANT_ADDRESS}")
     print(f"🌐 Network: {NETWORK}")
     print(f"💵 Price per purchase: {DEFAULT_PRICE} SUI")
+    print()
+
+    print("💰 Merchant Addresses:")
+    for merchant_id in MERCHANTS.keys():
+        address = get_merchant_address(merchant_id)
+        print(f"   {merchant_id}: {address}")
     print()
 
     # Dynamically print available merchants
