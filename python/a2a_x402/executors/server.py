@@ -2,7 +2,12 @@
 
 from typing import Optional, Dict, List
 
+from a2a.types import TextPart
+from x402.common import find_matching_payment_requirements
+
 from .base import X402BaseExecutor
+from ..core import verify_payment, settle_payment
+from ..core.merchant import create_payment_requirements
 from ..types import (
     AgentExecutor,
     RequestContext,
@@ -13,11 +18,13 @@ from ..types import (
     X402ExtensionConfig,
     X402ServerConfig,
     FacilitatorClient,
-    X402ErrorCode
+    X402ErrorCode,
+    Message,
+    Task,
+    TaskStatus,
+    TaskState,
+    x402PaymentRequiredResponse
 )
-from ..core import verify_payment, settle_payment
-from ..core.merchant import create_payment_requirements
-from x402.common import find_matching_payment_requirements
 
 
 class X402ServerExecutor(X402BaseExecutor):
@@ -116,8 +123,6 @@ class X402ServerExecutor(X402BaseExecutor):
         
 
         if not hasattr(task.status, 'message') or not task.status.message:
-            from ..types import Message
-            from a2a.types import TextPart
             task.status.message = Message(
                 messageId=f"{task.id}-status",
                 role="agent",
@@ -128,8 +133,6 @@ class X402ServerExecutor(X402BaseExecutor):
 
         if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
             task.status.message.metadata = {}
-            
-        task.status.message.metadata[self.utils.STATUS_KEY] = PaymentStatus.PAYMENT_PENDING.value
         try:
             await self._delegate.execute(context, event_queue)
         except Exception as e:
@@ -177,7 +180,6 @@ class X402ServerExecutor(X402BaseExecutor):
 
         task = getattr(context, 'current_task', None)
         if not task:
-            from ..types import Task, TaskStatus, TaskState
             task = Task(
                 id=f"payment-task-{id(context)}",
                 contextId=getattr(context, 'context_id', 'unknown'),
@@ -192,7 +194,6 @@ class X402ServerExecutor(X402BaseExecutor):
         accepts_array = [payment_requirements]
         self._payment_requirements_store[task.id] = accepts_array
         
-        from ..types import x402PaymentRequiredResponse
         payment_required = x402PaymentRequiredResponse(
             x402_version=1,
             accepts=accepts_array,

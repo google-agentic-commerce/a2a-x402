@@ -11,7 +11,7 @@ class TestPaymentStatus:
         """Test that all payment status values match spec."""
         assert PaymentStatus.PAYMENT_REQUIRED == "payment-required"
         assert PaymentStatus.PAYMENT_SUBMITTED == "payment-submitted"
-        assert PaymentStatus.PAYMENT_PENDING == "payment-pending"
+        assert PaymentStatus.PAYMENT_REJECTED == "payment-rejected"
         assert PaymentStatus.PAYMENT_COMPLETED == "payment-completed"
         assert PaymentStatus.PAYMENT_FAILED == "payment-failed"
     
@@ -24,17 +24,16 @@ class TestPaymentStatus:
         assert PaymentStatus("payment-required") == PaymentStatus.PAYMENT_REQUIRED
     
     def test_all_states_defined(self):
-        """Test that all 6 spec-required states are defined."""
+        """Test that all 5 spec-required states are defined."""
         all_statuses = list(PaymentStatus)
-        assert len(all_statuses) == 6
+        assert len(all_statuses) == 5
         
         expected_states = [
             "payment-required",
-            "payment-submitted", 
-            "payment-pending",
+            "payment-submitted",
+            "payment-rejected",
             "payment-completed",
-            "payment-failed",
-            "payment-rejected"
+            "payment-failed"
         ]
         
         actual_states = [status.value for status in all_statuses]

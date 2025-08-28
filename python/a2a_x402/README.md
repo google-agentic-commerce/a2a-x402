@@ -91,7 +91,6 @@ class PaymentStatus(str, Enum):
     PAYMENT_REQUIRED = "payment-required"    # Payment requested
     PAYMENT_SUBMITTED = "payment-submitted"  # Payment signed and submitted
     PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected by client
-    PAYMENT_PENDING = "payment-pending"      # Payment being processed
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
 ```
@@ -975,9 +974,8 @@ stateDiagram-v2
     [*] --> PAYMENT_REQUIRED: create_payment_request()
     PAYMENT_REQUIRED --> PAYMENT_REJECTED: client rejects payment
     PAYMENT_REQUIRED --> PAYMENT_SUBMITTED: record_payment_submission()
-    PAYMENT_SUBMITTED --> PAYMENT_PENDING: settle_payment() starts
-    PAYMENT_PENDING --> PAYMENT_COMPLETED: record_payment_completion()
-    PAYMENT_PENDING --> PAYMENT_FAILED: record_payment_failure()
+    PAYMENT_SUBMITTED --> PAYMENT_COMPLETED: settle_payment() succeeds
+    PAYMENT_SUBMITTED --> PAYMENT_FAILED: settle_payment() fails
     PAYMENT_REJECTED --> [*]
     PAYMENT_FAILED --> [*]
     PAYMENT_COMPLETED --> [*]

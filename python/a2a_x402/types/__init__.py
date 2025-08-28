@@ -30,9 +30,6 @@ from x402.facilitator import (
     FacilitatorConfig,
     FacilitatorClient
 )
-from .messages import (
-    X402MessageType
-)
 
 from .state import (
     PaymentStatus,
@@ -89,7 +86,6 @@ __all__ = [
     "FacilitatorConfig",
     "FacilitatorClient",
 
-    "X402MessageType",
     "PaymentStatus",
     "X402Metadata",
 

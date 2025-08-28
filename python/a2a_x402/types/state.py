@@ -8,7 +8,6 @@ class PaymentStatus(str, Enum):
     PAYMENT_REQUIRED = "payment-required"    # Payment requested
     PAYMENT_SUBMITTED = "payment-submitted"  # Payment signed and submitted
     PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected by client
-    PAYMENT_PENDING = "payment-pending"      # Payment being processed
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
 
