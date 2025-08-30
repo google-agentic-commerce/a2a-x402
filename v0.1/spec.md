@@ -55,6 +55,7 @@ The Client Agent acts on behalf of a user, orchestrating the payment flow.
   * It then determines whether to proceed with payment based on the terms (e.g., cost, asset, network).
     * If accepting, the agent selects a preferred PaymentRequirements option and has it signed by a designated signing service or wallet. This service securely signs the object to create the PaymentPayload. 
     * If rejecting, the agent responds to the Merchant Agent with a payment status of `payment-rejected`.
+* **Provides** travel rule information when required and validates travel rule requirements from the merchant.
 * **Submits** the signed payment authorization, packaged as an `PaymentPayload`, back to the Merchant Agent, ensuring the `taskId` is included to correlate the payment with the original request.
 * **Waits for and processes** the final `Task` from the Merchant Agent, which contains either the completed service result or a payment failure notice.
 
@@ -65,6 +66,7 @@ The Merchant Agent is a specialist agent that provides a monetized skill or serv
 
 * **Determines** when a service request requires payment and responds with an `input-required` `Task` containing a list of accepted payment requirements.
 * **Receives** the correlated payment submission from the Client Agent.
+* **Validates** travel rule information when required based on regulatory thresholds and jurisdictional requirements.
 * **Communicates** with a type of facilitator to first verify the payment's signature and validity, and then to settle the transaction on-chain.
 * **Concludes** the flow by returning a final `Task` to the Client Agent, containing the service result as an `Artifact` and the settlement details in a payment `receipt`.
 
@@ -128,6 +130,7 @@ When a Client Agent requests a service, the Merchant Agent determines that payme
               "payTo": "0xServerWalletAddressHere",
               "maxAmountRequired": "48240000",
               "maxTimeoutSeconds": 600,
+              "travelRuleRequired": true,
               "extra": {
                 "name": "USD Coin",
                 "version": 2
@@ -168,7 +171,28 @@ The Client Agent receives the `Task` and must determine how to proceed:
       ],
       "metadata": {
         "x402.payment.status": "payment-submitted",
-        "x402.payment.payload": { /* ... The signed objects from the Client as a PaymentPayload  ... */ }
+        "x402.payment.payload": {
+          "x402Version": 1,
+          "network": "base",
+          "scheme": "exact",
+          "travelRuleInfo": {
+            "originator": {
+              "name": "Alice Johnson",
+              "accountIdentifier": "0xClientWalletAddress",
+              "address": {
+                "street": "456 Oak Ave",
+                "city": "San Francisco",
+                "postalCode": "94102",
+                "country": "US"
+              }
+            },
+            "beneficiary": {
+              "name": "Image Generation Service LLC",
+              "accountIdentifier": "0xServerWalletAddressHere"
+            }
+          },
+          "payload": { /* ... signed payment details ... */ }
+        }
       }
     }
   }
@@ -241,6 +265,7 @@ Describes a single way a client can pay.
 | `resource` | string | No | A unique identifier for the resource being purchased. |
 | `description` | string | No | A human-readable description of the payment. |
 | `maxTimeoutSeconds` | number | No | The number of seconds the payment requirements are valid for. |
+| `travelRuleRequired` | boolean | No | Indicates whether travel rule information must be provided for this payment. |
 | `extra` | object | No | A container for additional scheme-specific data (e.g., EIP-712 domain info). |
 
 ### **5.3. `PaymentPayload`**
@@ -252,9 +277,58 @@ Created by the Signing Service, containing the signed payment authorization.
 | `x402Version` | number | Yes | The version of the x402 protocol being used. |
 | `network` | string | Yes | The blockchain network for the payment. |
 | `scheme` | string | Yes | The payment scheme being used. |
+| `travelRuleInfo` | object | No | Travel rule information including originator and beneficiary details when required. |
 | `payload` | object | Yes | The signed payment details, specific to the scheme. |
 
-### **5.4. `x402SettleResponse`**
+### **5.4. `TravelRuleInfo`**
+
+Contains originator and beneficiary information required for regulatory compliance.
+
+| Field | Type | Required | Description |
+| ----- | ----- | ----- | ----- |
+| `originator` | object | Yes | Information about the payment originator. |
+| `originator.name` | string | Yes | Full legal name of the originator. |
+| `originator.accountIdentifier` | string | Yes | Wallet address or account identifier. |
+| `originator.address` | object | No | Physical address of the originator. |
+| `originator.address.street` | string | No | Street address. |
+| `originator.address.city` | string | No | City. |
+| `originator.address.postalCode` | string | No | Postal/ZIP code. |
+| `originator.address.country` | string | No | ISO 3166-1 alpha-2 country code. |
+| `originator.nationalId` | object | No | National identification information. |
+| `originator.nationalId.type` | string | No | Type of ID (e.g., "passport", "drivers_license", "national_id"). |
+| `originator.nationalId.number` | string | No | ID number. |
+| `originator.nationalId.country` | string | No | Issuing country (ISO 3166-1 alpha-2). |
+| `beneficiary` | object | Yes | Information about the payment beneficiary. |
+| `beneficiary.name` | string | Yes | Full legal name or business name of the beneficiary. |
+| `beneficiary.accountIdentifier` | string | Yes | Wallet address or account identifier. |
+
+#### Example TravelRuleInfo:
+
+```json
+{
+  "originator": {
+    "name": "John Smith",
+    "accountIdentifier": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
+    "address": {
+      "street": "123 Main St",
+      "city": "New York",
+      "postalCode": "10001",
+      "country": "US"
+    },
+    "nationalId": {
+      "type": "passport",
+      "number": "123456789",
+      "country": "US"
+    }
+  },
+  "beneficiary": {
+    "name": "Acme AI Services Inc.",
+    "accountIdentifier": "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913"
+  }
+}
+```
+
+### **5.5. `x402SettleResponse`**
 
 Returned by the Merchant Agent in `Task`'s `Message` metadata after a successful payment.
 
