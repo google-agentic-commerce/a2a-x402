@@ -17,8 +17,7 @@ from .helpers import (
     check_payment_context
 )
 from .agent import (
-    create_x402_agent_card,
-    create_merchant_agent_card
+    create_x402_agent_card
 )
 
 __all__ = [
@@ -46,5 +45,4 @@ __all__ = [
     
     # Agent utilities
     "create_x402_agent_card",
-    "create_merchant_agent_card"
 ]

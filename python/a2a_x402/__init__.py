@@ -70,8 +70,7 @@ from .core import (
     check_payment_context,
     
     # Agent utilities
-    create_x402_agent_card,
-    create_merchant_agent_card
+    create_x402_agent_card
 )
 
 # Optional Middleware
@@ -147,7 +146,6 @@ __all__ = [
     
     # Agent utilities
     "create_x402_agent_card",
-    "create_merchant_agent_card",
     
     # Optional Middleware
     "X402BaseExecutor",

@@ -13,7 +13,7 @@ from a2a_x402 import (
     require_payment,
     X402PaymentRequiredException,
     get_extension_declaration,
-    create_merchant_agent_card as _create_merchant_agent_card
+    create_x402_agent_card
 )
 
 
@@ -410,12 +410,43 @@ What can I help you analyze today?"""
         )
 
 
-def create_merchant_agent_card():
-    """Create the agent card for the merchant agent."""
-    # Get merchant address from environment
-    merchant_address = os.getenv('MERCHANT_ADDRESS', '0x1234567890123456789012345678901234567890')
+from typing import List, Dict, Any, Optional
+from a2a.types import AgentCard
+def create_merchant_agent_card(
+    merchant_address: str,
+    name: str = "Market Intelligence Agent",
+    description: str = "AI-powered market analysis and data intelligence service with x402 payments",
+    url: str = "http://localhost:10000/agents/market-intelligence",
+    instructions: Optional[List[str]] = None,
+    model: str = "gemini-2.0-flash-exp"
+) -> "AgentCard":
+    """Create a pre-configured merchant agent card for demos.
     
-    return _create_merchant_agent_card(
-        merchant_address=merchant_address,
-        url="http://localhost:10000/agents/market-intelligence"
+    Args:
+        merchant_address: Ethereum address for receiving payments
+        name: Agent name
+        description: Agent description
+        url: Agent URL
+        instructions: Custom instructions (optional)
+        model: Model to use
+        
+    Returns:
+        Configured AgentCard for merchant agent
+    """
+    if instructions is None:
+        instructions = [
+            "You are a professional market intelligence agent that provides data analysis services.",
+            "You offer both free and paid services through secure x402 payments.",
+            "Free services include service catalog, system status, and quick market summaries.",
+            "Paid services include basic analysis ($1.50), premium AI analysis ($5.00), custom reports ($3.00), and alerts setup ($2.50).",
+            "Always be helpful and guide users to the appropriate services.",
+            "When providing paid services, ensure payment is completed before delivering detailed analysis."
+        ]
+    
+    return create_x402_agent_card(
+        name=name,
+        description=description,
+        url=url,
+        instructions=instructions,
+        model=model
     )
