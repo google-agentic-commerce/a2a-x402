@@ -83,7 +83,7 @@ sequenceDiagram
     Client Agent->>Client Agent: 3. Create signed PaymentPayload (Typically signed by a wallet or separate service)
     Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
     Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload (Typically verified by an x402 Facilitator) and begins processing the task*.
-    Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: x402SettleResponse, payment-status: payment-pending | payment-complete })
+    Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: x402SettleResponse, payment-status: payment-verified | payment-complete })
 
 ```
 
@@ -180,7 +180,7 @@ The Client Agent receives the `Task` and must determine how to proceed:
 **Task State:** `input-required` → `completed` | `working` ... 
 The management of intermediate Task states during the payment flow, such as transitioning to working during settlement, is at the discretion of the Merchant Agent's implementation.
 
-**Task Metadata:** `x402.payment.status: "payment-pending"` → `"payment-completed"`
+**Task Metadata:** `x402.payment.status: "payment-verified"` → `"payment-completed"`
 
 The Agent **MUST** include ALL payment receipts created in the lifetime of a Task in the final TaskStatus.message.
 
@@ -274,8 +274,8 @@ This extension uses the `metadata` field on the `Message` objects to track the p
   * `"payment-required"`: Payment requirements have been sent to client agent  
   * `"payment-submitted"`: Payment payload has been received by the server agent
   * `"payment-rejected"`: Payment requirements have been rejected by the client
-  * `"payment-pending"`: Payment payload has been sent to settle by the server agent  
-  * `"payment-completed"`: Payment transaction has successfully be posted on-chain  
+  * `"payment-verified"`: Payment payload has been sent to verified by the server agent  
+  * `"payment-completed"`: Payment transaction has been settled by the server agent  
   * `"payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
 * `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
 * `x402.payment.payload`: Contains the `PaymentPayload` object with the signed authorization from the signing service.  
@@ -289,9 +289,9 @@ stateDiagram-v2
     [*] --> PAYMENT_REQUIRED: Server Requires Payment
     PAYMENT_REQUIRED --> PAYMENT_REJECTED: Client Rejects Payment Requirments
     PAYMENT_REQUIRED --> PAYMENT_SUBMITTED: Client creates PaymentPayload
-    PAYMENT_SUBMITTED --> PAYMENT_PENDING: Server agent settles submitted PaymentPayload
-    PAYMENT_PENDING --> PAYMENT_COMPLETED: Payment settles and is now on chain.
-    PAYMENT_PENDING --> PAYMENT_FAILED: Payment failed to be verified or settled
+    PAYMENT_SUBMITTED --> PAYMENT_VERIFIED: Server agent verified submitted PaymentPayload
+    PAYMENT_VERIFIED --> PAYMENT_COMPLETED: Payment settles and is now on chain.
+    PAYMENT_VERIFIED --> PAYMENT_FAILED: Payment failed to be verified or settled
     PAYMENT_FAILED --> [*]
     PAYMENT_COMPLETED --> [*]
 ```
