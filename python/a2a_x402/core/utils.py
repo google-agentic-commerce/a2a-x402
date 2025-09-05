@@ -192,6 +192,29 @@ class X402Utils:
         task.status.message.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
         # Note: Keep requirements for verification - will be cleaned up after settlement
         return task
+
+    def record_payment_verified(
+        self,
+        task: Task,
+    ) -> Task:
+        """Record payment verification in task metadata."""
+        # Ensure task has a status message for metadata
+        if not hasattr(task.status, 'message') or not task.status.message:
+            from ..types import Message
+            from a2a.types import TextPart
+            task.status.message = Message(
+                messageId=f"{task.id}-status",
+                role="agent",
+                parts=[TextPart(kind="text", text="Payment verification recorded.")],
+                metadata={}
+            )
+
+        # Ensure message has metadata
+        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
+            task.status.message.metadata = {}
+
+        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_VERIFIED.value
+        return task
     
     def record_payment_success(
         self,

@@ -157,6 +157,52 @@ class TestX402ServerExecutor:
         assert final_status == PaymentStatus.PAYMENT_COMPLETED
     
     @pytest.mark.asyncio
+    async def test_execute_updates_status_to_payment_verified(self, sample_task, sample_payment_payload, sample_payment_requirements):
+        """Test that task status is updated to PAYMENT_VERIFIED after verification."""
+        mock_delegate = Mock()
+        mock_delegate.execute = AsyncMock()
+        
+        config = X402ExtensionConfig()
+        executor = X402ServerExecutor(mock_delegate, config)
+        
+        task_with_payment = self._setup_payment_task(executor, sample_task, sample_payment_payload, sample_payment_requirements)
+        
+        mock_context = Mock()
+        mock_context.headers = {"X-A2A-Extensions": X402_EXTENSION_URI}
+        mock_context.current_task = task_with_payment
+        
+        mock_event_queue = Mock()
+        mock_event_queue.enqueue_event = AsyncMock()
+        
+        # Mock successful verification and settlement
+        mock_verify_response = VerifyResponse(is_valid=True, payer="0xclient456")
+        mock_settle_response = SettleResponse(success=True, transaction="0xsuccess123", network="base", payer="0xclient456")
+        
+        executor.facilitator_client.verify = AsyncMock(return_value=mock_verify_response)
+        executor.facilitator_client.settle = AsyncMock(return_value=mock_settle_response)
+        
+        # Execute
+        await executor.execute(mock_context, mock_event_queue)
+        
+        # Assert that the first enqueued event is for PAYMENT_VERIFIED
+        assert mock_event_queue.enqueue_event.call_count == 2
+        
+        # First call should be PAYMENT_VERIFIED
+        verified_task_call = mock_event_queue.enqueue_event.call_args_list[0]
+        verified_task = verified_task_call[0][0]
+        verified_status = executor.utils.get_payment_status(verified_task)
+        assert verified_status == PaymentStatus.PAYMENT_VERIFIED
+        
+        # Second call should be PAYMENT_COMPLETED
+        completed_task_call = mock_event_queue.enqueue_event.call_args_list[1]
+        completed_task = completed_task_call[0][0]
+        completed_status = executor.utils.get_payment_status(completed_task)
+        assert completed_status == PaymentStatus.PAYMENT_COMPLETED
+        
+        # Ensure delegate was called
+        mock_delegate.execute.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_handle_x402_payment_required_exception(self):
         """Test handling of X402PaymentRequiredException."""
         config = X402ExtensionConfig()
