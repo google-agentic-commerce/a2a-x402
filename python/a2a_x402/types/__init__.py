@@ -49,7 +49,8 @@ from .errors import (
 
 from .config import (
     X402_EXTENSION_URI,
-    X402ExtensionConfig
+    X402ExtensionConfig,
+    X402ServerConfig
 )
 from ..extension import (
     get_extension_declaration,
@@ -100,6 +101,7 @@ __all__ = [
 
     "X402_EXTENSION_URI",
     "X402ExtensionConfig",
+    "X402ServerConfig",
 
     "get_extension_declaration",
     "check_extension_activation", 

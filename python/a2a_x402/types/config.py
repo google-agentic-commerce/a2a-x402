@@ -17,3 +17,15 @@ class X402ExtensionConfig(BaseModel):
     x402_version: int = 1
     required: bool = True
 
+
+class X402ServerConfig(BaseModel):
+    """Configuration for how a server expects to be paid"""
+    price: Union[str, int, TokenAmount]
+    pay_to_address: str
+    network: str = "base"
+    description: str = "Payment required..."
+    mime_type: str = "application/json"
+    max_timeout_seconds: int = 600
+    resource: Optional[str] = None
+    asset_address: Optional[str] = None
+
