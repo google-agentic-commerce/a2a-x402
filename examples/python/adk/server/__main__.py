@@ -50,12 +50,13 @@ def main(port: int, host: str):
     click.echo("📦 Services available:")
     click.echo("  - Free: Service catalog, system status, market summary")
     click.echo("  - Paid: Basic analysis ($1.50), Premium analysis ($5.00), Custom reports ($3.00)")
-    click.echo(f"💰 Merchant address: {os.getenv('MERCHANT_ADDRESS')}")
+    merchant_address = os.getenv('MERCHANT_ADDRESS')
+    click.echo(f"💰 Merchant address: {merchant_address}")
     click.echo("")
     click.echo("Ready to accept A2A agent connections with x402 payments!")
     
     # Create A2A application routes  
-    routes = create_router()
+    routes = create_router(merchant_address)
     
     # Create Starlette application with A2A routes
     app = Starlette(routes=[
