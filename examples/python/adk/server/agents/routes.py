@@ -17,7 +17,7 @@ from .merchant_agent import MerchantAgent, create_merchant_agent_card
 from ._adk_agent_executor import AdkAgentExecutor
 
 
-def create_router() -> List[BaseRoute]:
+def create_router(merchant_address: str) -> List[BaseRoute]:
     """Create A2A routes with payment-enabled merchant agents."""
     
     # Create merchant agent (ADK executor)
@@ -43,7 +43,7 @@ def create_router() -> List[BaseRoute]:
     )
     
     # Create agent card
-    agent_card = create_merchant_agent_card()
+    agent_card = create_merchant_agent_card(merchant_address=merchant_address)
     
     # Create request handler and task store
     request_handler = DefaultRequestHandler(
