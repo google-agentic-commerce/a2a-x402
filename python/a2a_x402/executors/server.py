@@ -125,15 +125,8 @@ class X402ServerExecutor(X402BaseExecutor):
         except Exception as e:
             return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, f"Verification failed: {e}", event_queue)
         
-
-        if not hasattr(task.status, 'message') or not task.status.message:
-            task.status.message = Message(
-                messageId=f"{task.id}-status",
-                role="agent",
-                parts=[TextPart(kind="text", text="Payment is being processed.")],
-                metadata={}
-            )
-        
+        task = self.utils.record_payment_verified(task)
+        await event_queue.enqueue_event(task)
 
         if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
             task.status.message.metadata = {}
