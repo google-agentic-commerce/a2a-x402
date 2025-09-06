@@ -2,9 +2,9 @@
 
 ## **1\. Abstract**
 
-The x402 Payments Extension is a **Extension** for the Agent-to-Agent (A2A) protocol. It enables agents to monetize services through on-chain cryptocurrency payments, reviving the spirit of the HTTP 402 "Payment Required" status code for the world of decentralized agents.
+The x402 Payments Extension is an **Extension** for the Agent-to-Agent (A2A) protocol. It enables agents to monetize services through on-chain cryptocurrency payments, reviving the spirit of the HTTP 402 "Payment Required" status code for the world of decentralized agents.
 
-This specification defines the required data structures, message flows, and state machine for requesting, authorizing, and settling payments within the A2A framework. It allows a server agent to require payment for a service, a client agent to authorize that payment using a secure wallet, and the server to verify and settle the transaction on a blockchain network.
+This specification not only defines the integration of the x402 protocol within the A2A framework but also **extends the core x402 protocol** by introducing advanced payment schemes like post-payment and allowance-based models. These extensions are designed to support more complex and flexible commercial interactions between agents. The document outlines the required data structures, message flows, and state machines for these payment models, allowing a server agent to require payment, a client agent to authorize it securely, and the server to settle the transaction on-chain.
 
 ## **2\. Extension URI**
 
@@ -35,10 +35,14 @@ Agents that support this extension MUST declare it in the `extensions` array of 
 
 Setting `required: true` is recommended. This signals to clients that they **MUST** understand and implement the x402 protocol to interact with the agent's monetized skills. If a required extension is not activated by the client, the agent should reject the request.
 
-## **4\. Payment Protocol Flow**
+## **4. Payment Protocol Flow**
 
-This x402 extension represents the payment lifecycle using two layers of state: the high-level [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum) (e.g., input-required, completed) and a more granular x402.payment.status field that offers a detailed view of the payment process.
-The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
+The x402 protocol traditionally focuses on atomic, pre-payment transactions where payment is required before a service is rendered. This specification extends that foundation by introducing more flexible payment schemes to support a wider range of commercial interactions. In addition to the standard pre-payment model (referred to as the `"exact"` scheme), this document defines two advanced schemes:
+
+*   **`post-payment`**: Allows an agent to deliver a service and request payment afterward, essentially providing an invoice.
+*   **`allowance`**: Enables a client to pre-authorize a certain amount of funds (an "allowance") that a merchant agent can draw from for future services, based on the ERC20 `approve/transferFrom` pattern.
+
+This x402 extension represents the payment lifecycle using two layers of state: the high-level [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum) (e.g., `input-required`, `completed`) and a more granular `x402.payment.status` field that offers a detailed view of the payment process. The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
 
 ### **4.1. Roles & Responsibilities**
 
@@ -89,7 +93,88 @@ sequenceDiagram
 
 * The Merchant Agent SHOULD ensure that the requested work is completed before settling the payment
 
-### **4.3. Step 1: Payment Request (Merchant → Client)**
+### **4.3. Scheme: `exact` (Pre-payment)**
+
+The `"exact"` scheme is the standard pre-payment model where the client must authorize and submit payment before the merchant agent begins the work. The following sections detail this process.
+
+### **4.4. Scheme: `post-payment`**
+
+The `"post-payment"` scheme allows a Merchant Agent to perform a task and deliver the results *before* requesting payment. This is useful for services where the final cost is determined after the work is complete or for establishing trust with a client.
+
+**Flow:**
+
+1.  **Service Request & Execution**: The Client Agent requests a service. The Merchant Agent executes the task immediately.
+2.  **Deliver Result with Invoice**: The Merchant Agent responds with a `Task` in the `completed` state, containing the resulting `Artifact`. The `message` metadata includes a `x402.payment.required` object with a `post-payment` scheme. This serves as the invoice.
+3.  **Client Pays Invoice**: The Client Agent receives the result and the invoice. It then authorizes the payment by signing the `PaymentRequirements` and sends the `PaymentPayload` back to the Merchant Agent in a new message, referencing the original `taskId`.
+4.  **Merchant Settles and Confirms**: The Merchant Agent verifies the payload, settles the payment on-chain, and can optionally send a final confirmation with the `x402.payment.receipts`.
+
+```mermaid
+sequenceDiagram
+    participant Client Agent
+    participant Merchant Agent
+    Client Agent->>Merchant Agent: 1. Request service (Message)
+    Merchant Agent->>Merchant Agent: 2. Execute task
+    Merchant Agent-->>Client Agent: 3. Respond with Task (state: 'completed', artifacts: [...], message: { metadata: x402PaymentRequiredResponse, scheme: 'post-payment' })
+    Client Agent->>Client Agent: 4. Create signed PaymentPayload
+    Client Agent->>Merchant Agent: 5. Fulfill request (Message with metadata containing PaymentPayload & taskId)
+    Merchant Agent->>Merchant Agent: 6. Verifies and settles the PaymentPayload
+    Merchant Agent-->>Client Agent: 7. (Optional) Respond with updated Task (message: { metadata: x402SettleResponse })
+```
+
+### **4.5. Scheme: `allowance`**
+
+The `"allowance"` scheme is based on the ERC20 `approve`/`transferFrom` pattern, enabling a client to pre-approve a spending limit for a Merchant Agent. This avoids the need for a signature for every transaction and is ideal for ongoing or subscription-based services. The flow is designed to be efficient: the Merchant Agent checks for an existing allowance on every service request and only initiates a setup flow if necessary.
+
+#### **Client Identity and Request Authentication**
+To enable the Merchant Agent to check the correct allowance, the Client Agent **MUST** prove ownership of its wallet address with each request. This is accomplished by signing a structured message, inspired by the [EIP-4361: Sign-In with Ethereum (SIWE)](https://eips.ethereum.org/EIPS/eip-4361) standard.
+
+The client **MUST** construct a message containing the following fields, format it as a string, and sign it:
+*   **`domain`**: The address or identifier of the Merchant Agent.
+*   **`address`**: The client's wallet address.
+*   **`statement`**: A human-readable message of intent, e.g., "Authorize service request".
+*   **`messageId`**: The `id` of the A2A `Message` being sent. This links the signature to the specific request.
+*   **`issuedAt`**: The ISO 8601 datetime string of when the signature was created.
+*   **`expirationTime`**: The ISO 8601 datetime string for when the signature expires.
+
+The signed message and the signature are sent in the `metadata` of the request `Message`. For example:
+`"metadata": { "x402.payment.authentication": { "signedMessage": { ... }, "signature": "..." } }`
+
+#### **Flow A: Happy Path (Sufficient Allowance Exists)**
+
+1.  **Service Request with Authentication**: The Client Agent sends a service request `Message`, including the authentication object in its `metadata`.
+2.  **Verify, Execute, Settle**: The Merchant Agent reconstructs and verifies the signed message. If valid, it checks the on-chain allowance. If sufficient, it executes the task, settles the payment via `transferFrom`, and generates a receipt.
+3.  **Deliver Result & Receipt**: The Merchant Agent returns the `Task` result and the payment receipt.
+
+```mermaid
+sequenceDiagram
+    participant Client Agent
+    participant Merchant Agent
+    Client Agent->>Merchant Agent: 1. Request service (Message with SIWE-like signature in metadata)
+    Merchant Agent->>Merchant Agent: 2. Verify signature, check allowance (succeeds), execute task & settle via transferFrom
+    Merchant Agent-->>Client Agent: 3. Respond with Task (state: 'completed', artifacts: [...], message: { metadata: x402SettleResponse })
+```
+
+#### **Flow B: Setup Path (Insufficient Allowance)**
+
+1.  **Service Request with Authentication**: The Client Agent sends an authenticated service request.
+2.  **Check Fails, Request Allowance**: The Merchant Agent verifies the signature but finds no sufficient allowance on-chain. It responds with a `Task` in the `input-required` state, requesting the client to approve an allowance.
+3.  **Client Approves**: The Client Agent signs the approval transaction (e.g., `ERC20.approve()`) and submits the `PaymentPayload`.
+4.  **Merchant Confirms & Executes**: The Merchant Agent confirms the approval transaction on-chain. Once confirmed, it proceeds with the original task, settles the payment, and delivers the final result and receipt.
+
+```mermaid
+sequenceDiagram
+    participant Client Agent
+    participant Merchant Agent
+    Client Agent->>Merchant Agent: 1. Request service (Message with signature)
+    Merchant Agent->>Merchant Agent: 2. Verify signature, check allowance (fails)
+    Merchant Agent-->>Client Agent: 3. Respond with Task (state: 'input-required', message: { metadata: x402PaymentRequiredResponse, scheme: 'allowance' })
+    Client Agent->>Client Agent: 4. Create signed PaymentPayload (for ERC20.approve)
+    Client Agent->>Merchant Agent: 5. Submit approval (Message with PaymentPayload & taskId)
+    Merchant Agent->>Merchant Agent: 6. Verifies allowance on-chain, executes task, settles payment
+    Merchant Agent-->>Client Agent: 7. Respond with Task result and receipt
+```
+
+#### **4.3.1. Step 1: Payment Request (Merchant → Client)**
 
 When a Client Agent requests a service, the Merchant Agent determines that payment is required. It creates a `Task`, sets its status to `input-required`, and includes the `x402PaymentRequiredResponse` object in the `metadata` of the `Task`'s `message`. This `Task` is sent back to the Client Agent.
 
@@ -141,7 +226,7 @@ When a Client Agent requests a service, the Merchant Agent determines that payme
 }
 ```
 
-### **4.4. Step 2: Payment Authorization (Client → Wallet → Client)**
+#### **4.3.2. Step 2: Payment Authorization (Client → Wallet → Client)**
 
 The Client Agent receives the `Task` and must determine how to proceed:
 
@@ -149,7 +234,7 @@ The Client Agent receives the `Task` and must determine how to proceed:
 
 2. **Client Rejects Payment Requirements:** The client rejects all payment requirements and responds to the server agent with a message setting the message metadata "x402.payment.status" to `payment-rejected`.
 
-### **4.5. Step 3: Fulfill and Settle (Client → Merchant → Client)**
+#### **4.3.3. Step 3: Fulfill and Settle (Client → Merchant → Client)**
 
 **Client relays signed payload to Merchant:** The Client Agent prepares the signed payload and sends it back to the Merchant Agent in the `metadata` of a new `Message`. This message **MUST** include the `taskId` from the original payment request so the Merchant can correlate the payment to the correct service.
 
@@ -233,11 +318,11 @@ Describes a single way a client can pay.
 
 | Field | Type | Required | Description |
 | ----- | ----- | ----- | ----- |
-| `scheme` | string | Yes | The payment scheme (e.g., "exact"). |
+| `scheme` | string | Yes | The payment scheme. This specification defines three schemes: `"exact"` (the standard pre-payment model), `"post-payment"`, and `"allowance"`. |
 | `network` | string | Yes | The blockchain network identifier (e.g., "base"). |
 | `asset` | string | Yes | The contract address of the token to be paid. |
-| `payTo` | string | Yes | The recipient's wallet address. |
-| `maxAmountRequired` | string | Yes | The required payment amount in the token's smallest unit (e.g., wei). |
+| `payTo` | string | Yes | The recipient's wallet address. For the `allowance` scheme, this is the `spender` address. |
+| `maxAmountRequired` | string | Yes | The required payment amount in the token's smallest unit (e.g., wei). For the `allowance` scheme, this represents the maximum allowance to be approved. |
 | `resource` | string | No | A unique identifier for the resource being purchased. |
 | `description` | string | No | A human-readable description of the payment. |
 | `maxTimeoutSeconds` | number | No | The number of seconds the payment requirements are valid for. |
@@ -277,8 +362,9 @@ This extension uses the `metadata` field on the `Message` objects to track the p
   * `"payment-verified"`: Payment payload has been sent to verified by the server agent  
   * `"payment-completed"`: Payment transaction has been settled by the server agent  
   * `"payment-failed"`: Payment payload failed to be verified, settled, or posted on-chain successfully.  
-* `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.  
-* `x402.payment.payload`: Contains the `PaymentPayload` object with the signed authorization from the signing service.  
+* `x402.payment.required`: Contains the `x402PaymentRequiredResponse` object sent from the Merchant.
+* `x402.payment.payload`: Contains the `PaymentPayload` object with the signed authorization from the signing service.
+* `x402.payment.authentication`: Contains the SIWE-style signed message and signature for client identity verification in the `allowance` scheme.
 * `x402.payment.receipts`: A persistent array containing the complete history of all x402SettleResponse objects for the task. Each new settlement attempt (successful or failed) MUST be appended to this array, never replacing it. 
 * `x402.payment.error`: In case of failure, a short error code (e.g., `"insufficient_funds"`).
 
