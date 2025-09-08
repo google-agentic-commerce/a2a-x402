@@ -7,6 +7,7 @@ class PaymentStatus(str, Enum):
     """Protocol-defined payment states for A2A flow"""
     PAYMENT_REQUIRED = "payment-required"    # Payment requested
     PAYMENT_SUBMITTED = "payment-submitted"  # Payment signed and submitted
+    PAYMENT_VERIFIED = "payment-verified"    # Payment has been verified by facilitator
     PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected by client
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed

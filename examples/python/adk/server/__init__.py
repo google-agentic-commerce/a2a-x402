@@ -1,1 +1,0 @@
-"""Server module for the ADK x402 demo."""
