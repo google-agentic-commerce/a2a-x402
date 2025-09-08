@@ -17,13 +17,14 @@ dependencies = [
     "httpx>=0.28.1",  # For async HTTP client
     "pydantic>=2.0.0",  # For data validation
     "pytest>=8.4.1",  # For testing
+    "pytest-asyncio>=1.1.0",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
+    "trio>=0.22.0",
 ]
 
 [project.scripts]
@@ -40,18 +41,10 @@ force-include = { "__init__.py" = "a2a_x402/__init__.py", "core" = "a2a_x402/cor
 allow-direct-references = true
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "--cov=a2a_x402",
-    "--cov-report=term-missing",
-    "--cov-report=html:htmlcov",
-]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests", 
