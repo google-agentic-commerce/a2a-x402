@@ -12,7 +12,8 @@ from x402.types import (
     TokenAmount,
     TokenAsset,
     EIP712Domain,
-    SupportedNetworks
+    SupportedNetworks,
+    VerifyResponse
 )
 
 from x402.facilitator import (
@@ -95,6 +96,7 @@ __all__ = [
     "TokenAsset", 
     "EIP712Domain",
     "SupportedNetworks",
+    "VerifyResponse",
     
     # Facilitator
     "FacilitatorConfig",

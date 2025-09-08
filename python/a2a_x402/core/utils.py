@@ -1,5 +1,6 @@
 """State management utilities for x402 protocol."""
 
+import logging
 from typing import Optional
 from ..types import (
     Task,
@@ -8,11 +9,19 @@ from ..types import (
     X402Metadata,
     x402PaymentRequiredResponse,
     PaymentPayload,
+    ExactPaymentPayload,
     SettleResponse,
     TaskState,
     TaskStatus
 )
 from a2a.types import TextPart
+
+
+def _parse_payment_payload(payload_data: dict) -> PaymentPayload:
+    """Parse the payment payload using the top-level Pydantic model."""
+    # The PaymentPayload model from x402.types is designed to handle the
+    # entire structure, including the nested payload based on the scheme.
+    return PaymentPayload.model_validate(payload_data)
 
 
 def create_payment_submission_message(
@@ -121,8 +130,9 @@ class X402Utils:
         payload_data = message.metadata.get(self.PAYLOAD_KEY)
         if payload_data:
             try:
-                return PaymentPayload.model_validate(payload_data)
-            except Exception:
+                return _parse_payment_payload(payload_data)
+            except Exception as e:
+                logging.error(f"Failed to parse payment payload: {e}", exc_info=True)
                 return None
         return None
     
@@ -146,7 +156,10 @@ class X402Utils:
     ) -> Task:
         """Set task to payment required state with proper metadata."""
         # Set task status to input-required as per A2A spec
-        task.status = TaskStatus(state=TaskState.input_required)
+        if task.status:
+            task.status.state = TaskState.input_required
+        else:
+            task.status = TaskStatus(state=TaskState.input_required)
         
         # Ensure task has a status message for metadata
         if not hasattr(task.status, 'message') or not task.status.message:
@@ -167,32 +180,6 @@ class X402Utils:
         task.status.message.metadata[self.REQUIRED_KEY] = payment_required.model_dump(by_alias=True)
         return task
     
-    def record_payment_submission(
-        self,
-        task: Task,
-        payment_payload: PaymentPayload
-    ) -> Task:
-        """Record payment submission in task metadata."""  
-        # Ensure task has a status message for metadata
-        if not hasattr(task.status, 'message') or not task.status.message:
-            from ..types import Message
-            from a2a.types import TextPart
-            task.status.message = Message(
-                messageId=f"{task.id}-status",
-                role="agent",
-                parts=[TextPart(kind="text", text="Payment submission recorded.")],
-                metadata={}
-            )
-        
-        # Ensure message has metadata
-        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
-            task.status.message.metadata = {}
-            
-        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
-        task.status.message.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
-        # Note: Keep requirements for verification - will be cleaned up after settlement
-        return task
-
     def record_payment_verified(
         self,
         task: Task,
