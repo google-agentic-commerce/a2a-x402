@@ -34,9 +34,9 @@ You should see logs indicating the server is running, typically on `localhost:10
 ### 3. Start the Client Agent & Web UI
 The client agent is an orchestrator that communicates with the merchant. The ADK provides a web interface to interact with it.
 
-Run this command from the root of the `a2a-x402` repository:
+Run this command from the 'examples/python/adk-demo' directory of the `a2a-x402` repository:
 ```bash
-uv run --directory=examples/python/adk-demo adk web examples/python/adk-demo/client_agent/agent.py
+uv run --active server
 ```
 This will start the ADK web server, usually on `localhost:8080`. Open this URL in your browser to interact with the client agent and start the purchase flow.
 
