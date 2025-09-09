@@ -223,20 +223,8 @@ class X402ServerExecutor(X402BaseExecutor, metaclass=ABCMeta):
         """
         logger.info("Searching for matching payment requirement...")
         for requirement in accepts_array:
-            # Detailed, step-by-step comparison logging
             scheme_match = requirement.scheme == payment_payload.scheme
             network_match = requirement.network == payment_payload.network
-            logger.info(
-                f"  - Comparing requirement (scheme='{requirement.scheme}', "
-                f"network='{requirement.network}') with payload "
-                f"(scheme='{payment_payload.scheme}', network='{payment_payload.network}')"
-            )
-            logger.info(
-                f"    - Scheme match: {scheme_match} (Type: {type(requirement.scheme)} vs {type(payment_payload.scheme)})"
-            )
-            logger.info(
-                f"    - Network match: {network_match} (Type: {type(requirement.network)} vs {type(payment_payload.network)})"
-            )
 
             if scheme_match and network_match:
                 logger.info("  => Found a matching payment requirement.")
@@ -251,10 +239,6 @@ class X402ServerExecutor(X402BaseExecutor, metaclass=ABCMeta):
         """
         Extracts the matching payment requirements based on the payment payload.
         """
-        logger.info(
-            "Payment requirements store state at retrieval: "
-            f"{self._payment_requirements_store}"
-        )
         accepts_array = self._payment_requirements_store.get(task.id)
         if not accepts_array:
             logger.warning(
