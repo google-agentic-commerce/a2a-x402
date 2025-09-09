@@ -153,14 +153,6 @@ class X402ServerExecutor(X402BaseExecutor, metaclass=ABCMeta):
             return await self._fail_payment(task, X402ErrorCode.INVALID_SIGNATURE, "Missing payment requirements", event_queue)
         
         logger.info(f"Retrieved payment requirements: {payment_requirements.model_dump_json(indent=2)}")
-
-        # HACK: The Pydantic model incorrectly defines timestamps as strings.
-        # The facilitator API expects integers. We must convert them before verification.
-        if hasattr(payment_payload, 'payload') and isinstance(payment_payload.payload, dict):
-            auth = payment_payload.payload.get('authorization')
-            if auth and isinstance(auth, dict):
-                auth['validAfter'] = int(auth.get('validAfter', 0))
-                auth['validBefore'] = int(auth.get('validBefore', 0))
         
         try:
             logger.info("Calling self.verify_payment...")
