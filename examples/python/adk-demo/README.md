@@ -22,12 +22,12 @@ Run this command from the root of the `a2a-x402` repository:
 uv sync --directory=examples/python/adk-demo
 ```
 
-### 2. Start the Merchant Server
+### 2. Start the Merchant Agent Server
 The merchant server hosts the agent that sells products.
 
 Run this command from the root of the `a2a-x402` repository:
 ```bash
-uv run --directory=examples/python/adk-demo server
+uv --directory=examples/python/adk-demo run adk web
 ```
 You should see logs indicating the server is running, typically on `localhost:10000`.
 
@@ -38,7 +38,7 @@ Run this command from the 'examples/python/adk-demo' directory of the `a2a-x402`
 ```bash
 uv run --active server
 ```
-This will start the ADK web server, usually on `localhost:8080`. Open this URL in your browser to interact with the client agent and start the purchase flow.
+This will start the ADK web server, usually on `localhost:8000`. Open this URL in your browser to interact with the client agent and start the purchase flow.
 
 ## Architectural Flow
 
