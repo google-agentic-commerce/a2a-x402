@@ -284,9 +284,7 @@ class X402ServerExecutor(X402BaseExecutor, metaclass=ABCMeta):
         error_message = str(exception)
 
         # Store payment requirements for later correlation
-        logger.info(f"Storing payment requirements for task ID: {task.id}")
         self._payment_requirements_store[task.id] = accepts_array
-        logger.info(f"Payment requirements store state after storing: {self._payment_requirements_store}")
         
         payment_required = x402PaymentRequiredResponse(
             x402_version=1,
