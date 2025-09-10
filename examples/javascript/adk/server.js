@@ -93,6 +93,11 @@ const agentCard = {
 
 // Simple executor that triggers payment for any request
 class MerchantExecutor {
+  constructor(provider, signer) {
+    this.provider = provider;
+    this.signer = signer;
+  }
+
   async execute(requestContext, eventBus) {
     const { taskId, contextId, userMessage } = requestContext;
     const meta = (userMessage && userMessage.metadata) || {};
@@ -144,8 +149,7 @@ class MerchantExecutor {
       }
 
       // Verify EIP-712 signature (USDC v2 EIP-3009 TransferWithAuthorization)
-      const provider = new JsonRpcProvider(RPC_URL);
-      const domain = await getDomain(provider, asset);
+      const domain = await getDomain(this.provider, asset);
       const types = {
         TransferWithAuthorization: [
           { name: "from", type: "address" },
@@ -204,7 +208,7 @@ class MerchantExecutor {
       });
       console.log("[server] payment-pending published", { taskId });
 
-      if (!RPC_URL || !MERCHANT_PRIVATE_KEY) {
+      if (!this.provider || !this.signer) {
         console.error("[server] RPC_URL or MERCHANT_PRIVATE_KEY not set. Cannot settle on-chain.");
         eventBus.publish({
           kind: "status-update",
@@ -227,8 +231,7 @@ class MerchantExecutor {
       }
 
       // Submit on-chain settlement: transferWithAuthorization
-      const signer = new Wallet(MERCHANT_PRIVATE_KEY, provider);
-      const contract = new Contract(asset, USDC_EIP3009_ABI, signer);
+      const contract = new Contract(asset, USDC_EIP3009_ABI, this.signer);
       const sig = Signature.from(sigHex);
       const tx = await contract.transferWithAuthorization(
         from,
@@ -307,10 +310,9 @@ class MerchantExecutor {
     let domainForClient = undefined;
     let tokenDecimals = 6;
     try {
-      if (RPC_URL) {
-        const provider = new JsonRpcProvider(RPC_URL);
-        domainForClient = await getDomain(provider, ASSET_ADDRESS);
-        tokenDecimals = await getTokenDecimals(provider, ASSET_ADDRESS, 6);
+      if (this.provider) {
+        domainForClient = await getDomain(this.provider, ASSET_ADDRESS);
+        tokenDecimals = await getTokenDecimals(this.provider, ASSET_ADDRESS, 6);
       }
     } catch (e) {
       console.warn("[server] failed to derive token domain; client will use defaults", e?.message || e);
@@ -378,7 +380,9 @@ async function main() {
   });
 
   const taskStore = new InMemoryTaskStore();
-  const executor = new MerchantExecutor();
+  const sharedProvider = RPC_URL ? new JsonRpcProvider(RPC_URL) : undefined;
+  const sharedSigner = MERCHANT_PRIVATE_KEY && sharedProvider ? new Wallet(MERCHANT_PRIVATE_KEY, sharedProvider) : undefined;
+  const executor = new MerchantExecutor(sharedProvider, sharedSigner);
   const requestHandler = new DefaultRequestHandler(agentCard, taskStore, executor);
 
   const a2a = new A2AExpressApp(requestHandler);
