@@ -6,6 +6,7 @@ const X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1";
 const X402_STATUS_KEY = "x402.payment.status";
 const X402_REQUIRED_KEY = "x402.payment.required";
 const X402_PAYLOAD_KEY = "x402.payment.payload";
+const X402_RECEIPTS_KEY = "x402.payment.receipts";
 
 // (Removed mock payload helper; the example uses a real EIP-3009 signature below)
 
@@ -133,8 +134,8 @@ async function main() {
   console.log("After payment submission, task state:", submission?.status?.state);
   const finalMeta = submission?.status?.message?.metadata || {};
   console.log("Payment status:", finalMeta[X402_STATUS_KEY]);
-  if (Array.isArray(finalMeta["x402.payment.receipts"])) {
-    console.log("Receipt:", finalMeta["x402.payment.receipts"][0]);
+  if (Array.isArray(finalMeta[X402_RECEIPTS_KEY])) {
+    console.log("Receipt:", finalMeta[X402_RECEIPTS_KEY][0]);
   }
 }
 
