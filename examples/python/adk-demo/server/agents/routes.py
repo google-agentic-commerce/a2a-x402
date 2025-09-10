@@ -28,6 +28,7 @@ from .adk_merchant_agent import AdkMerchantAgent
 # The concrete x402 executor wrappers
 from .x402_merchant_executor import X402MerchantExecutor
 from .mock_facilitator import MockFacilitator
+from .real_facilitator import RealFacilitator
 
 
 # A dictionary mapping the URL path to the agent factory
@@ -97,7 +98,13 @@ def _create_routes(
         facilitator = MockFacilitator()
     else:
         print("--- Using REAL Facilitator ---")
-        facilitator = FacilitatorClient()
+        # Check if merchant private key is configured
+        if not os.getenv("MERCHANT_PRIVATE_KEY"):
+            raise ValueError(
+                "MERCHANT_PRIVATE_KEY must be set in .env when USE_MOCK_FACILITATOR=false. "
+                "This key is needed to execute on-chain transfers."
+            )
+        facilitator = RealFacilitator()
 
     # 3. Apply the concrete x402 merchant wrapper.
     agent_executor = X402MerchantExecutor(agent_executor, facilitator)

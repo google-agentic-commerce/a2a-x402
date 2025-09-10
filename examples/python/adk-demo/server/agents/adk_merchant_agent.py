@@ -26,16 +26,18 @@ class AdkMerchantAgent(BaseAgent):
     The business logic is implemented as tools.
     """
 
-    def __init__(self, wallet_address: str = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"):
+    def __init__(self, wallet_address: str = "0x3B9b10B8a63B93Ae8F447A907FD1EF067153c4e5"):
         self._wallet_address = wallet_address
         self.x402 = X402Utils()
 
     def _get_product_price(self, product_name: str) -> str:
-        """Generates a deterministic price for a product."""
+        """Generates a deterministic price for a product between 0.1 and 1 USDC."""
+        # USDC has 6 decimals, so 1 USDC = 1,000,000 units
+        # Range: 100,000 (0.1 USDC) to 1,000,000 (1 USDC)
         price = (
             int(hashlib.sha256(product_name.lower().encode()).hexdigest(), 16)
-            % 99900001
-            + 100000
+            % 900001  # Range of 900,001 possible values
+            + 100000  # Minimum 100,000 (0.1 USDC)
         )
         return str(price)
 

@@ -1,4 +1,8 @@
 import httpx
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Local imports
 from client_agent._task_store import TaskStore

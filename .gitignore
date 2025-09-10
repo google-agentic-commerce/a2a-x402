@@ -1,6 +1,7 @@
 # Environment variables
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Python virtual environments
 .venv/
