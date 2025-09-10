@@ -1,0 +1,18 @@
+{
+  "name": "a2a-x402-js-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Basic A2A x402 example using the official A2A JavaScript SDK",
+  "scripts": {
+    "server": "node server.js",
+    "client": "node client.js",
+    "verify": "node verify.js"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^0.3.3",
+    "ethers": "^6.13.2",
+    "express": "^4.19.2",
+    "uuid": "^9.0.1"
+  }
+}
