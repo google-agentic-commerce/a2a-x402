@@ -24,6 +24,7 @@ from .base_agent import BaseAgent
 
 # The concrete agent factories
 from .adk_merchant_agent import AdkMerchantAgent
+from .eigenda_agent import EigenDAAgent
 
 # The concrete x402 executor wrappers
 from .x402_merchant_executor import X402MerchantExecutor
@@ -33,7 +34,8 @@ from .real_facilitator import RealFacilitator
 
 # A dictionary mapping the URL path to the agent factory
 AGENTS: Dict[str, BaseAgent] = {
-    "merchant_agent": AdkMerchantAgent(),
+    # "merchant_agent": AdkMerchantAgent(),  # Commented out - focusing on EigenDA
+    "eigenda_agent": EigenDAAgent(),
 }
 
 

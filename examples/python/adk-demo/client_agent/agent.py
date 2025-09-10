@@ -11,7 +11,7 @@ from client_agent.wallet import MockLocalWallet
 
 root_agent = ClientAgent(
     remote_agent_addresses=[
-        "http://localhost:10000/agents/merchant_agent",
+        "http://localhost:10000/agents/eigenda_agent",
     ],
     http_client=httpx.AsyncClient(timeout=30),
     wallet=MockLocalWallet(),

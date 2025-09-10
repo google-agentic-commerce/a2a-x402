@@ -60,10 +60,10 @@ class ClientAgent:
         """Creates the ADK Agent instance."""
         return Agent(
             model="gemini-2.5-flash",
-            name="client_agent",
+            name="eigenda_client",
             instruction=self.root_instruction,
             before_agent_callback=self.before_agent_callback,
-            description="An orchestrator that delegates tasks to other agents.",
+            description="A client for storing and retrieving text data on EigenDA decentralized storage.",
             tools=[self.list_remote_agents, self.send_message],
         )
 
@@ -72,20 +72,46 @@ class ClientAgent:
     def root_instruction(self, context: ReadonlyContext) -> str:
         """Provides the master instruction set for the orchestrator LLM."""
         return f"""
-You are a master orchestrator agent. Your job is to complete user requests by delegating tasks to a network of specialized agents.
+You are an EigenDA storage client that helps users store and retrieve text data on decentralized storage.
 
-**Standard Operating Procedure (SOP):**
+**Your Primary Functions:**
+1. **Store Text**: Help users store text messages on EigenDA for $0.01 per operation
+2. **Retrieve Text**: Help users retrieve stored text using certificates (free)
+3. **List Certificates**: Show users their stored data certificates
 
-1.  **Discover**: Always start by using `list_remote_agents` to see which agents are available.
-2.  **Delegate**: Send the user's request to the most appropriate agent using `send_message`. For example, if the user wants to buy something, send the request to a merchant agent.
-3.  **Confirm Payment**: If the merchant requires a payment, the system will return a confirmation message. You MUST present this message to the user.
-4.  **Sign and Send**: If the user confirms they want to pay (e.g., by saying "yes"), you MUST call `send_message` again, targeting the *same agent*, with the exact message: "sign_and_send_payment". The system will handle the signing and sending of the payload.
-5.  **Report Outcome**: Clearly report the final success or failure message to the user.
+**Standard Operating Procedure:**
 
-**System Context:**
+1. **Initial Greeting**: When a user first connects, introduce yourself as an EigenDA storage assistant and explain:
+   - You can store text on decentralized storage for $0.01
+   - You can retrieve stored text for free with a certificate
+   - Data is permanently stored on EigenDA
 
-* **Available Agents**:
-    {self.agents_info_str}
+2. **For Storage Requests**:
+   - First, send the user's text to the EigenDA Storage Agent using `send_message` with the agent name and their message
+   - The system will return a payment request with the fee details
+   - Present the payment request to the user and ask for confirmation
+   - IMPORTANT: Wait for the user to explicitly confirm (e.g., "yes", "approve")
+   - After user confirmation, call `send_message` again with the SAME agent name and the message "yes" or "approve"
+   - The system will handle the payment automatically
+   - Always provide the certificate ID after successful storage
+
+3. **For Retrieval Requests**:
+   - Send the certificate to the EigenDA Storage Agent using `send_message`
+   - Return the retrieved text to the user
+
+4. **Payment Flow - CRITICAL**:
+   - NEVER send "sign_and_send_payment" as the first message
+   - Always wait for a payment request from the agent first
+   - Only after receiving a payment request and user approval, send the confirmation
+   - The payment confirmation happens automatically when you send "yes" or "approve"
+
+**Important Notes:**
+- Always save and display the certificate ID - it's the only way to retrieve data
+- Certificates should be treated like receipts - users need them for retrieval
+- Retrieval is always free, only storage costs money
+
+**Available Storage Agent:**
+{self.agents_info_str}
 """
 
     async def before_agent_callback(self, callback_context: CallbackContext):
@@ -127,11 +153,12 @@ You are a master orchestrator agent. Your job is to complete user requests by de
         task_id = None
         message_metadata = {}
 
-        if message == "sign_and_send_payment":
+        if message.lower() in ["sign_and_send_payment", "yes", "approve", "confirm"]:
             # This is the second step: user has confirmed payment.
             purchase_task_data = state.get("purchase_task")
             if not purchase_task_data:
-                raise ValueError("State inconsistency: 'purchase_task' not found to sign payment.")
+                # No pending payment task - the user might be trying to approve without a request
+                return "No pending payment to approve. Please first request to store text data."
             
             original_task = Task.model_validate(purchase_task_data)
             task_id = original_task.id
@@ -147,6 +174,8 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             
             # The message text to the merchant is a simple confirmation.
             message = "send_signed_payment_payload"
+            
+            # Don't clear the purchase task here - it will be cleared after completion
         
         # --- Construct the message with metadata ---
         request = MessageSendParams(
@@ -184,13 +213,26 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 raise ValueError("Server requested payment but sent no requirements.")
 
             # Extract details for the confirmation message.
-            product_name = requirements.accepts[0].extra.get("name", "the item")
-            price = requirements.accepts[0].max_amount_required
+            extra = requirements.accepts[0].extra
             
-            return f"The merchant is requesting payment for '{product_name}' for {price} units. Do you want to approve this payment?"
+            # Check if this is an EigenDA storage request
+            if extra.get("action") == "store_text":
+                data_length = extra.get("data_length", "unknown")
+                price = requirements.accepts[0].max_amount_required
+                cert_prefix = extra.get("certificate_prefix", "")
+                return f"EigenDA storage request: Store {data_length} characters for {price} units ($0.01). Certificate preview: {cert_prefix}. Do you want to approve this payment?"
+            else:
+                # Standard product purchase
+                product_name = extra.get("name", "the item")
+                price = requirements.accepts[0].max_amount_required
+                return f"The merchant is requesting payment for '{product_name}' for {price} units. Do you want to approve this payment?"
 
         elif response_task.status.state in (TaskState.completed, TaskState.failed):
             # The task is finished. Report the outcome.
+            # Clear any pending purchase task
+            if "purchase_task" in state:
+                del state["purchase_task"]
+            
             final_text = []
             if response_task.artifacts:
                 for artifact in response_task.artifacts:
@@ -204,7 +246,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             
             # Fallback for tasks with no text artifacts (e.g., payment settlement)
             if self.x402.get_payment_status(response_task) == PaymentStatus.PAYMENT_COMPLETED:
-                return "Payment successful! Your purchase is complete."
+                return "Payment successful! Your data has been stored on EigenDA."
 
             return f"Task with {agent_name} is {response_task.status.state.value}."
         
