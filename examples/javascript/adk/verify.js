@@ -63,50 +63,8 @@ async function main() {
   }
 
   const wantedToken = process.env.ASSET_ADDRESS?.toLowerCase();
-  const logs = receipt.logs || [];
-  if (logs.length === 0) {
-    // Fallback: query logs directly from the provider for this block and contract
-    const filter = {
-      address: tx?.to,
-      fromBlock: receipt.blockNumber,
-      toBlock: receipt.blockNumber,
-    };
-    const fetched = await provider.getLogs(filter);
-    if (!fetched || fetched.length === 0) {
-      console.log("No logs found on receipt or by provider.getLogs().");
-      return;
-    }
-    console.log("Decoded logs (fetched):");
-    for (const log of fetched) {
-      if (wantedToken && log.address.toLowerCase() !== wantedToken) continue;
-      let parsed;
-      try {
-        parsed = iface.parseLog({ topics: log.topics, data: log.data });
-      } catch (_e) {}
-      if (parsed) {
-        const out = { event: parsed.name, token: log.address };
-        if (parsed.name === "Transfer") {
-          const { from, to, value } = parsed.args;
-          console.log({ ...out, from, to, value: value.toString() });
-        } else if (parsed.name === "Approval") {
-          const { owner, spender, value } = parsed.args;
-          console.log({ ...out, owner, spender, value: value.toString() });
-        } else if (parsed.name === "AuthorizationUsed" || parsed.name === "AuthorizationCanceled") {
-          const { authorizer, nonce } = parsed.args;
-          console.log({ ...out, authorizer, nonce });
-        } else {
-          console.log(out);
-        }
-      } else {
-        console.log({ token: log.address, topic0: log.topics?.[0] });
-      }
-    }
-    return;
-  }
-
-  console.log("Decoded logs:");
-  for (const log of logs) {
-    if (wantedToken && log.address.toLowerCase() !== wantedToken) continue;
+  const processLog = (log) => {
+    if (wantedToken && log.address.toLowerCase() !== wantedToken) return;
     let parsed;
     try {
       parsed = iface.parseLog({ topics: log.topics, data: log.data });
@@ -128,6 +86,25 @@ async function main() {
     } else {
       console.log({ token: log.address, topic0: log.topics?.[0] });
     }
+  };
+
+  if (receipt.logs?.length) {
+    console.log("Decoded logs:");
+    receipt.logs.forEach(processLog);
+  } else {
+    // Fallback: query logs directly from the provider for this block and contract
+    const filter = {
+      address: tx?.to,
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+    };
+    const fetched = await provider.getLogs(filter);
+    if (!fetched || fetched.length === 0) {
+      console.log("No logs found on receipt or by provider.getLogs().");
+      return;
+    }
+    console.log("Decoded logs (fetched):");
+    fetched.forEach(processLog);
   }
 }
 
