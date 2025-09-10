@@ -41,11 +41,15 @@ async function getDomain(provider, tokenAddress) {
   let version = "2";
   try {
     name = await token.name();
-  } catch {}
+  } catch (e) {
+    console.warn(`[server] Failed to fetch token name for ${tokenAddress}. Using default.`, e?.message || e);
+  }
   try {
     const v = await token.version();
     if (typeof v === "string" && v.length > 0) version = v;
-  } catch {}
+  } catch (e) {
+    console.warn(`[server] Failed to fetch token version for ${tokenAddress}. Using default.`, e?.message || e);
+  }
   return {
     name,
     version,
@@ -67,7 +71,9 @@ async function getTokenDecimals(provider, tokenAddress, fallbackDecimals) {
     const d = await token.decimals();
     const n = Number(d);
     if (!Number.isNaN(n) && n > 0 && n < 255) return n;
-  } catch {}
+  } catch (e) {
+    console.warn(`[server] Could not fetch token decimals for ${tokenAddress}, using fallback.`, e?.message || e);
+  }
   return fallbackDecimals;
 }
 
