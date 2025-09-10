@@ -1,6 +1,6 @@
 import { A2AClient } from "@a2a-js/sdk/client";
 import { v4 as uuidv4 } from "uuid";
-import { Wallet, hexlify, randomBytes } from "ethers";
+import { Wallet, hexlify, randomBytes, JsonRpcProvider } from "ethers";
 
 const X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1";
 const X402_STATUS_KEY = "x402.payment.status";
@@ -50,7 +50,13 @@ async function main() {
   if (!payerKey) {
     throw new Error("CLIENT_PRIVATE_KEY env var is required to sign payment.");
   }
-  const chainId = parseInt(process.env.CHAIN_ID || "8453", 10);
+  // Derive chainId from RPC (same approach as server)
+  const rpcUrl = process.env.RPC_URL;
+  if (!rpcUrl) {
+    throw new Error("RPC_URL env var is required to determine chainId.");
+  }
+  const net = await new JsonRpcProvider(rpcUrl).getNetwork();
+  const chainId = Number(net.chainId);
   const wallet = new Wallet(payerKey);
   const selected = paymentRequired.accepts[0];
   // Normalize addresses to lowercase (ethers EIP-712 encoding accepts lowercase)

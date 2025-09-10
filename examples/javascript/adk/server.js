@@ -15,7 +15,7 @@ const X402_RECEIPTS_KEY = "x402.payment.receipts";
 const MERCHANT_WALLET = process.env.MERCHANT_PRIVATE_KEY ? new Wallet(process.env.MERCHANT_PRIVATE_KEY) : undefined;
 const MERCHANT_ADDRESS = MERCHANT_WALLET ? MERCHANT_WALLET.address : undefined; // the payee/recipient
 const ASSET_ADDRESS = process.env.ASSET_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // usdc on base sepolia
-const X402_NETWORK = process.env.X402_NETWORK || "base"; // e.g., "base" or "base-sepolia"
+const X402_NETWORK = process.env.X402_NETWORK || "base-sepolia"; // e.g., "base" or "base-sepolia"
 const PRICE_USDC = process.env.PRICE_USDC || "1"; // decimal string, e.g., "1" or "1.50"
 const PRICE_ATOMIC = process.env.PRICE_ATOMIC; // optional override in atomic units string
 const MAX_TIMEOUT_SECONDS = parseInt(process.env.MAX_TIMEOUT_SECONDS || "600", 10);
@@ -250,7 +250,7 @@ class MerchantExecutor {
       const receipt = {
         success: true,
         transaction: mined?.hash || tx.hash,
-        network: "base",
+        network: X402_NETWORK,
         payer: from,
       };
 
