@@ -156,7 +156,7 @@ You are an EigenDA storage client that helps users store and retrieve text data 
         if message.lower() in ["sign_and_send_payment", "yes", "approve", "confirm"]:
             # This is the second step: user has confirmed payment.
             purchase_task_data = state.get("purchase_task")
-            if not purchase_task_data:
+            if not purchase_task_data or purchase_task_data is None:
                 # No pending payment task - the user might be trying to approve without a request
                 return "No pending payment to approve. Please first request to store text data."
             
@@ -230,8 +230,8 @@ You are an EigenDA storage client that helps users store and retrieve text data 
         elif response_task.status.state in (TaskState.completed, TaskState.failed):
             # The task is finished. Report the outcome.
             # Clear any pending purchase task
-            if "purchase_task" in state:
-                del state["purchase_task"]
+            if state.get("purchase_task"):
+                state["purchase_task"] = None
             
             final_text = []
             if response_task.artifacts:
