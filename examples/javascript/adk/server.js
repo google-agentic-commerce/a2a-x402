@@ -344,7 +344,7 @@ class MerchantExecutor {
                   payTo: MERCHANT_ADDRESS,
                   maxAmountRequired: PRICE_ATOMIC || decimalToAtomic(PRICE_USDC, tokenDecimals),
                   maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
-                  extra: { name: "USD Coin", version: 2, domain: domainForClient },
+                  extra: { domain: domainForClient },
                 },
               ],
             },
