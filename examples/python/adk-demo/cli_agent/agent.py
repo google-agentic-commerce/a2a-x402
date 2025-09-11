@@ -1,0 +1,19 @@
+import httpx
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Local imports
+from _task_store import TaskStore
+from client_agent import ClientAgent
+from wallet import MockLocalWallet
+
+root_agent = ClientAgent(
+    remote_agent_addresses=[
+        "http://localhost:10000/agents/eigenda_agent",
+    ],
+    http_client=httpx.AsyncClient(timeout=30),
+    wallet=MockLocalWallet(),
+    task_callback=TaskStore().update_task,
+).create_agent()
