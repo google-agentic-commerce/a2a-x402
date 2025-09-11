@@ -46,6 +46,11 @@ async function main() {
   }
 
   const paymentRequired = metadata[X402_REQUIRED_KEY];
+  if (!paymentRequired?.accepts?.length) {
+    console.error("Server did not provide any payment options.");
+    return;
+  }
+
   // Build a real EIP-3009 signature with a local payer key
   const payerKey = process.env.CLIENT_PRIVATE_KEY;
   if (!payerKey) {
