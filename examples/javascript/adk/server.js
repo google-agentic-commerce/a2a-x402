@@ -377,6 +377,20 @@ class MerchantExecutor {
 }
 
 async function main() {
+  // Validate critical configuration before starting the server
+  if (!MERCHANT_PRIVATE_KEY) {
+    console.error("[server] MERCHANT_PRIVATE_KEY is required. Set it in your environment.");
+    process.exit(1);
+  }
+  if (!RPC_URL) {
+    console.error("[server] RPC_URL is required for settlement. Set it in your environment.");
+    process.exit(1);
+  }
+  if (!MERCHANT_ADDRESS) {
+    console.error("[server] MERCHANT_ADDRESS could not be derived from MERCHANT_PRIVATE_KEY.");
+    process.exit(1);
+  }
+
   const app = express();
   app.use(express.json());
   // Echo extension activation header on all responses
