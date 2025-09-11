@@ -9,6 +9,7 @@ const X402_STATUS_KEY = "x402.payment.status";
 const X402_REQUIRED_KEY = "x402.payment.required";
 const X402_PAYLOAD_KEY = "x402.payment.payload";
 const X402_RECEIPTS_KEY = "x402.payment.receipts";
+const X402_ERROR_KEY = "x402.payment.error";
 
 // Merchant/token configuration (env configurable)
 const MERCHANT_WALLET = process.env.MERCHANT_PRIVATE_KEY ? new Wallet(process.env.MERCHANT_PRIVATE_KEY) : undefined;
@@ -143,7 +144,7 @@ class MerchantExecutor {
               kind: "message",
               role: "agent",
               parts: [{ kind: "text", text: "Payment verification failed: invalid payload." }],
-              metadata: { [X402_STATUS_KEY]: "payment-failed" },
+              metadata: { [X402_STATUS_KEY]: "payment-failed", [X402_ERROR_KEY]: "INVALID_AMOUNT" },
             },
             timestamp: new Date().toISOString(),
           },
@@ -185,7 +186,7 @@ class MerchantExecutor {
               kind: "message",
               role: "agent",
               parts: [{ kind: "text", text: "Payment verification failed: invalid signature." }],
-              metadata: { [X402_STATUS_KEY]: "payment-failed" },
+              metadata: { [X402_STATUS_KEY]: "payment-failed", [X402_ERROR_KEY]: "INVALID_SIGNATURE" },
             },
             timestamp: new Date().toISOString(),
           },
@@ -225,7 +226,7 @@ class MerchantExecutor {
               kind: "message",
               role: "agent",
               parts: [{ kind: "text", text: "Settlement configuration missing (RPC_URL or MERCHANT_PRIVATE_KEY)." }],
-              metadata: { [X402_STATUS_KEY]: "payment-failed" },
+              metadata: { [X402_STATUS_KEY]: "payment-failed", [X402_ERROR_KEY]: "SETTLEMENT_FAILED" },
             },
             timestamp: new Date().toISOString(),
           },
@@ -238,20 +239,43 @@ class MerchantExecutor {
       // Submit on-chain settlement: transferWithAuthorization
       const contract = new Contract(asset, USDC_EIP3009_ABI, this.signer);
       const sig = Signature.from(sigHex);
-      const tx = await contract.transferWithAuthorization(
-        from,
-        to,
-        value,
-        validAfter,
-        validBefore,
-        nonce,
-        sig.v,
-        sig.r,
-        sig.s
-      );
-      console.log("[server] settlement tx sent", { hash: tx.hash });
-      const mined = await tx.wait();
-      console.log("[server] settlement tx mined", { hash: mined?.hash });
+      let mined;
+      try {
+        const tx = await contract.transferWithAuthorization(
+          from,
+          to,
+          value,
+          validAfter,
+          validBefore,
+          nonce,
+          sig.v,
+          sig.r,
+          sig.s
+        );
+        console.log("[server] settlement tx sent", { hash: tx.hash });
+        mined = await tx.wait();
+        console.log("[server] settlement tx mined", { hash: mined?.hash });
+      } catch (e) {
+        console.error("[server] settlement failed", e?.message || e);
+        eventBus.publish({
+          kind: "status-update",
+          taskId,
+          contextId,
+          status: {
+            state: "failed",
+            message: {
+              kind: "message",
+              role: "agent",
+              parts: [{ kind: "text", text: "Payment settlement failed." }],
+              metadata: { [X402_STATUS_KEY]: "payment-failed", [X402_ERROR_KEY]: "SETTLEMENT_FAILED" },
+            },
+            timestamp: new Date().toISOString(),
+          },
+          final: true,
+        });
+        eventBus.finished();
+        return;
+      }
 
       // Append receipts history
       const prevReceipts = requestContext?.task?.status?.message?.metadata?.[X402_RECEIPTS_KEY] || [];
