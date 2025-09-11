@@ -24,7 +24,7 @@ npm install
 
 ### Configure
 
-Set these as environment variables (or in a local `.env` and export before running):
+Set these as environment variables. You can place them in a local `.env` file and use a command like `export $(grep -v '^#' .env | xargs)` to load them into your shell before running the scripts.
 
 - RPC_URL: JSON‑RPC endpoint for your network (Base / Base Sepolia)
 - MERCHANT_PRIVATE_KEY: merchant signer (submits settlement)
