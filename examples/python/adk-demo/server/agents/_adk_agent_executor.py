@@ -172,11 +172,32 @@ class ADKAgentExecutor(AgentExecutor):
         if context.current_task and context.current_task.metadata.get("x402_payment_verified", False):
             # If payment is verified, write structured data to the session state.
             # The agent's `before_agent_callback` will read this.
-            product_name = context.current_task.status.message.metadata.get("x402.payment.required", {}).get("accepts", [{}])[0].get("extra", {}).get("name", "the item")
-            session.state['payment_verified_data'] = {
-                "product": product_name,
-                "status": "SUCCESS"
+            payment_requirements = context.current_task.status.message.metadata.get("x402.payment.required", {})
+            accepts = payment_requirements.get("accepts", [{}])
+            extra_data = accepts[0].get("extra", {}) if accepts else {}
+            
+            # Extract all relevant data from payment requirements
+            payment_data = {
+                "status": "SUCCESS",
+                "product": extra_data.get("name", "stored text"),
+                "action": extra_data.get("action", "unknown")
             }
+            
+            # Include certificate if available
+            if "certificate_prefix" in extra_data:
+                payment_data["certificate_id"] = extra_data["certificate_prefix"]
+                logger.info(f"=== X402 PAYMENT VERIFICATION ===")
+                logger.info(f"Certificate ID {extra_data['certificate_prefix']} included in payment data")
+                logger.info(f"Full extra_data: {extra_data}")
+            else:
+                logger.warning(f"No certificate_prefix found in extra_data: {extra_data}")
+            
+            # Include data size if available
+            if "data_length" in extra_data:
+                payment_data["data_length"] = extra_data["data_length"]
+            
+            session.state['payment_verified_data'] = payment_data
+            logger.debug(f"Payment verified data set: {payment_data}")
             # We still need to send a message to trigger the agent's turn.
             # The content doesn't matter as much, as the callback will intercept it.
             user_message = types.UserContent(parts=[types.Part(text="Payment verified. Please proceed.")])
