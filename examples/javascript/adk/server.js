@@ -1,5 +1,4 @@
 import express from "express";
-import { v4 as uuidv4 } from "uuid";
 import { JsonRpcProvider, Wallet, Contract, Signature, verifyTypedData } from "ethers";
 import { DefaultRequestHandler, InMemoryTaskStore } from "@a2a-js/sdk/server";
 import { A2AExpressApp } from "@a2a-js/sdk/server/express";
