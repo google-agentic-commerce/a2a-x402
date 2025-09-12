@@ -1,6 +1,6 @@
-# EigenDA Decentralized Storage with A2A and X402 Payments
+# DK x402 Payment Protocol Demo with EigenDA Storage
 
-A complete example demonstrating decentralized text storage on EigenDA with micropayments using the A2A protocol and X402 payment system.
+A complete example demonstrating text storage on EigenDA with micropayments using the A2A protocol and X402 payment system.
 
 ## What This Does
 
@@ -35,7 +35,7 @@ echo "USE_MOCK_FACILITATOR=true" >> .env
 
 ```bash
 # Terminal 1: Start the EigenDA storage server
-python -m server --host localhost --port 10000
+uv run server
 ```
 
 The server will automatically:
@@ -47,8 +47,15 @@ The server will automatically:
 
 ```bash
 # Terminal 2: Start the client
-cd client_agent
-python -m google.adk.cli
+uv run adk web
+```
+
+### 5. (optional) Run the terminal client
+
+```bash
+# Terminal 2: Start the terminal client
+chmod +x ./run_cli.sh
+./run_cli.sh
 ```
 
 ## Example Usage
