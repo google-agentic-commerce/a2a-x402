@@ -16,7 +16,7 @@
 from typing import List, Optional
 from a2a.types import AgentCard, AgentCapabilities
 
-from ..types import X402ExtensionConfig, get_extension_declaration
+from ..types import x402ExtensionConfig, get_extension_declaration
 
 
 def create_x402_agent_card(
@@ -24,7 +24,7 @@ def create_x402_agent_card(
     description: str,
     url: str,
     version: str = "1.0.0",
-    extensions_config: Optional[X402ExtensionConfig] = None,
+    extensions_config: Optional[x402ExtensionConfig] = None,
     skills: Optional[List] = None,
     instructions: Optional[List[str]] = None,
     model: Optional[str] = None,

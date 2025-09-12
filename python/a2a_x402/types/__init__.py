@@ -46,24 +46,24 @@ from x402.facilitator import (
 
 from .state import (
     PaymentStatus,
-    X402Metadata
+    x402Metadata
 )
 
 from .errors import (
-    X402Error,
+    x402Error,
     MessageError,
     ValidationError,
     PaymentError,
     StateError,
-    X402PaymentRequiredException,
-    X402ErrorCode,
+    x402PaymentRequiredException,
+    x402ErrorCode,
     map_error_to_code
 )
 
 from .config import (
     X402_EXTENSION_URI,
-    X402ExtensionConfig,
-    X402ServerConfig
+    x402ExtensionConfig,
+    x402ServerConfig
 )
 from ..extension import (
     get_extension_declaration,
@@ -101,20 +101,20 @@ __all__ = [
     "FacilitatorClient",
 
     "PaymentStatus",
-    "X402Metadata",
+    "x402Metadata",
 
-    "X402Error",
+    "x402Error",
     "MessageError", 
     "ValidationError",
     "PaymentError",
     "StateError",
-    "X402PaymentRequiredException",
-    "X402ErrorCode",
+    "x402PaymentRequiredException",
+    "x402ErrorCode",
     "map_error_to_code",
 
     "X402_EXTENSION_URI",
-    "X402ExtensionConfig",
-    "X402ServerConfig",
+    "x402ExtensionConfig",
+    "x402ServerConfig",
 
     "get_extension_declaration",
     "check_extension_activation", 

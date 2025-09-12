@@ -17,39 +17,39 @@ from typing import List, Union, Optional
 from x402.types import PaymentRequirements, TokenAmount
 
 
-class X402Error(Exception):
+class x402Error(Exception):
     """Base error for x402 protocol."""
     pass
 
 
-class MessageError(X402Error):
+class MessageError(x402Error):
     """Message validation errors."""
     pass
 
 
-class ValidationError(X402Error):
+class ValidationError(x402Error):
     """Payment validation errors."""
     pass
 
 
-class PaymentError(X402Error):
+class PaymentError(x402Error):
     """Payment processing errors."""
     pass
 
 
-class StateError(X402Error):
+class StateError(x402Error):
     """State transition errors."""
     pass
 
 
-class X402PaymentRequiredException(X402Error):
+class x402PaymentRequiredException(x402Error):
     """Exception thrown by delegate agents to request payment.
     
     This exception allows delegate agents to dynamically specify payment 
     requirements instead of relying on static server configuration.
     
     Example:
-        from a2a_x402.types.errors import X402PaymentRequiredException
+        from a2a_x402.types.errors import x402PaymentRequiredException
         from a2a_x402.core.merchant import create_payment_requirements
         
         # Single payment option
@@ -58,13 +58,13 @@ class X402PaymentRequiredException(X402Error):
             pay_to_address="0x123...",
             resource="/premium-service"
         )
-        raise X402PaymentRequiredException(
+        raise x402PaymentRequiredException(
             "Premium feature requires payment",
             payment_requirements=requirements
         )
         
         # Multiple payment options
-        raise X402PaymentRequiredException(
+        raise x402PaymentRequiredException(
             "Choose payment method",
             payment_requirements=[basic_req, premium_req]
         )
@@ -110,7 +110,7 @@ class X402PaymentRequiredException(X402Error):
         network: str = "base",
         description: str = "Payment required for this service",
         message: Optional[str] = None
-    ) -> 'X402PaymentRequiredException':
+    ) -> 'x402PaymentRequiredException':
         """Create payment exception for a simple service.
         
         Helper method for common use case of single payment requirement.
@@ -124,7 +124,7 @@ class X402PaymentRequiredException(X402Error):
             message: Exception message (default: uses description)
             
         Returns:
-            X402PaymentRequiredException with single payment requirement
+            x402PaymentRequiredException with single payment requirement
         """
         # Import here to avoid circular imports
         from ..core.merchant import create_payment_requirements
@@ -143,7 +143,7 @@ class X402PaymentRequiredException(X402Error):
         )
 
 
-class X402ErrorCode:
+class x402ErrorCode:
     """Standard error codes from spec Section 8.1."""
     INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
     INVALID_SIGNATURE = "INVALID_SIGNATURE"
@@ -170,8 +170,8 @@ class X402ErrorCode:
 def map_error_to_code(error: Exception) -> str:
     """Maps implementation errors to spec error codes."""
     error_mapping = {
-        ValidationError: X402ErrorCode.INVALID_SIGNATURE,
-        PaymentError: X402ErrorCode.SETTLEMENT_FAILED,
+        ValidationError: x402ErrorCode.INVALID_SIGNATURE,
+        PaymentError: x402ErrorCode.SETTLEMENT_FAILED,
         # Add more mappings as needed
     }
     return error_mapping.get(type(error), "UNKNOWN_ERROR")

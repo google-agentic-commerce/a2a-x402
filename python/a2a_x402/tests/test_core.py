@@ -15,24 +15,24 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from a2a.types import Task, Message, TaskState, TaskStatus, TextPart
-from a2a_x402.executors.server import X402ServerExecutor
+from a2a_x402.executors.server import x402ServerExecutor
 from a2a_x402.types import (
     PaymentStatus,
-    X402Metadata,
+    x402Metadata,
     x402PaymentRequiredResponse,
     PaymentPayload,
     PaymentRequirements,
     VerifyResponse,
     SettleResponse,
 )
-from a2a_x402.core.utils import X402Utils
+from a2a_x402.core.utils import x402Utils
 
 # --- Fixtures ---
 
 @pytest.fixture
 def utils():
-    """Returns an instance of X402Utils."""
-    return X402Utils()
+    """Returns an instance of x402Utils."""
+    return x402Utils()
 
 @pytest.fixture
 def sample_task():
@@ -74,7 +74,7 @@ def sample_payment_payload():
         },
     )
 
-# --- Tests for X402Utils ---
+# --- Tests for x402Utils ---
 
 def test_create_payment_required_task(utils, sample_task, sample_payment_requirements):
     """
@@ -88,8 +88,8 @@ def test_create_payment_required_task(utils, sample_task, sample_payment_require
     updated_task = utils.create_payment_required_task(sample_task, payment_required_response)
 
     assert updated_task.status.state == TaskState.input_required
-    assert updated_task.status.message.metadata[X402Metadata.STATUS_KEY] == PaymentStatus.PAYMENT_REQUIRED.value
-    assert updated_task.status.message.metadata[X402Metadata.REQUIRED_KEY] is not None
+    assert updated_task.status.message.metadata[x402Metadata.STATUS_KEY] == PaymentStatus.PAYMENT_REQUIRED.value
+    assert updated_task.status.message.metadata[x402Metadata.REQUIRED_KEY] is not None
 
 def test_get_payment_payload_from_message(utils, sample_payment_payload):
     """
@@ -101,7 +101,7 @@ def test_get_payment_payload_from_message(utils, sample_payment_payload):
         role="user",
         parts=[TextPart(text="test")],
         metadata={
-            X402Metadata.PAYLOAD_KEY: sample_payment_payload.model_dump(by_alias=True)
+            x402Metadata.PAYLOAD_KEY: sample_payment_payload.model_dump(by_alias=True)
         }
     )
 
@@ -110,10 +110,10 @@ def test_get_payment_payload_from_message(utils, sample_payment_payload):
     assert extracted_payload.scheme == "exact"
     assert extracted_payload.payload.signature == "0xabc"
 
-# --- Tests for X402ServerExecutor ---
+# --- Tests for x402ServerExecutor ---
 
-class MockConcreteExecutor(X402ServerExecutor):
-    """A concrete implementation of the abstract X402ServerExecutor for testing."""
+class MockConcreteExecutor(x402ServerExecutor):
+    """A concrete implementation of the abstract x402ServerExecutor for testing."""
     async def verify_payment(self, payload, requirements):
         return VerifyResponse(is_valid=True, payer="0x789")
 
@@ -123,7 +123,7 @@ class MockConcreteExecutor(X402ServerExecutor):
 @pytest.mark.asyncio
 async def test_server_executor_payment_flow():
     """
-    Tests that the X402ServerExecutor correctly calls verify and settle
+    Tests that the x402ServerExecutor correctly calls verify and settle
     when it receives a payment-submitted message.
     """
     delegate = AsyncMock()
@@ -153,8 +153,8 @@ async def test_server_executor_payment_flow():
         role="user",
         parts=[TextPart(text="test")],
         metadata={
-            X402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            X402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
+            x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
+            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
         }
     )
     context.current_task = Task(id="task-123", contextId="context-456", status=TaskStatus(state=TaskState.working), metadata={})

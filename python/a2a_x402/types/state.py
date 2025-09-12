@@ -26,7 +26,7 @@ class PaymentStatus(str, Enum):
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
 
 
-class X402Metadata:
+class x402Metadata:
     """Spec-defined metadata key constants"""
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse

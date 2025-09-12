@@ -45,22 +45,22 @@ This will start the ADK web server, usually on `localhost:8000`. Open this URL i
 The demo showcases a clean separation of concerns between the agent's business logic and the payment protocol logic.
 
 1.  **Merchant-Side (Server):**
-    - The `AdkMerchantAgent` contains the core business logic (e.g., providing product details). When payment is required, it doesn't handle any payment logic itself. Instead, it raises a `X402PaymentRequiredException`.
-    - The `X402ServerExecutor` is a wrapper that intercepts this exception. It's responsible for all the server-side protocol logic: creating the `payment-required` response, receiving the client's signed payload, verifying it, and settling it.
+    - The `AdkMerchantAgent` contains the core business logic (e.g., providing product details). When payment is required, it doesn't handle any payment logic itself. Instead, it raises a `x402PaymentRequiredException`.
+    - The `x402ServerExecutor` is a wrapper that intercepts this exception. It's responsible for all the server-side protocol logic: creating the `payment-required` response, receiving the client's signed payload, verifying it, and settling it.
     - This executor is "injected" in `routes.py`, wrapping the core `ADKAgentExecutor`.
 
 2.  **Client-Side (`ClientAgent`):**
     - The `ClientAgent` acts as the user's proxy. Its `send_message` tool handles all communication.
     - When it receives a `payment-required` response from the merchant, it now prompts the user for confirmation.
     - Upon user confirmation, it calls its injected **Wallet** to sign the payment details.
-    - It then uses the `X402Utils` from the core library to construct a valid `payment-submitted` message and sends it back to the merchant to finalize the purchase.
+    - It then uses the `x402Utils` from the core library to construct a valid `payment-submitted` message and sends it back to the merchant to finalize the purchase.
 
 ## Pluggable Components
 
 A key design goal of this demo is to show how core components can be swapped out with real implementations.
 
 ### Facilitator
-The `X402ServerExecutor` requires a `FacilitatorClient` to verify and settle payments. In this demo, we inject a `MockFacilitator` (`mock_facilitator.py`) which approves all valid transactions.
+The `x402ServerExecutor` requires a `FacilitatorClient` to verify and settle payments. In this demo, we inject a `MockFacilitator` (`mock_facilitator.py`) which approves all valid transactions.
 
 To use a real payment processor, a developer would create a new class inheriting from `FacilitatorClient` that makes real API calls. This real client could then be swapped in `routes.py` with a single line change.
 

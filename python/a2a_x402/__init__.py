@@ -41,19 +41,19 @@ from .types import (
     
     # A2A-Specific Types
     PaymentStatus,
-    X402Metadata,
+    x402Metadata,
     
     # Configuration
-    X402ExtensionConfig,
+    x402ExtensionConfig,
     
     # Error Types
-    X402Error,
+    x402Error,
     MessageError,
     ValidationError,
     PaymentError,
     StateError,
-    X402PaymentRequiredException,
-    X402ErrorCode,
+    x402PaymentRequiredException,
+    x402ErrorCode,
     
     # Extension utilities
     get_extension_declaration,
@@ -71,7 +71,7 @@ from .core import (
     settle_payment,
     
     # State Management
-    X402Utils,
+    x402Utils,
     create_payment_submission_message,
     extract_task_id,
     
@@ -89,9 +89,9 @@ from .core import (
 
 # Optional Middleware
 from .executors import (
-    X402BaseExecutor,
-    X402ServerExecutor,
-    X402ClientExecutor
+    x402BaseExecutor,
+    x402ServerExecutor,
+    x402ClientExecutor
 )
 
 __version__ = "1.0.0"
@@ -120,19 +120,19 @@ __all__ = [
     
     # A2A-Specific Types
     "PaymentStatus",
-    "X402Metadata",
+    "x402Metadata",
     
     # Configuration
-    "X402ExtensionConfig",
+    "x402ExtensionConfig",
     
     # Error Types
-    "X402Error",
+    "x402Error",
     "MessageError",
     "ValidationError", 
     "PaymentError",
     "StateError",
-    "X402PaymentRequiredException",
-    "X402ErrorCode",
+    "x402PaymentRequiredException",
+    "x402ErrorCode",
     
     # Extension utilities
     "get_extension_declaration",
@@ -147,7 +147,7 @@ __all__ = [
     "settle_payment",
     
     # State Management
-    "X402Utils",
+    "x402Utils",
     "create_payment_submission_message",
     "extract_task_id",
     
@@ -163,7 +163,7 @@ __all__ = [
     "create_x402_agent_card",
     
     # Optional Middleware
-    "X402BaseExecutor",
-    "X402ServerExecutor",
-    "X402ClientExecutor"
+    "x402BaseExecutor",
+    "x402ServerExecutor",
+    "x402ClientExecutor"
 ]

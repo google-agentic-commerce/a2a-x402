@@ -20,18 +20,18 @@ from ..types import (
     AgentExecutor,
     RequestContext,
     EventQueue,
-    X402ExtensionConfig,
+    x402ExtensionConfig,
     X402_EXTENSION_URI
 )
-from ..core.utils import X402Utils
+from ..core.utils import x402Utils
 
-class X402BaseExecutor(ABC):
+class x402BaseExecutor(ABC):
     """Base executor with x402 protocol support."""
     
     def __init__(
         self,
         delegate: AgentExecutor,
-        config: X402ExtensionConfig
+        config: x402ExtensionConfig
     ):
         """Initialize base executor.
         
@@ -41,7 +41,7 @@ class X402BaseExecutor(ABC):
         """
         self._delegate = delegate
         self.config = config
-        self.utils = X402Utils()
+        self.utils = x402Utils()
 
     def is_active(self, context: RequestContext) -> bool:
         """Check if x402 extension is activated for this request.

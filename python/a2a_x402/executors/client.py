@@ -16,33 +16,33 @@
 from typing import Optional
 from eth_account import Account
 
-from .base import X402BaseExecutor
+from .base import x402BaseExecutor
 from ..types import (
     AgentExecutor,
     RequestContext,
     EventQueue,
     PaymentStatus,
-    X402ExtensionConfig,
+    x402ExtensionConfig,
     x402PaymentRequiredResponse
 )
 from ..core import process_payment_required
 from ..core.utils import create_payment_submission_message
 
 
-class X402ClientExecutor(X402BaseExecutor):
+class x402ClientExecutor(x402BaseExecutor):
     """Client-side payment interceptor for buying agents.
     
     Automatically processes payment requirements when services require payment.
     
     Example:
-        client = X402ClientExecutor(my_client, config, account)
+        client = x402ClientExecutor(my_client, config, account)
         # Your client now pays for services automatically!
     """
     
     def __init__(
         self,
         delegate: AgentExecutor,
-        config: X402ExtensionConfig,
+        config: x402ExtensionConfig,
         account: Account,
         max_value: Optional[int] = None,
         auto_pay: bool = True
@@ -103,7 +103,7 @@ class X402ClientExecutor(X402BaseExecutor):
             
         except Exception as e:
             # Payment processing failed
-            from ..types import SettleResponse, X402ErrorCode
+            from ..types import SettleResponse, x402ErrorCode
             failure_response = SettleResponse(success=False, network="base", error_reason=f"Payment failed: {e}")
-            task = self.utils.record_payment_failure(task, X402ErrorCode.INVALID_SIGNATURE, failure_response)
+            task = self.utils.record_payment_failure(task, x402ErrorCode.INVALID_SIGNATURE, failure_response)
             await event_queue.enqueue_event(task)

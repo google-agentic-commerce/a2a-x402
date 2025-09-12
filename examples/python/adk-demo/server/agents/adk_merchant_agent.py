@@ -22,9 +22,9 @@ from a2a_x402.types import PaymentRequirements
 
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
-from a2a_x402.types import X402PaymentRequiredException
+from a2a_x402.types import x402PaymentRequiredException
 from a2a_x402 import (
-    X402Utils,
+    x402Utils,
     get_extension_declaration
 )
 
@@ -39,7 +39,7 @@ class AdkMerchantAgent(BaseAgent):
 
     def __init__(self, wallet_address: str = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"):
         self._wallet_address = wallet_address
-        self.x402 = X402Utils()
+        self.x402 = x402Utils()
 
     def _get_product_price(self, product_name: str) -> str:
         """Generates a deterministic price for a product."""
@@ -53,7 +53,7 @@ class AdkMerchantAgent(BaseAgent):
     def get_product_details_and_request_payment(self, product_name: str) -> dict:
         """
         This is the agent's tool. Instead of returning payment details, it raises
-        an exception to signal to the X402 wrapper that payment is needed.
+        an exception to signal to the x402 wrapper that payment is needed.
         """
         if not product_name:
             return {"error": "Product name cannot be empty."}
@@ -80,9 +80,9 @@ class AdkMerchantAgent(BaseAgent):
             },
         )
 
-        # Signal to the X402ServerAgentExecutor that payment is required.
+        # Signal to the x402ServerAgentExecutor that payment is required.
         # The wrapper will catch this and handle the A2A flow.
-        raise X402PaymentRequiredException(product_name, requirements)
+        raise x402PaymentRequiredException(product_name, requirements)
 
     def before_agent_callback(self, callback_context: CallbackContext):
         """

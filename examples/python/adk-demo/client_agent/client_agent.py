@@ -39,7 +39,7 @@ from google.genai import types
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
-from a2a_x402.core.utils import X402Utils
+from a2a_x402.core.utils import x402Utils
 from a2a_x402.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class ClientAgent:
         self.remote_agent_addresses = remote_agent_addresses
         self.agents_info_str = ""
         self._initialized = False
-        self.x402 = X402Utils()
+        self.x402 = x402Utils()
 
     def create_agent(self) -> Agent:
         """Creates the ADK Agent instance."""
