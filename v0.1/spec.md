@@ -52,7 +52,7 @@ The Client Agent acts on behalf of a user, orchestrating the payment flow.
 * **Receives** a `Task` that requires payment and processes the `x402PaymentRequiredResponse`.
   * The agent first extracts the list of accepted `PaymentRequirements` from the response.
   * It then determines whether to proceed with payment based on the terms (e.g., cost, asset, network).
-    * If accepting, the agent selects a preferred `PaymentRequirements` option and has it signed by a designated signing service or wallet. This service securely signs the object to create the `PaymentPayload`. 
+    * If accepting, the agent selects a preferred `PaymentRequirements` option and has it signed by a designated signing service or wallet. This service securely signs the object to create the `PaymentPayload`.
     * If rejecting, the agent responds to the Merchant Agent with a `x402.payment.status` of `payment-rejected`.
 * **Submits** the signed payment authorization, packaged as an `PaymentPayload`, back to the Merchant Agent, ensuring the `taskId` is included to correlate the payment with the original request.
 * **Waits for and processes** the final `Task` from the Merchant Agent, which contains either the completed service result or a payment failure notice.
@@ -146,7 +146,7 @@ The Client Agent receives the `Task` and must determine how to proceed:
 
 1. **Client selects the preferred Payment Requirements:** The Client Agent extracts the `x402PaymentRequiredResponse` object from the task's message metadata, finds the preferred payment requirement object to sign and creates a `PaymentPayload` by signing the payment requirements via its wallet or preffered signing service.
 
-2. **Client Rejects Payment Requirements:** The client rejects all payment requirements and responds to the server agent with a message setting the message metadata field `x402.payment.status` to `payment-rejected`.
+2. **Client Rejects `PaymentRequirements`:** The client rejects all `PaymentRequirements` options and responds to the server agent with a message setting the message metadata field `x402.payment.status` to `payment-rejected`.
 
 ### **4.5. Step 3: Fulfill and Settle (Client → Merchant → Client)**
 
