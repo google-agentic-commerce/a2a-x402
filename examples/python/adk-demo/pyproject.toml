@@ -30,6 +30,7 @@ packages = ["server", "client"]
 
 [project.scripts]
 server = "server.__main__:main"
+cli = "google.adk.cli:main"
 
 [tool.uv.workspace]
 members = ["client"]

@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Local imports
-from _task_store import TaskStore
-from client_agent import ClientAgent
-from wallet import MockLocalWallet
+from ._task_store import TaskStore
+from .client_agent import ClientAgent
+from .wallet import MockLocalWallet
 
 root_agent = ClientAgent(
     remote_agent_addresses=[
