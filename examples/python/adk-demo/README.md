@@ -60,9 +60,12 @@ The demo showcases a clean separation of concerns between the agent's business l
 A key design goal of this demo is to show how core components can be swapped out with real implementations.
 
 ### Facilitator
-The `x402ServerExecutor` requires a `FacilitatorClient` to verify and settle payments. In this demo, we inject a `MockFacilitator` (`mock_facilitator.py`) which approves all valid transactions.
+The `x402MerchantExecutor` requires a facilitator to verify and settle payments. The facilitator choice is controlled by the `USE_MOCK_FACILITATOR` environment variable (defaults to "true").
 
-To use a real payment processor, a developer would create a new class inheriting from `FacilitatorClient` that makes real API calls. This real client could then be swapped in `routes.py` with a single line change.
+- When `USE_MOCK_FACILITATOR=true` (default), it uses a `MockFacilitator` (`mock_facilitator.py`) which approves all valid transactions, allowing you to test the payment flow without real transactions.
+- When `USE_MOCK_FACILITATOR=false`, it uses a real `FacilitatorClient` with a provided `FacilitatorConfig` to process actual onchain transactions.
+
+To use a real payment processor, set `USE_MOCK_FACILITATOR=false` and provide a valid `FacilitatorConfig`.
 
 ### Wallet
 The `ClientAgent` does not handle signing directly. Instead, it depends on a `Wallet` interface (`wallet.py`). This makes the signing mechanism fully pluggable.

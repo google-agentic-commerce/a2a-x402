@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from typing import List, override
 
 from a2a.server.apps import A2AStarletteApplication
@@ -31,7 +32,8 @@ from .mock_facilitator import MockFacilitator
 from a2a_x402.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
 from a2a_x402 import (
     FacilitatorClient,
-    x402ExtensionConfig
+    x402ExtensionConfig,
+    FacilitatorConfig
 )
 
 
@@ -46,10 +48,17 @@ class x402MerchantExecutor(x402ServerExecutor):
     """
 
     def __init__(
-        self, delegate: AgentExecutor, facilitator_client: FacilitatorClient
+        self, delegate: AgentExecutor, facilitator_config: FacilitatorConfig = None
     ):
         super().__init__(delegate, x402ExtensionConfig())
-        self._facilitator = facilitator_client
+
+        use_mock = os.getenv("USE_MOCK_FACILITATOR", "true").lower() == "true"
+        if use_mock:
+            print("--- Using Mock Facilitator ---")
+            self._facilitator = MockFacilitator()
+        else:
+            print("--- Using REAL Facilitator ---")
+            self._facilitator = FacilitatorClient(facilitator_config)
 
     @override
     async def verify_payment(
