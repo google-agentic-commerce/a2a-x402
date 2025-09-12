@@ -28,5 +28,9 @@ echo ""
 echo "Starting CLI client..."
 echo "===================================="
 
+# Set environment variables to suppress warnings
+export PYTHONWARNINGS="ignore::UserWarning"
+
 # Run using uv with the ADK CLI
+# The warnings will still appear but won't interfere with the CLI
 uv run python -m google.adk.cli run cli_agent
