@@ -18,14 +18,12 @@ from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
-from x402.types import PaymentRequirements
+from a2a_x402.types import PaymentRequirements
 
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
 from a2a_x402.types import X402PaymentRequiredException
 from a2a_x402 import (
-    X402ExtensionConfig,
-    PaymentStatus,
     X402Utils,
     get_extension_declaration
 )
@@ -71,8 +69,15 @@ class AdkMerchantAgent(BaseAgent):
             resource=f"https://example.com/product/{product_name}",
             mime_type="application/json",
             max_timeout_seconds=1200,
-            extra={"sku": f"{product_name}_sku", "name":  product_name, "version": '1'},
-
+            extra={
+                "name": "USDC",
+                "version": "2",
+                "product": {
+                    "sku": f"{product_name}_sku", 
+                    "name":  product_name, 
+                    "version": '1'
+                }
+            },
         )
 
         # Signal to the X402ServerAgentExecutor that payment is required.

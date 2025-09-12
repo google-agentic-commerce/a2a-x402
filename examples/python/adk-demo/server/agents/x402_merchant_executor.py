@@ -28,13 +28,10 @@ from ._adk_agent_executor import ADKAgentExecutor
 from a2a_x402.executors import X402ServerExecutor
 from .adk_merchant_agent import AdkMerchantAgent
 from .mock_facilitator import MockFacilitator
-from x402.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
+from a2a_x402.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
 from a2a_x402 import (
     FacilitatorClient,
-    X402ExtensionConfig,
-    PaymentStatus,
-    X402Utils,
-    get_extension_declaration
+    X402ExtensionConfig
 )
 
 
