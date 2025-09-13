@@ -1,3 +1,16 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """State management utilities for x402 protocol."""
 
 import logging
@@ -6,7 +19,7 @@ from ..types import (
     Task,
     Message,
     PaymentStatus,
-    X402Metadata,
+    x402Metadata,
     x402PaymentRequiredResponse,
     PaymentPayload,
     ExactPaymentPayload,
@@ -46,8 +59,8 @@ def create_payment_submission_message(
         role="user",
         parts=[TextPart(kind="text", text=text)],
         metadata={
-            X402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            X402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
+            x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
+            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
         }
     )
 
@@ -59,15 +72,15 @@ def extract_task_id(message: Message) -> Optional[str]:
     return getattr(message, 'task_id', None)
 
 
-class X402Utils:
+class x402Utils:
     """Core utilities for x402 protocol state management."""
     
 
-    STATUS_KEY = X402Metadata.STATUS_KEY
-    REQUIRED_KEY = X402Metadata.REQUIRED_KEY
-    PAYLOAD_KEY = X402Metadata.PAYLOAD_KEY
-    RECEIPTS_KEY = X402Metadata.RECEIPTS_KEY
-    ERROR_KEY = X402Metadata.ERROR_KEY
+    STATUS_KEY = x402Metadata.STATUS_KEY
+    REQUIRED_KEY = x402Metadata.REQUIRED_KEY
+    PAYLOAD_KEY = x402Metadata.PAYLOAD_KEY
+    RECEIPTS_KEY = x402Metadata.RECEIPTS_KEY
+    ERROR_KEY = x402Metadata.ERROR_KEY
     
 
     def get_payment_status_from_message(self, message: Message) -> Optional[PaymentStatus]:

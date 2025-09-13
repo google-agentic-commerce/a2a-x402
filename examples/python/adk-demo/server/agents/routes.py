@@ -12,7 +12,7 @@ from google.adk.sessions import InMemorySessionService
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import BaseRoute, Route
-from a2a_x402 import FacilitatorClient, X402ExtensionConfig
+from a2a_x402 import FacilitatorClient, x402ExtensionConfig
 
 # --- Local Imports ---
 
@@ -27,7 +27,7 @@ from .adk_merchant_agent import AdkMerchantAgent
 from .eigenda_agent import EigenDAAgent
 
 # The concrete x402 executor wrappers
-from .x402_merchant_executor import X402MerchantExecutor
+from .x402_merchant_executor import x402MerchantExecutor
 from .mock_facilitator import MockFacilitator
 from .real_facilitator import RealFacilitator
 
@@ -109,7 +109,7 @@ def _create_routes(
         facilitator = RealFacilitator()
 
     # 3. Apply the concrete x402 merchant wrapper.
-    agent_executor = X402MerchantExecutor(agent_executor, facilitator)
+    agent_executor = x402MerchantExecutor(agent_executor, facilitator)
 
     # 3. Create the request handler with the final, fully wrapped executor.
     request_handler = DefaultRequestHandler(

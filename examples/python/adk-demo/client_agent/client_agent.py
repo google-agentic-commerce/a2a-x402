@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import logging
 import time
@@ -26,7 +40,7 @@ from google.genai import types
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
-from a2a_x402.core.utils import X402Utils
+from a2a_x402.core.utils import x402Utils
 from a2a_x402.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
 
 logger = logging.getLogger(__name__)
@@ -54,7 +68,7 @@ class ClientAgent:
         self.remote_agent_addresses = remote_agent_addresses
         self.agents_info_str = ""
         self._initialized = False
-        self.x402 = X402Utils()
+        self.x402 = x402Utils()
 
     def create_agent(self) -> Agent:
         """Creates the ADK Agent instance."""

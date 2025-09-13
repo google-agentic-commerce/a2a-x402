@@ -27,8 +27,8 @@ from google.adk.auth import AuthConfig
 from google.adk.events import Event
 from google.genai import types
 
-from a2a_x402.core.utils import X402Utils, PaymentStatus
-from a2a_x402.types import X402PaymentRequiredException
+from a2a_x402.core.utils import x402Utils, PaymentStatus
+from a2a_x402.types import x402PaymentRequiredException
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -41,7 +41,7 @@ class ADKAgentExecutor(AgentExecutor):
         self.runner = runner
         self._card = card
         self._running_sessions = {}
-        self.x402 = X402Utils()
+        self.x402 = x402Utils()
 
     def _run_agent(
         self, session_id, new_message: types.Content
@@ -121,13 +121,13 @@ class ADKAgentExecutor(AgentExecutor):
                     raise ValueError(f"Tool '{tool_name}' requested by the LLM but not found on the agent.")
                 
                 try:
-                    # Execute the tool. This is where the X402PaymentRequiredException will be raised.
+                    # Execute the tool. This is where the x402PaymentRequiredException will be raised.
                     tool_result = target_tool(**tool_args)
                     tool_outputs.append(
                         types.Part(function_response=types.FunctionResponse(name=tool_name, response={'result': tool_result}))
                     )
-                except X402PaymentRequiredException:
-                    # This special exception must propagate up to the X402ServerExecutor.
+                except x402PaymentRequiredException:
+                    # This special exception must propagate up to the x402ServerExecutor.
                     raise
                 except Exception as e:
                     # Any other tool error should be reported back to the LLM.
@@ -168,7 +168,7 @@ class ADKAgentExecutor(AgentExecutor):
         task_updater = TaskUpdater(event_queue, context.task_id, context.context_id)
         session = await self._upsert_session(context.context_id)
 
-        # Check if the X402 wrapper has verified a payment by looking at the task metadata.
+        # Check if the x402 wrapper has verified a payment by looking at the task metadata.
         if context.current_task and context.current_task.metadata.get("x402_payment_verified", False):
             # If payment is verified, write structured data to the session state.
             # The agent's `before_agent_callback` will read this.
@@ -186,7 +186,7 @@ class ADKAgentExecutor(AgentExecutor):
             # Include certificate if available
             if "certificate_prefix" in extra_data:
                 payment_data["certificate_id"] = extra_data["certificate_prefix"]
-                logger.info(f"=== X402 PAYMENT VERIFICATION ===")
+                logger.info(f"=== x402 PAYMENT VERIFICATION ===")
                 logger.info(f"Certificate ID {extra_data['certificate_prefix']} included in payment data")
                 logger.info(f"Full extra_data: {extra_data}")
             else:
@@ -203,7 +203,7 @@ class ADKAgentExecutor(AgentExecutor):
             user_message = types.UserContent(parts=[types.Part(text="Payment verified. Please proceed.")])
             # --- CRITICAL ---
             # We must re-fetch the session here to ensure the state changes
-            # from the X402 executor are reflected before the agent's
+            # from the x402 executor are reflected before the agent's
             # `before_agent_callback` is invoked.
             session = await self._upsert_session(session.id)
         else:

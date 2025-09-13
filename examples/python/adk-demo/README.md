@@ -1,4 +1,4 @@
-# DK x402 Payment Protocol Demo with EigenDA Storage
+# A2A + x402 Payment Protocol Demo with EigenDA Storage
 
 A complete example demonstrating text storage on EigenDA with micropayments using the A2A protocol and X402 payment system.
 

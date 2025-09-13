@@ -39,7 +39,7 @@ async def test_eigenda_storage():
         print("\n3. Check server logs for:")
         print("   - '=== EIGENDA STORAGE ===' section")
         print("   - Certificate ID generation")
-        print("   - '=== X402 PAYMENT VERIFICATION ===' section")
+        print("   - '=== x402 PAYMENT VERIFICATION ===' section")
         print("   - '=== PAYMENT VERIFICATION CALLBACK ===' section")
         
         print("\n4. Verify in client output:")

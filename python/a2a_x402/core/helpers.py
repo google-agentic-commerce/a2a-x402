@@ -1,10 +1,23 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Helper functions for easy x402 payment integration."""
 
 from typing import Union, Optional, List, Callable, Any
 from functools import wraps
 
 from ..types import (
-    X402PaymentRequiredException,
+    x402PaymentRequiredException,
     PaymentRequirements,
     TokenAmount
 )
@@ -18,7 +31,7 @@ def require_payment(
     network: str = "base",
     description: str = "Payment required for this service",
     message: Optional[str] = None
-) -> X402PaymentRequiredException:
+) -> x402PaymentRequiredException:
     """Create a payment required exception for immediate raising.
     
     Convenience function for the most common use case.
@@ -32,7 +45,7 @@ def require_payment(
         message: Exception message (default: uses description)
         
     Returns:
-        X402PaymentRequiredException ready to be raised
+        x402PaymentRequiredException ready to be raised
         
     Example:
         # In your agent logic:
@@ -44,7 +57,7 @@ def require_payment(
                 description="Premium feature access"
             )
     """
-    return X402PaymentRequiredException.for_service(
+    return x402PaymentRequiredException.for_service(
         price=price,
         pay_to_address=pay_to_address,
         resource=resource or "/service",
@@ -57,7 +70,7 @@ def require_payment(
 def require_payment_choice(
     payment_options: List[PaymentRequirements],
     message: str = "Multiple payment options available"
-) -> X402PaymentRequiredException:
+) -> x402PaymentRequiredException:
     """Create a payment required exception with multiple payment options.
     
     Args:
@@ -65,7 +78,7 @@ def require_payment_choice(
         message: Exception message
         
     Returns:
-        X402PaymentRequiredException with multiple payment options
+        x402PaymentRequiredException with multiple payment options
         
     Example:
         basic_option = create_payment_requirements(
@@ -80,7 +93,7 @@ def require_payment_choice(
             "Choose your service tier"
         )
     """
-    return X402PaymentRequiredException(
+    return x402PaymentRequiredException(
         message=message,
         payment_requirements=payment_options
     )
@@ -112,7 +125,7 @@ def paid_service(
             # This function will require payment before execution
             return await self.ai_service.generate_image(prompt, quality="high")
             
-        # When called without payment, will raise X402PaymentRequiredException
+        # When called without payment, will raise x402PaymentRequiredException
         # When called with valid payment, will execute normally
     """
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:

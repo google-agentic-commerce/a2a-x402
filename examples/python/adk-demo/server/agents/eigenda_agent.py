@@ -14,11 +14,11 @@ from google.genai import types
 from x402.types import PaymentRequirements
 
 from .base_agent import BaseAgent
-from a2a_x402.types import X402PaymentRequiredException
+from a2a_x402.types import x402PaymentRequiredException
 from a2a_x402 import (
-    X402ExtensionConfig,
+    x402ExtensionConfig,
     PaymentStatus,
-    X402Utils,
+    x402Utils,
     get_extension_declaration
 )
 
@@ -134,7 +134,7 @@ class EigenDAAgent(BaseAgent):
 
     def __init__(self, wallet_address: str = "0x3B9b10B8a63B93Ae8F447A907FD1EF067153c4e5"):
         self._wallet_address = wallet_address
-        self.x402 = X402Utils()
+        self.x402 = x402Utils()
         self.storage_price = "10000"  # 0.01 USDC (USDC has 6 decimals)
         self.stored_data = {}  # In-memory store for certificates
 
@@ -213,9 +213,9 @@ class EigenDAAgent(BaseAgent):
 
             # Signal that payment is required
             logger.info(f"Payment requested for certificate {cert_id}")
-            raise X402PaymentRequiredException(f"eigenda_storage_{cert_id}", requirements)
+            raise x402PaymentRequiredException(f"eigenda_storage_{cert_id}", requirements)
             
-        except X402PaymentRequiredException:
+        except x402PaymentRequiredException:
             raise  # Re-raise payment exception
         except Exception as e:
             logger.error(f"Failed to store data: {e}", exc_info=True)

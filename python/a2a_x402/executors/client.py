@@ -1,35 +1,48 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Client-side executor for wallet implementations."""
 
 from typing import Optional
 from eth_account import Account
 
-from .base import X402BaseExecutor
+from .base import x402BaseExecutor
 from ..types import (
     AgentExecutor,
     RequestContext,
     EventQueue,
     PaymentStatus,
-    X402ExtensionConfig,
+    x402ExtensionConfig,
     x402PaymentRequiredResponse
 )
 from ..core import process_payment_required
 from ..core.utils import create_payment_submission_message
 
 
-class X402ClientExecutor(X402BaseExecutor):
+class x402ClientExecutor(x402BaseExecutor):
     """Client-side payment interceptor for buying agents.
     
     Automatically processes payment requirements when services require payment.
     
     Example:
-        client = X402ClientExecutor(my_client, config, account)
+        client = x402ClientExecutor(my_client, config, account)
         # Your client now pays for services automatically!
     """
     
     def __init__(
         self,
         delegate: AgentExecutor,
-        config: X402ExtensionConfig,
+        config: x402ExtensionConfig,
         account: Account,
         max_value: Optional[int] = None,
         auto_pay: bool = True
@@ -90,7 +103,7 @@ class X402ClientExecutor(X402BaseExecutor):
             
         except Exception as e:
             # Payment processing failed
-            from ..types import SettleResponse, X402ErrorCode
+            from ..types import SettleResponse, x402ErrorCode
             failure_response = SettleResponse(success=False, network="base", error_reason=f"Payment failed: {e}")
-            task = self.utils.record_payment_failure(task, X402ErrorCode.INVALID_SIGNATURE, failure_response)
+            task = self.utils.record_payment_failure(task, x402ErrorCode.INVALID_SIGNATURE, failure_response)
             await event_queue.enqueue_event(task)

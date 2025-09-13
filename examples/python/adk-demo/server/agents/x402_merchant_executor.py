@@ -12,33 +12,29 @@ from starlette.routing import BaseRoute
 # Import the executors and wrappers
 from ._adk_agent_executor import ADKAgentExecutor
 
-from a2a_x402.executors import X402ServerExecutor
+from a2a_x402.executors import x402ServerExecutor
 from .adk_merchant_agent import AdkMerchantAgent
 from .mock_facilitator import MockFacilitator
-from x402.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
+from a2a_x402.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
 from a2a_x402 import (
     FacilitatorClient,
-    X402ExtensionConfig,
-    PaymentStatus,
-    X402Utils,
-    get_extension_declaration
+    x402ExtensionConfig
 )
 
-
 # ==============================================================================
-# 1. Concrete Implementation of the X402 Wrapper
+# 1. Concrete Implementation of the x402 Wrapper
 # This class connects the abstract server logic to a specific facilitator.
 # ==============================================================================
-class X402MerchantExecutor(X402ServerExecutor):
+class x402MerchantExecutor(x402ServerExecutor):
     """
-    A concrete implementation of the X402ServerExecutor that uses a
+    A concrete implementation of the x402ServerExecutor that uses a
     facilitator to verify and settle payments for the merchant.
     """
 
     def __init__(
         self, delegate: AgentExecutor, facilitator_client: FacilitatorClient
     ):
-        super().__init__(delegate, X402ExtensionConfig())
+        super().__init__(delegate, x402ExtensionConfig())
         self._facilitator = facilitator_client
 
     @override
