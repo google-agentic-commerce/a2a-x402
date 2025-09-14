@@ -15,16 +15,13 @@ This example provides a complete system for:
 ### 1. Prerequisites
 - Docker installed and running
 - Python 3.13+
-- Google API key for the AI agents
+- Google Gemini API key for the AI agents
 
 ### 2. Setup
 
 ```bash
 # Navigate to the example directory
 cd examples/python/adk-demo
-
-# Install dependencies
-pip install -e .
 
 # Create .env file with your Google API key
 echo "GOOGLE_API_KEY=your_key_here" > .env
