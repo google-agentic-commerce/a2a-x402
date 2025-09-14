@@ -93,23 +93,8 @@ def _create_routes(
     # 1. Create the base executor that runs the ADK agent.
     agent_executor = ADKAgentExecutor(runner, agent_card)
 
-    # 2. Select the facilitator based on an environment variable.
-    use_mock = os.getenv("USE_MOCK_FACILITATOR", "true").lower() == "true"
-    if use_mock:
-        print("--- Using Mock Facilitator ---")
-        facilitator = MockFacilitator()
-    else:
-        print("--- Using REAL Facilitator ---")
-        # Check if merchant private key is configured
-        if not os.getenv("MERCHANT_PRIVATE_KEY"):
-            raise ValueError(
-                "MERCHANT_PRIVATE_KEY must be set in .env when USE_MOCK_FACILITATOR=false. "
-                "This key is needed to execute on-chain transfers."
-            )
-        facilitator = RealFacilitator()
-
-    # 3. Apply the concrete x402 merchant wrapper.
-    agent_executor = x402MerchantExecutor(agent_executor, facilitator)
+    # 2. Apply the concrete x402 merchant wrapper.
+    agent_executor = x402MerchantExecutor(agent_executor)
 
     # 3. Create the request handler with the final, fully wrapped executor.
     request_handler = DefaultRequestHandler(
