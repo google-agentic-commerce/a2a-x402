@@ -13,7 +13,7 @@ The reusable, core logic for the x402 protocol is encapsulated in the `x402_a2a`
 ### Prerequisites
 - Python 3.13+
 - `uv` (for environment and package management)
-- Google API key (you can create one [here](https://cloud.google.com/docs/authentication/api-keys))
+- Google API key (you can create one [here](https://ai.google.dev/gemini-api/docs/api-key))
 
 ### 1. Setup the Environment
 First, sync the virtual environment to install all necessary dependencies, including the local `x402_a2a` library in editable mode.
