@@ -13,6 +13,7 @@ The reusable, core logic for the x402 protocol is encapsulated in the `x402_a2a`
 ### Prerequisites
 - Python 3.13+
 - `uv` (for environment and package management)
+- Google API key (you can create one [here](https://cloud.google.com/docs/authentication/api-keys))
 
 ### 1. Setup the Environment
 First, sync the virtual environment to install all necessary dependencies, including the local `x402_a2a` library in editable mode.
@@ -20,6 +21,11 @@ First, sync the virtual environment to install all necessary dependencies, inclu
 Run this command from the root of the `a2a-x402` repository:
 ```bash
 uv sync --directory=examples/python/adk-demo
+```
+
+Set your Google API key as an environment variable:
+```bash
+export GOOGLE_API_KEY=your_api_key_here
 ```
 
 ### 2. Start the Merchant Agent Server
