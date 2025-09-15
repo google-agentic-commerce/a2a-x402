@@ -121,6 +121,7 @@ class PaymentStatus(str, Enum):
     """Protocol-defined payment states for A2A flow"""
     PAYMENT_REQUIRED = "payment-required"    # Payment requested
     PAYMENT_SUBMITTED = "payment-submitted"  # Payment signed and submitted
+    PAYMENT_VERIFIED = "payment-verified"    # Payment has been verified by facilitator
     PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected by client
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
@@ -167,7 +168,7 @@ class x402Metadata:
 
 ```python
 # Extension URI constant
-X402_EXTENSION_URI = "https://github.com/google-a2a/x402-a2a/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
 
     def get_extension_declaration(
     description: str = "Supports x402 payments", 
@@ -1010,8 +1011,9 @@ stateDiagram-v2
     [*] --> PAYMENT_REQUIRED: create_payment_request()
     PAYMENT_REQUIRED --> PAYMENT_REJECTED: client rejects payment
     PAYMENT_REQUIRED --> PAYMENT_SUBMITTED: record_payment_submission()
-    PAYMENT_SUBMITTED --> PAYMENT_COMPLETED: settle_payment() succeeds
-    PAYMENT_SUBMITTED --> PAYMENT_FAILED: settle_payment() fails
+    PAYMENT_SUBMITTED --> PAYMENT_VERIFIED: verify_payment()
+    PAYMENT_VERIFIED --> PAYMENT_COMPLETED: settle_payment() succeeds
+    PAYMENT_VERIFIED --> PAYMENT_FAILED: settle_payment() fails
     PAYMENT_REJECTED --> [*]
     PAYMENT_FAILED --> [*]
     PAYMENT_COMPLETED --> [*]

@@ -82,7 +82,7 @@ sequenceDiagram
     Client Agent->>Client Agent: 3. Create signed PaymentPayload (Typically signed by a wallet or separate service)
     Client Agent->>Merchant Agent: 4. Fulfill request (Message with metadata containing PaymentPayload & taskId)
     Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload (Typically verified by an x402 Facilitator) and begins processing the task*.
-    Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: x402SettleResponse, payment-status: payment-verified | payment-complete })
+    Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: { x402.payment.receipts: [...] }, payment-status: payment-verified | payment-complete })
 
 ```
 
@@ -286,7 +286,7 @@ This extension uses the `metadata` field on the `Message` objects to track the p
 ```mermaid
 stateDiagram-v2
     [*] --> PAYMENT_REQUIRED: Server Requires Payment
-    PAYMENT_REQUIRED --> PAYMENT_REJECTED: Client Rejects Payment Requirments
+    PAYMENT_REQUIRED --> PAYMENT_REJECTED: Client Rejects Payment Requirements
     PAYMENT_REQUIRED --> PAYMENT_SUBMITTED: Client creates PaymentPayload
     PAYMENT_SUBMITTED --> PAYMENT_VERIFIED: Server agent verified submitted PaymentPayload
     PAYMENT_VERIFIED --> PAYMENT_COMPLETED: Payment settles and is now on chain.

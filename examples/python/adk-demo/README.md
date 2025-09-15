@@ -17,7 +17,7 @@ The reusable, core logic for the x402 protocol is encapsulated in the `x402_a2a`
 ### 1. Setup the Environment
 First, sync the virtual environment to install all necessary dependencies, including the local `x402_a2a` library in editable mode.
 
-Run this command from the root of the `x402-a2a` repository:
+Run this command from the root of the `a2a-x402` repository:
 ```bash
 uv sync --directory=examples/python/adk-demo
 ```
@@ -25,18 +25,18 @@ uv sync --directory=examples/python/adk-demo
 ### 2. Start the Merchant Agent Server
 The merchant server hosts the agent that sells products.
 
-Run this command from the root of the `x402-a2a` repository:
+Run this command from the root of the `a2a-x402` repository:
 ```bash
-uv --directory=examples/python/adk-demo run adk web
+uv --directory=examples/python/adk-demo run server
 ```
 You should see logs indicating the server is running, typically on `localhost:10000`.
 
 ### 3. Start the Client Agent & Web UI
 The client agent is an orchestrator that communicates with the merchant. The ADK provides a web interface to interact with it.
 
-Run this command from the 'examples/python/adk-demo' directory of the `x402-a2a` repository:
+Run this command from the root of the `a2a-x402` repository:
 ```bash
-uv run --active server
+uv --directory=examples/python/adk-demo run adk web --port=8000
 ```
 This will start the ADK web server, usually on `localhost:8000`. Open this URL in your browser to interact with the client agent and start the purchase flow.
 
