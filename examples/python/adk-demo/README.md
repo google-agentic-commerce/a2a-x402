@@ -72,7 +72,7 @@ The `ClientAgent` does not handle signing directly. Instead, it depends on a `Wa
 
 In the demo, we inject a `MockLocalWallet` which signs transactions using a hardcoded private key. To connect to a real system, a developer could implement:
 - A wallet that connects to a browser extension like MetaMask.
-- A wallet that calls out to a secure MCP (Multi-Party Computation) service.
+- A wallet that calls out to a secure MPC (Multi-Party Computation) service.
 - A wallet that communicates with a hardware signing device.
 
 This architecture ensures that the agent's orchestration logic remains completely separate from the specifics of payment signing.
