@@ -7,7 +7,7 @@ This package provides a complete implementation of the x402 payment protocol ext
 Instead of static configuration, delegate agents throw `x402PaymentRequiredException` to request payment dynamically:
 
 ```python
-from a2a_x402 import x402PaymentRequiredException
+from x402_a2a import x402PaymentRequiredException
 
 # In your agent logic:
 if is_premium_feature(request):
@@ -40,7 +40,7 @@ The x402 extension separates **protocol requirements** from **implementation pat
 ### 1.1. Package Structure
 
 ```
-a2a_x402/
+x402_a2a/
 ├── types/               # Protocol Data Structures (Required)
 │   ├── config.py        # Configuration types
 │   ├── messages.py      # Core protocol message types
@@ -62,7 +62,7 @@ a2a_x402/
 
 ### 2.1. Required Data Structures
 
-The a2a_x402 package leverages core types from the `x402.types` package and extends them with A2A-specific structures.
+The x402_a2a package leverages core types from the `x402.types` package and extends them with A2A-specific structures.
 
 #### **From `x402.types` (Core x402 Protocol)**
 
@@ -102,12 +102,12 @@ from x402.types import (
 - `network: str` - Blockchain network
 - `payload: SchemePayloads` - Scheme-specific signed data (e.g., `ExactPaymentPayload`)
 
-#### **New to `a2a_x402.types` (A2A Extension)**
+#### **New to `x402_a2a.types` (A2A Extension)**
 
 These types are specific to the A2A protocol extension:
 
 ```python
-from a2a_x402.types import (
+from x402_a2a.types import (
     PaymentStatus,        # A2A payment state enum
     x402MessageType,      # A2A message type enum
     x402Metadata,         # A2A metadata key constants
@@ -126,7 +126,7 @@ class PaymentStatus(str, Enum):
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
 ```
 
-**`x402MessageType`** - Message type constants (a2a_x402.types.messages):
+**`x402MessageType`** - Message type constants (x402_a2a.types.messages):
 ```python  
 class x402MessageType(str, Enum):
     """Message type identifiers for A2A x402 flow"""
@@ -135,7 +135,7 @@ class x402MessageType(str, Enum):
     PAYMENT_SETTLED = "x402.payment.settled"        # Settlement completion
 ```
 
-**`x402ServerConfig`** - Server payment configuration (a2a_x402.types.config):
+**`x402ServerConfig`** - Server payment configuration (x402_a2a.types.config):
 ```python
 class x402ServerConfig(BaseModel):
     """Configuration for how a server expects to be paid"""
@@ -155,7 +155,7 @@ Implementations MUST use these exact metadata keys in Task and Message objects:
 
 ```python
 class x402Metadata:
-    """Spec-defined metadata key constants (a2a_x402.types.state)"""
+    """Spec-defined metadata key constants (x402_a2a.types.state)"""
     STATUS_KEY = "x402.payment.status"
     REQUIRED_KEY = "x402.payment.required"      # Contains x402PaymentRequiredResponse
     PAYLOAD_KEY = "x402.payment.payload"        # Contains PaymentPayload
@@ -167,7 +167,7 @@ class x402Metadata:
 
 ```python
 # Extension URI constant
-X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/x402-a2a/v0.1"
 
     def get_extension_declaration(
     description: str = "Supports x402 payments", 
@@ -374,10 +374,10 @@ The `/core` module provides implementation-agnostic functions for the protocol o
 
 ### 4.1. Core Function Interface
 
-Functions implemented in `a2a_x402.core`:
+Functions implemented in `x402_a2a.core`:
 
 ```python
-# Payment Requirements Creation (a2a_x402.core.merchant)
+# Payment Requirements Creation (x402_a2a.core.merchant)
 def create_payment_requirements(
     price: Union[str, int, TokenAmount],  # Price can be Money or TokenAmount
     pay_to_address: str,
@@ -392,7 +392,7 @@ def create_payment_requirements(
 ) -> PaymentRequirements:
     """Creates PaymentRequirements object using x402's price processing."""
 
-# Payment Processing (a2a_x402.core.wallet)  
+# Payment Processing (x402_a2a.core.wallet)  
 def process_payment_required(
     payment_required: x402PaymentRequiredResponse,
     account: Account,
@@ -413,7 +413,7 @@ def process_payment(
     Same as create_payment_header but returns PaymentPayload object (not base64 encoded).
     """
 
-# Payment Verification (a2a_x402.core.protocol)
+# Payment Verification (x402_a2a.core.protocol)
 def verify_payment(
     payment_payload: PaymentPayload,
     payment_requirements: PaymentRequirements,
@@ -421,7 +421,7 @@ def verify_payment(
 ) -> VerifyResponse:
     """Verify payment - calls facilitator_client.verify()."""
 
-# Payment Settlement (a2a_x402.core.protocol)  
+# Payment Settlement (x402_a2a.core.protocol)  
 def settle_payment(
     payment_payload: PaymentPayload,
     payment_requirements: PaymentRequirements,
@@ -432,7 +432,7 @@ def settle_payment(
 
 ### 4.2. State Management Utilities  
 
-The `x402Utils` class in `a2a_x402.core.utils`:
+The `x402Utils` class in `x402_a2a.core.utils`:
 
 ```python
 class x402Utils:
@@ -789,7 +789,7 @@ Developers can use the core functions directly without executors:
 from x402.types import PaymentRequirements, x402PaymentRequiredResponse
 
 # A2A Extension Functions & Types
-from a2a_x402 import (
+from x402_a2a import (
     create_payment_requirements,
     settle_payment,
     x402Utils,
@@ -871,7 +871,7 @@ async def handle_payment_submission(task: Task, payment_requirements: PaymentReq
 from x402.types import PaymentRequirements, x402PaymentRequiredResponse
 
 # A2A Extension Functions & Types  
-from a2a_x402 import (
+from x402_a2a import (
     process_payment_required,
     x402Utils,
     x402Metadata
@@ -1034,7 +1034,7 @@ from x402.types import (
 )
 
 # A2A Extension Types & Functions
-from a2a_x402 import (
+from x402_a2a import (
     # Core Functions
     create_payment_requirements,
     settle_payment,
@@ -1063,8 +1063,8 @@ Use executors for automatic payment handling with exceptions:
 
 ```python
 # Server-side middleware
-from a2a_x402.executors import x402ServerExecutor, x402ClientExecutor
-from a2a_x402 import (
+from x402_a2a.executors import x402ServerExecutor, x402ClientExecutor
+from x402_a2a import (
     x402ExtensionConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredException
@@ -1151,7 +1151,7 @@ from x402.facilitator import (
 )
 
 # A2A Extension Types & Functions
-from a2a_x402 import (
+from x402_a2a import (
     # Extension Constants
     X402_EXTENSION_URI,
     
@@ -1199,7 +1199,7 @@ from a2a_x402 import (
 )
 
 # Optional Middleware
-from a2a_x402.executors import (
+from x402_a2a.executors import (
     x402BaseExecutor,
     x402ServerExecutor, 
     x402ClientExecutor

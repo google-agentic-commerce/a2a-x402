@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""a2a_x402 - x402 Payment Protocol Extension for A2A."""
+"""x402_a2a - x402 Payment Protocol Extension for A2A."""
 
 # Core x402 Protocol Types (from x402.types)
 from x402.types import (

@@ -8,7 +8,7 @@ This specification defines the required data structures, message flows, and stat
 
 ## **2\. Extension URI**
 
-The canonical URI for this version of the extension is: https://github.com/google-a2a/a2a-x402/v0.1
+The canonical URI for this version of the extension is: https://github.com/google-a2a/x402-a2a/v0.1
 
 Implementations of this extension MUST use this URI for declaration and activation.
 
@@ -21,7 +21,7 @@ Agents that support this extension MUST declare it in the `extensions` array of 
   "capabilities": {
     "extensions": [
       {
-        "uri": "https://github.com/google-a2a/a2a-x402/v0.1",
+        "uri": "https://github.com/google-a2a/x402-a2a/v0.1",
         "description": "Supports payments using the x402 protocol for on-chain settlement.",
         "required": true,
       }
@@ -301,7 +301,7 @@ stateDiagram-v2
 
 Clients MUST request activation of this extension by including its URI in the `X-A2A-Extensions` HTTP header.
 
-`X-A2A-Extensions: https://github.com/google-a2a/a2a-x402/v0.1`
+`X-A2A-Extensions: https://github.com/google-a2a/x402-a2a/v0.1`
 
 The server agent MUST echo the URI in the response header to confirm activation.
 

@@ -1,7 +1,7 @@
 [project]
 name = "adk-x402-demo"
 version = "0.1.0"
-description = "ADK x402 Payment Protocol Demo using refactored a2a_x402 package"
+description = "ADK x402 Payment Protocol Demo using refactored x402_a2a package"
 requires-python = ">=3.13"
 dependencies = [
     "a2a-sdk",
@@ -13,7 +13,7 @@ dependencies = [
     "uvicorn>=0.34.2",
     "web3>=7.10.0",
     "cdp-sdk>=1.20.0",
-    "a2a-x402",
+    "x402-a2a",
 ]
 
 [build-system]
@@ -33,4 +33,4 @@ server = "server.__main__:main"
 members = ["client"]
 
 [tool.uv.sources]
-a2a-x402 = { path = "../../../python/a2a_x402", editable = true }
+x402-a2a = { path = "../../../python/x402_a2a", editable = true }

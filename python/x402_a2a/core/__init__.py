@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Core package exports for a2a_x402."""
+"""Core package exports for x402_a2a."""
 
 from .merchant import create_payment_requirements
 from .wallet import process_payment_required, process_payment

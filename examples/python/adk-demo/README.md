@@ -6,7 +6,7 @@ The demo consists of two main components:
 1.  A **Client Agent** that acts as an orchestrator, delegating tasks and handling the user-facing interaction.
 2.  A **Merchant Server** that hosts a specialized agent capable of selling items and processing payments using the x402 protocol.
 
-The reusable, core logic for the x402 protocol is encapsulated in the `a2a_x402` Python library, located in the `python/` directory of the parent repository.
+The reusable, core logic for the x402 protocol is encapsulated in the `x402_a2a` Python library, located in the `python/` directory of the parent repository.
 
 ## How to Run the Demo
 
@@ -15,9 +15,9 @@ The reusable, core logic for the x402 protocol is encapsulated in the `a2a_x402`
 - `uv` (for environment and package management)
 
 ### 1. Setup the Environment
-First, sync the virtual environment to install all necessary dependencies, including the local `a2a_x402` library in editable mode.
+First, sync the virtual environment to install all necessary dependencies, including the local `x402_a2a` library in editable mode.
 
-Run this command from the root of the `a2a-x402` repository:
+Run this command from the root of the `x402-a2a` repository:
 ```bash
 uv sync --directory=examples/python/adk-demo
 ```
@@ -25,7 +25,7 @@ uv sync --directory=examples/python/adk-demo
 ### 2. Start the Merchant Agent Server
 The merchant server hosts the agent that sells products.
 
-Run this command from the root of the `a2a-x402` repository:
+Run this command from the root of the `x402-a2a` repository:
 ```bash
 uv --directory=examples/python/adk-demo run adk web
 ```
@@ -34,7 +34,7 @@ You should see logs indicating the server is running, typically on `localhost:10
 ### 3. Start the Client Agent & Web UI
 The client agent is an orchestrator that communicates with the merchant. The ADK provides a web interface to interact with it.
 
-Run this command from the 'examples/python/adk-demo' directory of the `a2a-x402` repository:
+Run this command from the 'examples/python/adk-demo' directory of the `x402-a2a` repository:
 ```bash
 uv run --active server
 ```

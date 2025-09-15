@@ -26,11 +26,11 @@ from starlette.routing import BaseRoute
 # Import the executors and wrappers
 from ._adk_agent_executor import ADKAgentExecutor
 
-from a2a_x402.executors import x402ServerExecutor
+from x402_a2a.executors import x402ServerExecutor
 from .adk_merchant_agent import AdkMerchantAgent
 from .mock_facilitator import MockFacilitator
-from a2a_x402.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
-from a2a_x402 import (
+from x402_a2a.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
+from x402_a2a import (
     FacilitatorClient,
     x402ExtensionConfig,
     FacilitatorConfig

@@ -15,8 +15,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from a2a.types import Task, Message, TaskState, TaskStatus, TextPart
-from a2a_x402.executors.server import x402ServerExecutor
-from a2a_x402.types import (
+from x402_a2a.executors.server import x402ServerExecutor
+from x402_a2a.types import (
     PaymentStatus,
     x402Metadata,
     x402PaymentRequiredResponse,
@@ -25,7 +25,7 @@ from a2a_x402.types import (
     VerifyResponse,
     SettleResponse,
 )
-from a2a_x402.core.utils import x402Utils
+from x402_a2a.core.utils import x402Utils
 
 # --- Fixtures ---
 

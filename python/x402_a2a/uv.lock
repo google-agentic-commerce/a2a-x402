@@ -23,45 +23,6 @@ wheels = [
 ]
 
 [[package]]
-name = "a2a-x402"
-version = "1.0.0"
-source = { editable = "." }
-dependencies = [
-    { name = "a2a-sdk" },
-    { name = "eth-account" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "x402" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "trio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "a2a-sdk" },
-    { name = "eth-account", specifier = ">=0.13.7" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pytest", specifier = ">=8.4.1" },
-    { name = "pytest-asyncio", specifier = ">=1.1.0" },
-    { name = "x402", specifier = ">=0.2.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest-cov", specifier = ">=6.2.1" },
-    { name = "pytest-mock", specifier = ">=3.14.1" },
-    { name = "trio", specifier = ">=0.22.0" },
-]
-
-[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2186,6 +2147,45 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/7f/fb/687543f19782da729e0c36c9e1884a54e187100cbf5411d4b044d120abb2/x402-0.2.0.tar.gz", hash = "sha256:511e495cb86c5bf31130a042ddca69c58596835a6f567073df8ae55a4c461103", size = 1964469, upload-time = "2025-08-09T14:36:03.859Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/9f/0f3f82b96801dac2433d25accf7e5b0a27dd3cae38cc77c1990ab3caf2de/x402-0.2.0-py3-none-any.whl", hash = "sha256:0fe106a90c399a38ea62acfe8241fba9809ebb4d0087e1349da7f4c5d12dcc5a", size = 1844786, upload-time = "2025-08-09T14:36:02.576Z" },
+]
+
+[[package]]
+name = "x402-a2a"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "a2a-sdk" },
+    { name = "eth-account" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "x402" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "trio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "a2a-sdk" },
+    { name = "eth-account", specifier = ">=0.13.7" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-asyncio", specifier = ">=1.1.0" },
+    { name = "x402", specifier = ">=0.2.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest-cov", specifier = ">=6.2.1" },
+    { name = "pytest-mock", specifier = ">=3.14.1" },
+    { name = "trio", specifier = ">=0.22.0" },
 ]
 
 [[package]]

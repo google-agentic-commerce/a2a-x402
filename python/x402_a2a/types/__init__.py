@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Types package for a2a_x402 - re-exports x402.types and A2A SDK types, adds A2A-specific extensions."""
+"""Types package for x402_a2a - re-exports x402.types and A2A SDK types, adds A2A-specific extensions."""
 
 
 from a2a.types import (

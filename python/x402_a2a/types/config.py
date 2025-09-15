@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Configuration types for a2a_x402."""
+"""Configuration types for x402_a2a."""
 
 from typing import Optional, Union
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from x402.types import TokenAmount
 
 
-X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/x402-a2a/v0.1"
 
 
 class x402ExtensionConfig(BaseModel):

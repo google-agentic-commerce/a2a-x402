@@ -40,8 +40,8 @@ from google.adk.auth import AuthConfig
 from google.adk.events import Event
 from google.genai import types
 
-from a2a_x402.core.utils import x402Utils, PaymentStatus
-from a2a_x402.types import x402PaymentRequiredException
+from x402_a2a.core.utils import x402Utils, PaymentStatus
+from x402_a2a.types import x402PaymentRequiredException
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
