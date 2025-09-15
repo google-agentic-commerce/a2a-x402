@@ -2,7 +2,7 @@
 
 ## **1\. Abstract**
 
-The x402 Payments Extension is a **Extension** for the Agent-to-Agent (A2A) protocol. It enables agents to monetize services through on-chain cryptocurrency payments, reviving the spirit of the HTTP 402 "Payment Required" status code for the world of decentralized agents.
+The x402 Payments Extension is an **Extension** for the Agent-to-Agent (A2A) protocol. It enables agents to monetize services through on-chain cryptocurrency payments, reviving the spirit of the HTTP 402 "Payment Required" status code for the world of decentralized agents.
 
 This specification defines the required data structures, message flows, and state machine for requesting, authorizing, and settling payments within the A2A framework. It allows a server agent to require payment for a service, a client agent to authorize that payment using a secure wallet, and the server to verify and settle the transaction on a blockchain network.
 
@@ -37,8 +37,7 @@ Setting `required: true` is recommended. This signals to clients that they **MUS
 
 ## **4\. Payment Protocol Flow**
 
-This x402 extension represents the payment lifecycle using two layers of state: the high-level [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum) (e.g., input-required, completed) and a more granular x402.payment.status field that offers a detailed view of the payment process.
-The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
+This x402 extension represents the payment lifecycle using two layers of state: the high-level [A2A Task state](https://a2a-protocol.org/latest/specification/#63-taskstate-enum) (e.g., `input-required`, `completed`) and a more granular `x402.payment.status` metadata field in the [A2A Message object](https://a2a-protocol.org/dev/specification/#64-message-object) that offers a detailed view of the payment process. The flow involves a **Client Agent** (acting on behalf of a user/client) that orchestrates interactions between a **Merchant Agent** (selling a service).
 
 ### **4.1. Roles & Responsibilities**
 
@@ -51,10 +50,10 @@ The Client Agent acts on behalf of a user, orchestrating the payment flow.
 
 * **Initiates** service requests to the Merchant Agent.
 * **Receives** a `Task` that requires payment and processes the `x402PaymentRequiredResponse`.
-  * The agent first extracts the list of accepted PaymentRequirements from the response.
+  * The agent first extracts the list of accepted `PaymentRequirements` from the response.
   * It then determines whether to proceed with payment based on the terms (e.g., cost, asset, network).
-    * If accepting, the agent selects a preferred PaymentRequirements option and has it signed by a designated signing service or wallet. This service securely signs the object to create the PaymentPayload. 
-    * If rejecting, the agent responds to the Merchant Agent with a payment status of `payment-rejected`.
+    * If accepting, the agent selects a preferred `PaymentRequirements` option and has it signed by a designated signing service or wallet. This service securely signs the object to create the `PaymentPayload`.
+    * If rejecting, the agent responds to the Merchant Agent with a `x402.payment.status` of `payment-rejected`.
 * **Submits** the signed payment authorization, packaged as an `PaymentPayload`, back to the Merchant Agent, ensuring the `taskId` is included to correlate the payment with the original request.
 * **Waits for and processes** the final `Task` from the Merchant Agent, which contains either the completed service result or a payment failure notice.
 
@@ -68,7 +67,7 @@ The Merchant Agent is a specialist agent that provides a monetized skill or serv
 * **Communicates** with a type of facilitator to first verify the payment's signature and validity, and then to settle the transaction on-chain.
 * **Concludes** the flow by returning a final `Task` to the Client Agent, containing the service result as an `Artifact` and the settlement details in a payment `receipt`.
 
-**Note:** The Merchant Agent is responsible for state management, using the taskId to track the payment lifecycle. When it receives a payment submission, it uses the taskId to retrieve the original PaymentRequirements offered for that task. This allows the agent to validate that the signed PaymentPayload corresponds to a valid payment option it previously sent.
+**Note:** The Merchant Agent is responsible for state management, using the `taskId` to track the payment lifecycle. When it receives a payment submission, it uses the `taskId` to retrieve the original `PaymentRequirements` offered for that task. This allows the agent to validate that the signed `PaymentPayload` corresponds to a valid payment option it previously sent.
 
 
 
@@ -147,7 +146,7 @@ The Client Agent receives the `Task` and must determine how to proceed:
 
 1. **Client selects the preferred Payment Requirements:** The Client Agent extracts the `x402PaymentRequiredResponse` object from the task's message metadata, finds the preferred payment requirement object to sign and creates a `PaymentPayload` by signing the payment requirements via its wallet or preffered signing service.
 
-2. **Client Rejects Payment Requirements:** The client rejects all payment requirements and responds to the server agent with a message setting the message metadata "x402.payment.status" to `payment-rejected`.
+2. **Client Rejects `PaymentRequirements`:** The client rejects all `PaymentRequirements` options and responds to the server agent with a message setting the message metadata field `x402.payment.status` to `payment-rejected`.
 
 ### **4.5. Step 3: Fulfill and Settle (Client → Merchant → Client)**
 
