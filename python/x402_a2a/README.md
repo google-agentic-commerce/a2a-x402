@@ -152,7 +152,7 @@ class x402ServerConfig(BaseModel):
     mime_type: str = "application/json"        # Expected response type
     max_timeout_seconds: int = 600             # Payment validity timeout
     resource: Optional[str] = None             # Resource identifier (e.g., '/api/generate')
-    asset_address: Optional[str] = None        # Token contract (auto-derived for USDC if None)
+    asset_address: Optional[str] = None        # Optional token contract override
 ```
 
 ### 2.3. Required Metadata Keys
@@ -173,13 +173,13 @@ class x402Metadata:
 
 ```python
 # Extension URI constant
-X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/x402-a2a/v0.1"
 
-    def get_extension_declaration(
+def get_extension_declaration(
     description: str = "Supports x402 payments", 
-        required: bool = True
+    required: bool = True
 ) -> dict:
-        """Creates extension declaration for AgentCard."""
+    """Creates extension declaration for AgentCard."""
     return {
         "uri": X402_EXTENSION_URI,
         "description": description,
@@ -207,10 +207,14 @@ def create_payment_submission_message(
     message_id: Optional[str] = None  # Optional specific message ID
 ) -> Message:
     """Creates correlated payment submission message per spec."""
+    import uuid
+    from a2a.types import TextPart
+    message_id = message_id if message_id is not None else str(uuid.uuid4())
     return Message(
+        messageId=message_id,
         task_id=task_id,  # Spec mandates this correlation
         role="user", 
-        parts=[{"kind": "text", "text": text}],
+        parts=[TextPart(kind="text", text=text)],
         metadata={
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
             x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
