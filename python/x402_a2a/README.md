@@ -455,8 +455,11 @@ Functions implemented in `x402_a2a.core`:
 
 ```python
 # Payment Requirements Creation (x402_a2a.core.merchant)
+from x402.types import Price, TokenAmount
+
+
 def create_payment_requirements(
-    price: Union[str, int, TokenAmount],  # Price can be Money or TokenAmount
+    price: Price,  # Money string/decimal or TokenAmount helper
     pay_to_address: str,
     resource: str,
     network: str = "base",
@@ -467,7 +470,7 @@ def create_payment_requirements(
     output_schema: Optional[Any] = None,
     **kwargs
 ) -> PaymentRequirements:
-    """Creates PaymentRequirements object using x402's price processing."""
+    """Creates PaymentRequirements by converting the price into atomic units."""
 
 # Payment Processing (x402_a2a.core.wallet)  
 def process_payment_required(
@@ -475,20 +478,14 @@ def process_payment_required(
     account: Account,
     max_value: Optional[int] = None
 ) -> PaymentPayload:
-    """Process full payment required response - uses x402.clients.base.x402Client.
-    
-    Returns signed PaymentPayload with selected requirement.
-    """
+    """Selects a requirement via x402Client and returns a signed PaymentPayload."""
 
 def process_payment(
     requirements: PaymentRequirements,
     account: Account,
     max_value: Optional[int] = None
 ) -> PaymentPayload:
-    """Create PaymentPayload - extends x402.clients.base.x402Client.create_payment_header.
-    
-    Same as create_payment_header but returns PaymentPayload object (not base64 encoded).
-    """
+    """Wraps prepare→sign→decode flow to build a PaymentPayload for the exact scheme."""
 
 # Payment Verification (x402_a2a.core.protocol)
 def verify_payment(
@@ -496,7 +493,7 @@ def verify_payment(
     payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
 ) -> VerifyResponse:
-    """Verify payment - calls facilitator_client.verify()."""
+    """Uses FacilitatorClient.verify() to confirm signature and parameters."""
 
 # Payment Settlement (x402_a2a.core.protocol)  
 def settle_payment(
@@ -504,7 +501,7 @@ def settle_payment(
     payment_requirements: PaymentRequirements,
     facilitator_client: Optional[FacilitatorClient] = None
 ) -> SettleResponse:
-    """Settle payment - calls facilitator_client.settle() and returns SettleResponse directly."""
+    """Calls FacilitatorClient.settle() and normalizes the result into SettleResponse."""
 ```
 
 ### 4.2. State Management Utilities  
@@ -512,6 +509,20 @@ def settle_payment(
 The `x402Utils` class in `x402_a2a.core.utils`:
 
 ```python
+from a2a.types import TextPart
+from x402_a2a.types import (
+    Message,
+    PaymentPayload,
+    PaymentStatus,
+    SettleResponse,
+    Task,
+    TaskState,
+    TaskStatus,
+    x402Metadata,
+    x402PaymentRequiredResponse,
+)
+
+
 class x402Utils:
     """Core utilities for x402 protocol state management."""
     
@@ -601,7 +612,10 @@ class x402Utils:
     ) -> Task:
         """Set task to payment required state with proper metadata."""
         # Set task status to input-required as per A2A spec
-        task.status = TaskStatus(state=TaskState.input_required)
+        if task.status:
+            task.status.state = TaskState.input_required
+        else:
+            task.status = TaskStatus(state=TaskState.input_required)
         
         # Ensure task has a status message for metadata
         if not hasattr(task.status, 'message') or not task.status.message:
@@ -627,6 +641,8 @@ class x402Utils:
     ) -> Task:
         """Record payment submission in task metadata."""  
         # Ensure task has a status message for metadata
+        if not task.status:
+            task.status = TaskStatus(state=TaskState.working)
         if not hasattr(task.status, 'message') or not task.status.message:
             task.status.message = Message(
                 messageId=f"{task.id}-status",
@@ -651,6 +667,8 @@ class x402Utils:
     ) -> Task:
         """Record successful payment with settlement response."""
         # Ensure task has a status message for metadata
+        if not task.status:
+            task.status = TaskStatus(state=TaskState.working)
         if not hasattr(task.status, 'message') or not task.status.message:
             task.status.message = Message(
                 messageId=f"{task.id}-status",
@@ -681,6 +699,8 @@ class x402Utils:
     ) -> Task:
         """Record payment failure with error details."""
         # Ensure task has a status message for metadata
+        if not task.status:
+            task.status = TaskStatus(state=TaskState.working)
         if not hasattr(task.status, 'message') or not task.status.message:
             task.status.message = Message(
                 messageId=f"{task.id}-status",
