@@ -173,7 +173,7 @@ class x402Metadata:
 
 ```python
 # Extension URI constant
-X402_EXTENSION_URI = "https://github.com/google-a2a/x402-a2a/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
 
 def get_extension_declaration(
     description: str = "Supports x402 payments", 
