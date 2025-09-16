@@ -234,18 +234,36 @@ The spec defines communication between Client Agent and Merchant Agent. The role
 *Example architectural pattern - represents a separate system/service*
 
 ```python
+from typing import Protocol
+
+from a2a.types import Message, Task
+from x402_a2a.core import create_payment_submission_message
+from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse
+
+
+class SigningService(Protocol):
+    def process_payment_required(
+        self,
+        payment_required: x402PaymentRequiredResponse,
+    ) -> PaymentPayload: ...
+
+
+class MerchantAgent(Protocol):
+    async def process_payment(self, message: Message) -> Task: ...
+
+
 class ClientAgentOperations:
     """Example: How a Client Agent system might organize payment orchestration."""
     
     @staticmethod
-    async def relay_to_signing_service(
+    def relay_to_signing_service(
         payment_required: x402PaymentRequiredResponse,
         signing_service: SigningService
     ) -> PaymentPayload:
         """Forward payment requirements to signing service for authorization."""
         # Signing service receives entire x402PaymentRequiredResponse
         # Returns complete PaymentPayload with selected requirement and signature
-        return await signing_service.process_payment_required(payment_required)
+        return signing_service.process_payment_required(payment_required)
     
     @staticmethod
     async def submit_payment_to_merchant(
@@ -262,15 +280,49 @@ class ClientAgentOperations:
 *Example architectural pattern - represents a separate system/service*
 
 ```python
+from typing import Tuple
+from uuid import uuid4
+
+from a2a.types import Task, TaskState, TaskStatus
+from x402_a2a.core import (
+    create_payment_requirements,
+    verify_payment,
+    settle_payment,
+)
+from x402_a2a.core.utils import x402Utils
+from x402_a2a.types import (
+    FacilitatorClient,
+    PaymentError,
+    PaymentPayload,
+    PaymentRequirements,
+    SettleResponse,
+    x402PaymentRequiredResponse,
+    x402ServerConfig,
+)
+
+
+def generate_task_id() -> str:
+    return str(uuid4())
+
+
 class MerchantAgentOperations:
     """Example: How a Merchant Agent system might handle payment processing."""
     
     @staticmethod
     def create_payment_request(
-        config: PaymentRequirementsConfig
+        config: x402ServerConfig,
+        context_id: str
     ) -> Tuple[Task, x402PaymentRequiredResponse]:
         """Create payment requirements and task when payment is needed for a service."""
-        requirements = create_payment_requirements(config)
+        requirements = create_payment_requirements(
+            price=config.price,
+            pay_to_address=config.pay_to_address,
+            resource=config.resource or "/service",
+            network=config.network,
+            description=config.description,
+            mime_type=config.mime_type,
+            max_timeout_seconds=config.max_timeout_seconds,
+        )
         payment_required = x402PaymentRequiredResponse(
             x402_version=1,
             accepts=[requirements]
@@ -278,12 +330,10 @@ class MerchantAgentOperations:
         
         task = Task(
             id=generate_task_id(),
-            status=TaskStatus(state=TaskState.input_required),
-            metadata={
-                x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_REQUIRED,
-                x402Metadata.REQUIRED_KEY: payment_required.model_dump(by_alias=True)
-            }
+            contextId=context_id,
+            status=TaskStatus(state=TaskState.working)
         )
+        task = x402Utils().create_payment_required_task(task, payment_required)
         
         return task, payment_required
     
@@ -291,20 +341,22 @@ class MerchantAgentOperations:
     async def process_settlement(
         payment_payload: PaymentPayload,
         payment_requirements: PaymentRequirements,
-        facilitator_config: FacilitatorConfig
+        facilitator_client: FacilitatorClient
     ) -> SettleResponse:
         """Verify and settle payment after receiving signed authorization."""
-        # Verify payment signature and requirements with facilitator
-        verification = await verify_payment(payment_payload, payment_requirements, facilitator_config)
+        verification = await verify_payment(
+            payment_payload,
+            payment_requirements,
+            facilitator_client
+        )
         if not verification.is_valid:
-            return SettleResponse(
-                success=False,
-                network=payment_requirements.network,
-                error_reason=verification.invalid_reason
-            )
+            raise PaymentError("Payment verification failed")
         
-        # Settle payment on blockchain via facilitator
-        return await settle_payment(payment_payload, payment_requirements, facilitator_config)
+        return await settle_payment(
+            payment_payload,
+            payment_requirements,
+            facilitator_client
+        )
 ```
 
 ### 3.3. Signing Service Role (Recommended Architecture)
@@ -325,57 +377,72 @@ The spec defines communication between Client Agent and Merchant Agent. The sign
    - Implementation choice based on security model
 
 ```python
+from typing import Optional
+
+from eth_account import Account
+from x402_a2a.core.wallet import process_payment_required as sign_payment_requirements
+from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse
+
+
 class SigningServiceOperations:
     """Example: How a Signing Service might be structured (not actual importable code)."""
     
     def __init__(self, account: Account):
         self._account = account  # Implementation detail - could be HSM, MPC, etc.
         
-    async def process_payment_required(
+    def process_payment_required(
         self,
         payment_required: x402PaymentRequiredResponse,
         max_value: Optional[int] = None
     ) -> PaymentPayload:
         """Process payment requirements: select, sign, and return payment payload."""
-        # Select appropriate payment requirement from available options
-        selected_requirement = self._select_payment_requirement(payment_required.accepts)
-        
-        # Sign the selected requirement using private key
-        payment_payload = await process_payment(selected_requirement, self._account, max_value)
-        
-        # Return signed payment payload ready for merchant submission
-        return payment_payload
-    
-    def _select_payment_requirement(
-        self, 
-        accepts: list[PaymentRequirements]
-    ) -> PaymentRequirements:
-        """Payment selection logic - customize based on implementation needs."""
-        return accepts[0]  # Simple default - can be enhanced
+        return sign_payment_requirements(payment_required, self._account, max_value)
 ```
 
 ### 3.4. Facilitator Role
 *Example architectural pattern - represents a separate blockchain/settlement service*
 
 ```python
+from typing import Optional
+
+from x402_a2a.core import verify_payment, settle_payment
+from x402_a2a.types import (
+    FacilitatorClient,
+    PaymentPayload,
+    PaymentRequirements,
+    SettleResponse,
+    VerifyResponse,
+)
+
+
 class FacilitatorOperations:
     """Example: How a Facilitator service might handle on-chain operations."""
     
     @staticmethod
     async def verify_payment_payload(
         payment_payload: PaymentPayload,
-        payment_requirements: PaymentRequirements
-    ) -> VerificationResult:
+        payment_requirements: PaymentRequirements,
+        facilitator_client: Optional[FacilitatorClient] = None
+    ) -> VerifyResponse:
         """Verify payment signature and requirements before processing."""
-        return await verify_payment(payment_payload, payment_requirements)
+        return await verify_payment(
+            payment_payload,
+            payment_requirements,
+            facilitator_client
+        )
     
     @staticmethod
     async def settle_on_chain(
         payment_payload: PaymentPayload,
-        payment_requirements: PaymentRequirements
+        payment_requirements: PaymentRequirements,
+        facilitator_client: Optional[FacilitatorClient] = None
     ) -> SettleResponse:
         """Post payment transaction to blockchain after successful verification."""
-        return await settle_payment(payment_payload, payment_requirements)
+        return await settle_payment(
+            payment_payload,
+            payment_requirements,
+            facilitator_client
+        )
 ```
 
 ## 4. Core Protocol Implementation
