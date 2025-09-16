@@ -12,3 +12,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Claude Code files
+claude.md
