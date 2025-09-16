@@ -987,101 +987,73 @@ The `/executors` module provides optional middleware for common integration patt
 ### 8.1. Server Executor (Exception-Based)
 
 ```python
-class x402ServerExecutor(x402BaseExecutor):
-    """Server-side middleware with exception-based payment requirements."""
-    
+from typing import Optional
+
+from x402_a2a.core import verify_payment, settle_payment
+from x402_a2a.executors import x402ServerExecutor
+from x402_a2a.types import (
+    AgentExecutor,
+    FacilitatorClient,
+    PaymentPayload,
+    PaymentRequirements,
+    SettleResponse,
+    VerifyResponse,
+    x402ExtensionConfig,
+)
+
+
+# The base class catches x402PaymentRequiredException, stores accepted options,
+# and invokes your verify_payment/settle_payment overrides when a client submits
+# a payment payload. Subclass it to wire in facilitator access.
+class MyServerExecutor(x402ServerExecutor):
+    """Wrap business logic and bridge to a facilitator."""
+
     def __init__(
-        self, 
-        delegate: AgentExecutor, 
+        self,
+        delegate: AgentExecutor,
         config: x402ExtensionConfig,
-        facilitator_client: Optional[FacilitatorClient] = None
-    ):
-        """No server configuration needed - payments defined via exceptions."""
+        facilitator_client: Optional[FacilitatorClient] = None,
+    ) -> None:
         super().__init__(delegate, config)
-        self.facilitator_client = facilitator_client or FacilitatorClient()
-    
-    async def execute(self, context: RequestContext, event_queue: EventQueue):
-        if not self.is_active(context):
-            try:
-                return await self._delegate.execute(context, event_queue)
-            except x402PaymentRequiredException as e:
-                # Handle payment requirements from exceptions
-                await self._handle_payment_required_exception(e, context, event_queue)
-                return
+        self._facilitator = facilitator_client or FacilitatorClient()
 
-        task = context.current_task
-        status = self.utils.get_payment_status(task)
+    async def verify_payment(
+        self,
+        payload: PaymentPayload,
+        requirements: PaymentRequirements,
+    ) -> VerifyResponse:
+        return await verify_payment(payload, requirements, self._facilitator)
 
-        if status == PaymentStatus.PAYMENT_SUBMITTED:
-            # Verify → Process → Settle pattern
-            payment_payload = self.utils.get_payment_payload(task)
-            payment_requirements = self._extract_payment_requirements_from_context(task)
-            
-            verify_response = await self.facilitator_client.verify(
-                payment_payload, payment_requirements
-            )
-            
-            if not verify_response.is_valid:
-                # Handle verification failure
-                await self._fail_payment(task, "verification_failed", verify_response.invalid_reason, event_queue)
-            else:
-                # Process request with delegate
-                await self._delegate.execute(context, event_queue)
-                
-                # Settle if successful
-                settle_response = await self.facilitator_client.settle(
-                    payment_payload, payment_requirements
-                )
-                
-                if settle_response.success:
-                    task = self.utils.record_payment_success(task, settle_response)
-                else:
-                    task = self.utils.record_payment_failure(task, "settlement_failed", settle_response)
-                
-                await event_queue.enqueue_event(task)
-            return
+    async def settle_payment(
+        self,
+        payload: PaymentPayload,
+        requirements: PaymentRequirements,
+    ) -> SettleResponse:
+        return await settle_payment(payload, requirements, self._facilitator)
 
-        # Normal business logic - catches payment exceptions
-        try:
-            return await self._delegate.execute(context, event_queue)
-        except x402PaymentRequiredException as e:
-            # Delegate threw payment exception - create payment requirements
-            await self._handle_payment_required_exception(e, context, event_queue)
-            return
+
+# Instantiate once and reuse; the base class handles exceptions and metadata updates.
+server_executor = MyServerExecutor(delegate=your_delegate, config=config)
 ```
 
 ### 8.2. Client Executor (Optional)
 
 ```python
-class x402ClientExecutor(x402BaseExecutor):
-    """Client-side middleware - uses x402Client for payment logic."""
-    
-    def __init__(self, delegate: AgentExecutor, config: x402ExtensionConfig, account: Account, max_value: Optional[int] = None):
-        super().__init__(delegate, config)
-        from x402.clients.base import x402Client
-        self.x402_client = x402Client(account=account, max_value=max_value)
-        self.account = account
-    
-    async def execute(self, context: RequestContext, event_queue: EventQueue):
-        if not self.is_active(context):
-            return await self._delegate.execute(context, event_queue)
+from eth_account import Account
 
-        task = context.current_task
-        payment_required = self.utils.get_payment_requirements(task)
-        
-        if payment_required:
-            
-            # Use x402Client for selection (reuses existing logic)
-            selected_requirement = self.x402_client.select_payment_requirements(payment_required.accepts)
-            
-            # Create payment payload (extends x402Client.create_payment_header)
-            payment_payload = await process_payment(selected_requirement, self.account)
-            
-            task = self.utils.record_payment_submission(task, payment_payload)
-            await event_queue.enqueue_event(task)
-            return
+from x402_a2a.executors import x402ClientExecutor
+from x402_a2a.types import AgentExecutor, x402ExtensionConfig
 
-        return await self._delegate.execute(context, event_queue)
+
+client_executor = x402ClientExecutor(
+    delegate=your_client,
+    config=config,
+    account=Account.from_key(private_key),
+    max_value=250_000,
+    auto_pay=True,
+)
+
+# Wrap your orchestration executor with the client middleware before running tasks.
 ```
 
 ## 9. State Transitions
@@ -1144,20 +1116,21 @@ from x402.facilitator import FacilitatorClient
 Use executors for automatic payment handling with exceptions:
 
 ```python
-# Server-side middleware
-from x402_a2a.executors import x402ServerExecutor, x402ClientExecutor
+# Server- and client-side middleware
+from eth_account import Account
+
+from x402_a2a.executors import x402ClientExecutor
 from x402_a2a import (
     x402ExtensionConfig,
     X402_EXTENSION_URI,
     x402PaymentRequiredException
 )
-from x402.facilitator import FacilitatorClient
-from eth_account import Account
+from your_project.executors import MyServerExecutor
 
-# Wrap your existing executors (no configuration needed)
-server_executor = x402ServerExecutor(
-    delegate=your_executor, 
-    config=config
+# Wrap your existing executors
+server_executor = MyServerExecutor(
+    delegate=your_merchant_executor,
+    config=x402ExtensionConfig(),
 )
 
 # In your delegate agent, throw exceptions for payment:
@@ -1172,8 +1145,8 @@ class MyAgent:
         # Regular logic continues...
 
 client_executor = x402ClientExecutor(
-    delegate=client_executor,
-    config=config,
+    delegate=your_client_executor,
+    config=x402ExtensionConfig(),
     account=Account.from_key(private_key)
 )
 ```
