@@ -2,6 +2,17 @@
 
 This package provides a complete implementation of the x402 payment protocol extension for A2A using an **exception-based approach** for dynamic payment requirements. 
 
+## Quick Start
+
+Run these commands from `python/x402_a2a/` to install the library in editable mode and execute the test suite:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # or use your preferred environment manager
+pip install -e ".[dev]"
+pytest
+```
+
 ## 🚀 Exception-Based Payment Requirements
 
 Instead of static configuration, delegate agents throw `x402PaymentRequiredException` to request payment dynamically:
@@ -41,21 +52,25 @@ The x402 extension separates **protocol requirements** from **implementation pat
 
 ```
 x402_a2a/
-├── types/               # Protocol Data Structures (Required)
-│   ├── config.py        # Configuration types
-│   ├── messages.py      # Core protocol message types
-│   ├── errors.py        # Protocol error types
-│   └── state.py         # Payment state definitions
-├── core/               # Protocol Implementation (Required)
-│   ├── merchant.py      # Payment requirements creation
-│   ├── wallet.py        # Payment signing and processing
-│   ├── protocol.py      # Core protocol operations
-│   └── utils.py         # State management utilities
-├── executors/          # Optional Middleware
-│   ├── base.py         # Base executor types
-│   ├── client.py       # Client-side executor
-│   └── server.py       # Server-side executor
-└── extension.py        # Extension declaration
+├── core/                # Protocol logic and orchestrators
+│   ├── agent.py
+│   ├── helpers.py
+│   ├── merchant.py
+│   ├── protocol.py
+│   ├── utils.py
+│   └── wallet.py
+├── executors/           # Optional middleware bridges
+│   ├── base.py
+│   ├── client.py
+│   └── server.py
+├── types/               # Public types and configuration
+│   ├── config.py
+│   ├── errors.py
+│   └── state.py
+├── tests/               # Regression suite
+│   └── test_core.py
+├── extension.py
+└── __init__.py
 ```
 
 ## 2. Core Protocol Requirements
@@ -109,7 +124,6 @@ These types are specific to the A2A protocol extension:
 ```python
 from x402_a2a.types import (
     PaymentStatus,        # A2A payment state enum
-    x402MessageType,      # A2A message type enum
     x402Metadata,         # A2A metadata key constants
     x402ServerConfig      # Server payment configuration
 )
@@ -125,15 +139,6 @@ class PaymentStatus(str, Enum):
     PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected by client
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
     PAYMENT_FAILED = "payment-failed"        # Payment processing failed
-```
-
-**`x402MessageType`** - Message type constants (x402_a2a.types.messages):
-```python  
-class x402MessageType(str, Enum):
-    """Message type identifiers for A2A x402 flow"""
-    PAYMENT_REQUIRED = "x402.payment.required"      # Initial payment request
-    PAYMENT_PAYLOAD = "x402.payment.payload"        # Signed payment submission
-    PAYMENT_SETTLED = "x402.payment.settled"        # Settlement completion
 ```
 
 **`x402ServerConfig`** - Server payment configuration (x402_a2a.types.config):
@@ -1169,7 +1174,6 @@ from x402_a2a import (
     
     # A2A-Specific Types
     PaymentStatus,                # A2A payment states
-    x402MessageType,              # A2A message types
     x402Metadata,                 # A2A metadata constants
     
     # Configuration
