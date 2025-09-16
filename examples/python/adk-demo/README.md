@@ -13,6 +13,7 @@ The reusable, core logic for the x402 protocol is encapsulated in the `x402_a2a`
 ### Prerequisites
 - Python 3.13+
 - `uv` (for environment and package management)
+- Google API key (you can create one [here](https://ai.google.dev/gemini-api/docs/api-key))
 
 ### 1. Setup the Environment
 First, sync the virtual environment to install all necessary dependencies, including the local `x402_a2a` library in editable mode.
@@ -21,6 +22,23 @@ Run this command from the root of the `a2a-x402` repository:
 ```bash
 uv sync --directory=examples/python/adk-demo
 ```
+
+Set your Google API key as an environment variable:
+
+> **Warning:** Do not hardcode or commit your API key. The commands below set the variable for the current session only. For persistence, add the command to your shell's startup file (e.g., `~/.bashrc`, `~/.zshrc`).
+
+*   **Linux/macOS:**
+    ```bash
+    export GOOGLE_API_KEY="your_api_key_here"
+    ```
+*   **Windows (Command Prompt):**
+    ```cmd
+    set GOOGLE_API_KEY=your_api_key_here
+    ```
+*   **Windows (PowerShell):**
+    ```powershell
+    $env:GOOGLE_API_KEY="your_api_key_here"
+    ```
 
 ### 2. Start the Merchant Agent Server
 The merchant server hosts the agent that sells products.
