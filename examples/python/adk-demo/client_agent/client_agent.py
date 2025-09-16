@@ -197,7 +197,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 raise ValueError("Server requested payment but sent no requirements.")
 
             # Extract details for the confirmation message.
-            product_name = requirements.accepts[0].extra.get("name", "the item")
+            product_name = requirements.accepts[0].extra.get("product", {}).get("name", "the item")
             price = requirements.accepts[0].max_amount_required
             
             return f"The merchant is requesting payment for '{product_name}' for {price} units. Do you want to approve this payment?"
