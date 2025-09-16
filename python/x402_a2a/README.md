@@ -882,118 +882,102 @@ Developers can use the core functions directly without executors:
 ### 7.1. Merchant Implementation
 
 ```python
-# Core x402 Protocol Types
-from x402.types import PaymentRequirements, x402PaymentRequiredResponse
-
-# A2A Extension Functions & Types
-from x402_a2a import (
-    create_payment_requirements,
-    settle_payment,
-    x402Utils,
-    x402Metadata,
-    x402ErrorCode
+from a2a.types import Task
+from x402.types import (
+    PaymentRequirements,
+    x402PaymentRequiredResponse,
+    SettleResponse,
 )
 from x402.facilitator import FacilitatorClient
 
-utils = x402Utils()
+from x402_a2a import (
+    create_payment_requirements,
+    verify_payment,
+    settle_payment,
+    x402Utils,
+    x402ErrorCode,
+)
 
-# Handle payment request
-async def handle_payment_request(task: Task, price: str, resource: str):
-    # Create requirements
+utils = x402Utils()
+facilitator_client = FacilitatorClient()
+
+
+async def handle_payment_request(task: Task, price: str, resource: str) -> Task:
+    """Attach payment requirements to the task before responding to the client."""
     requirements = create_payment_requirements(
-        price=price,  # Can be "$1.00", 1.00, or TokenAmount
-        pay_to_address="0x...",  # Merchant's address
+        price=price,
+        pay_to_address="0x...",
         resource=resource,
         network="base",
-        description="Service payment"
+        description="Service payment",
     )
-    
-    # Create payment required response
+
     payment_required = x402PaymentRequiredResponse(
         x402_version=1,
-        accepts=[requirements]
+        accepts=[requirements],
     )
-    
-    # Update task state
-    task = utils.create_payment_required_task(task, payment_required)
-    return task
+    return utils.create_payment_required_task(task, payment_required)
 
-# Handle payment submission
-async def handle_payment_submission(task: Task, payment_requirements: PaymentRequirements):
-    # Get payment payload from task using utility method
+
+async def handle_payment_submission(
+    task: Task,
+    payment_requirements: PaymentRequirements,
+) -> Task:
+    """Verify and settle a submitted payment."""
     payment_payload = utils.get_payment_payload(task)
-    
-    # Verify payment first
-    facilitator_client = FacilitatorClient({"url": "https://x402.org/facilitator"})
-    verify_response = await facilitator_client.verify(
-        payment_payload, 
-        payment_requirements
-    )
-    
-    if not verify_response.is_valid:
-        task = utils.record_payment_failure(
-            task, "verification_failed", 
-            SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason)
-        )
+    if not payment_payload:
         return task
-    
-    # Settle payment after verification
-    settle_response = await facilitator_client.settle(
+
+    verify_response = await verify_payment(
         payment_payload,
-        payment_requirements
+        payment_requirements,
+        facilitator_client,
     )
-    
-    # Use SettleResponse directly from x402
-    settle_response_result = SettleResponse(
-        success=settle_response.success,
-        transaction=settle_response.transaction,
-        network=settle_response.network or "base",
-        payer=settle_response.payer,
-        error_reason=settle_response.error_reason
+    if not verify_response.is_valid:
+        failure = SettleResponse(
+            success=False,
+            network=payment_requirements.network,
+            error_reason=verify_response.invalid_reason,
+        )
+        return utils.record_payment_failure(task, x402ErrorCode.INVALID_SIGNATURE, failure)
+
+    settle_response = await settle_payment(
+        payment_payload,
+        payment_requirements,
+        facilitator_client,
     )
-    
-    # Update task state based on result
     if settle_response.success:
-        task = utils.record_payment_success(task, settle_response_result)
-    else:
-        task = utils.record_payment_failure(task, "settlement_failed", settle_response_result)
-    
-    return task
+        return utils.record_payment_success(task, settle_response)
+
+    return utils.record_payment_failure(
+        task,
+        x402ErrorCode.SETTLEMENT_FAILED,
+        settle_response,
+    )
 ```
 
 ### 7.2. Wallet Implementation
 
 ```python
-# Core x402 Protocol Types
-from x402.types import PaymentRequirements, x402PaymentRequiredResponse
-
-# A2A Extension Functions & Types  
-from x402_a2a import (
-    process_payment_required,
-    x402Utils,
-    x402Metadata
-)
+from a2a.types import Task
 from eth_account import Account
 
-# Handle payment requirements
-async def handle_payment_requirements(task: Task, account: Account):
-    # Get requirements from task metadata
+from x402_a2a import process_payment_required, x402Utils
+
+
+def handle_payment_requirements(task: Task, account: Account, max_value: int | None = None) -> Task:
+    """Sign the merchant's requirements and update task metadata."""
     utils = x402Utils()
     payment_required = utils.get_payment_requirements(task)
-    
-    # Use x402Client for payment selection and signing
-    from x402.clients.base import x402Client
-    client = x402Client(account=account, max_value=1000000)
-    
-    # Select payment requirement from accepts array
-    selected_requirement = client.select_payment_requirements(payment_required.accepts)
-    
-    # Create payment payload (like create_payment_header but returns PaymentPayload)
-    payment_payload = await process_payment(selected_requirement, account)
-    
-    # Update task state
-    task = utils.record_payment_submission(task, payment_payload)
-    return task
+    if not payment_required:
+        return task
+
+    payment_payload = process_payment_required(
+        payment_required,
+        account,
+        max_value=max_value,
+    )
+    return utils.record_payment_submission(task, payment_payload)
 ```
 
 ## 8. Optional Executor Middleware
