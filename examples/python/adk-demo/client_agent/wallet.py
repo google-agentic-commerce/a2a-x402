@@ -20,7 +20,7 @@ from x402_a2a.core.wallet import process_payment_required
 class Wallet(ABC):
     """
     An abstract base class for a wallet that can sign payment requirements.
-    This interface allows for different wallet implementations (e.g., local, MCP, hardware)
+    This interface allows for different wallet implementations (e.g., local, MPC, hardware)
     to be used interchangeably by the client agent.
     """
 
