@@ -14,6 +14,7 @@
 """State management utilities for x402 protocol."""
 
 import logging
+import uuid
 from typing import Optional
 from ..types import (
     Task,
@@ -51,7 +52,6 @@ def create_payment_submission_message(
         text: Message text content
         message_id: Optional specific message ID; generates UUID if not provided
     """
-    import uuid
     msg_id = message_id if message_id is not None else str(uuid.uuid4())
     return Message(
         messageId=msg_id,  # Use provided ID or generate UUID
