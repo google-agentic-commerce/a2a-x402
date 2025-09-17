@@ -32,6 +32,10 @@ def create_payment_requirements(
     scheme: str = "exact",
     max_timeout_seconds: int = 600,
     output_schema: Optional[Any] = None,
+    mint_url: Optional[str] = None,
+    facilitator_url: Optional[str] = None,
+    keyset_id: Optional[str] = None,
+    unit: str = "sat",
     **kwargs
 ) -> PaymentRequirements:
     """Creates PaymentRequirements for A2A payment requests.
@@ -54,8 +58,51 @@ def create_payment_requirements(
         PaymentRequirements object ready for x402PaymentRequiredResponse
     """
 
+    if scheme == "cashu-token":
+        default_mints = {
+            "bitcoin-testnet": "https://nofees.testnut.cashu.space/",
+            "bitcoin-mainnet": "https://mint.minibits.cash/Bitcoin",
+        }
+        if mint_url is None:
+            mint_url = default_mints.get(network)
+        if mint_url is None:
+            raise ValueError("mint_url is required when scheme='cashu-token'")
+
+        if isinstance(price, dict):
+            raise ValueError("cashu-token scheme expects a numeric price, not TokenAmount")
+
+        if isinstance(price, str):
+            amount_str = price.strip()
+            if not amount_str.isdigit():
+                raise ValueError("cashu-token price string must be an integer")
+        elif isinstance(price, (int, float)):
+            amount_str = str(int(price))
+        else:
+            raise ValueError("Unsupported price type for cashu-token scheme")
+
+        extra = {"mintUrl": mint_url, "unit": unit}
+        if facilitator_url:
+            extra["facilitatorUrl"] = facilitator_url
+        if keyset_id:
+            extra["keysetId"] = keyset_id
+
+        return PaymentRequirements(
+            scheme=scheme,
+            network=cast(SupportedNetworks, network),
+            asset=kwargs.get("asset"),
+            pay_to=pay_to_address,
+            max_amount_required=amount_str,
+            resource=resource,
+            description=description,
+            mime_type=mime_type,
+            max_timeout_seconds=max_timeout_seconds,
+            output_schema=output_schema,
+            extra=extra,
+            **kwargs
+        )
+
     max_amount_required, asset_address, eip712_domain = process_price_to_atomic_amount(price, network)
-    
+
     return PaymentRequirements(
         scheme=scheme,
         network=cast(SupportedNetworks, network),
