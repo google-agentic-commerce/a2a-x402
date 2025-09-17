@@ -198,9 +198,10 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             # Extract details for the confirmation message.
             product_name = requirements.accepts[0].extra.get("product", {}).get("name", "the item")
-            price = requirements.accepts[0].max_amount_required
-            
-            return f"The merchant is requesting payment for '{product_name}' for {price} units. Do you want to approve this payment?"
+            currency_amount = requirements.accepts[0].max_amount_required
+            currency_name = requirements.accepts[0].extra.get("name", "TOKEN")
+
+            return f"The merchant is requesting payment for '{product_name}' for {currency_amount} {currency_name}. Do you want to approve this payment?"
 
         elif response_task.status.state in (TaskState.completed, TaskState.failed):
             # The task is finished. Report the outcome.
