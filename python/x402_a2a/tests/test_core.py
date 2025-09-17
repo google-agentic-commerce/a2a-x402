@@ -16,7 +16,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 from a2a.types import Task, Message, TaskState, TaskStatus, TextPart
 from x402_a2a.executors.server import x402ServerExecutor
+from x402_a2a.core.merchant import create_payment_requirements
+from x402_a2a.core.wallet import process_payment
 from x402_a2a.types import (
+    CashuPaymentPayload,
     PaymentStatus,
     x402Metadata,
     x402PaymentRequiredResponse,
@@ -171,3 +174,45 @@ async def test_server_executor_payment_flow():
     executor.verify_payment.assert_called_once()
     delegate.execute.assert_called_once()
     executor.settle_payment.assert_called_once()
+
+
+def test_create_cashu_payment_requirements():
+    requirements = create_payment_requirements(
+        price=6000,
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+        mint_url="https://nofees.testnut.cashu.space/",
+        keyset_id="keyset-1",
+    )
+
+    assert requirements.scheme == "cashu-token"
+    assert requirements.max_amount_required == "6000"
+    assert requirements.extra["mintUrl"] == "https://nofees.testnut.cashu.space/"
+
+
+def test_process_cashu_payment():
+    requirements = create_payment_requirements(
+        price="5000",
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+        mint_url="https://nofees.testnut.cashu.space/",
+    )
+
+    payload = CashuPaymentPayload(
+        mint="https://nofees.testnut.cashu.space/",
+        proofs=[{"amount": 5000, "secret": "secret", "C": "C", "id": "keyset"}],
+        payer="payer-id",
+    )
+
+    result = process_payment(
+        requirements=requirements,
+        account=MagicMock(),
+        cashu_payload=payload,
+    )
+
+    assert result.scheme == "cashu-token"
+    assert result.payload.mint == "https://nofees.testnut.cashu.space/"
