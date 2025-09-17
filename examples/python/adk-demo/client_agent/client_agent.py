@@ -196,10 +196,14 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             if not requirements:
                 raise ValueError("Server requested payment but sent no requirements.")
 
+            if not requirements.accepts:
+                raise ValueError("Server requested payment but sent no valid payment options.")
+
             # Extract details for the confirmation message.
-            product_name = requirements.accepts[0].extra.get("product", {}).get("name", "the item")
-            currency_amount = requirements.accepts[0].max_amount_required
-            currency_name = requirements.accepts[0].extra.get("name", "TOKEN")
+            payment_option = requirements.accepts[0]
+            currency_amount = payment_option.max_amount_required
+            currency_name = payment_option.extra.get("name", "TOKEN")
+            product_name = payment_option.extra.get("product", {}).get("name", "the item")
 
             return f"The merchant is requesting payment for '{product_name}' for {currency_amount} {currency_name}. Do you want to approve this payment?"
 
