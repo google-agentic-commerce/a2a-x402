@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from x402.types import TokenAmount
 
 
-X402_EXTENSION_URI = "https://github.com/google-a2a/x402-a2a/v0.1"
+X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
 
 
 class x402ExtensionConfig(BaseModel):
