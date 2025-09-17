@@ -83,10 +83,16 @@ def process_payment(
             raise ValueError(
                 "cashu_payload must be provided when processing cashu-token payments"
             )
-
-        mint_url = (requirements.extra or {}).get("mintUrl") if requirements.extra else None
-        if mint_url and cashu_payload.mint != mint_url:
-            raise ValueError("Cashu payload mint does not match payment requirements mintUrl")
+        extra = requirements.extra or {}
+        mints = extra.get("mints") if isinstance(extra, dict) else None
+        if mints:
+            missing = [token.mint for token in cashu_payload.tokens if token.mint not in mints]
+            if missing:
+                raise ValueError(
+                    "Cashu payload contains mints not accepted by the payment requirements"
+                )
+        if len(cashu_payload.encoded) != len(cashu_payload.tokens):
+            raise ValueError("Cashu payload encoded tokens must align with provided token entries")
 
         return PaymentPayload(
             x402_version=x402_VERSION,

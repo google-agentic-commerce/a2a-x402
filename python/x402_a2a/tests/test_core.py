@@ -183,13 +183,13 @@ def test_create_cashu_payment_requirements():
         resource="/cashu",
         network="bitcoin-testnet",
         scheme="cashu-token",
-        mint_url="https://nofees.testnut.cashu.space/",
+        mint_urls=["https://nofees.testnut.cashu.space/"],
         keyset_id="keyset-1",
     )
 
     assert requirements.scheme == "cashu-token"
     assert requirements.max_amount_required == "6000"
-    assert requirements.extra["mintUrl"] == "https://nofees.testnut.cashu.space/"
+    assert requirements.extra["mints"] == ["https://nofees.testnut.cashu.space/"]
 
 
 def test_process_cashu_payment():
@@ -199,12 +199,24 @@ def test_process_cashu_payment():
         resource="/cashu",
         network="bitcoin-testnet",
         scheme="cashu-token",
-        mint_url="https://nofees.testnut.cashu.space/",
+        mint_urls=["https://nofees.testnut.cashu.space/"],
     )
 
     payload = CashuPaymentPayload(
-        mint="https://nofees.testnut.cashu.space/",
-        proofs=[{"amount": 5000, "secret": "secret", "C": "C", "id": "keyset"}],
+        tokens=[
+            {
+                "mint": "https://nofees.testnut.cashu.space/",
+                "proofs": [
+                    {
+                        "amount": 5000,
+                        "secret": "secret",
+                        "C": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                        "id": "001122aabbccdd",
+                    }
+                ],
+            }
+        ],
+        encoded=["cashuBexample"],
         payer="payer-id",
     )
 
@@ -215,4 +227,4 @@ def test_process_cashu_payment():
     )
 
     assert result.scheme == "cashu-token"
-    assert result.payload.mint == "https://nofees.testnut.cashu.space/"
+    assert result.payload.tokens[0].mint == "https://nofees.testnut.cashu.space/"
