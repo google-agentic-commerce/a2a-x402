@@ -12,7 +12,7 @@ from google.adk.sessions import InMemorySessionService
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import BaseRoute, Route
-from a2a_x402 import FacilitatorClient, x402ExtensionConfig
+from x402_a2a import FacilitatorClient, x402ExtensionConfig
 
 # --- Local Imports ---
 

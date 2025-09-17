@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Types package for a2a_x402 - re-exports x402.types and A2A SDK types, adds A2A-specific extensions."""
+"""Types package for x402_a2a - re-exports x402.types and A2A SDK types, adds A2A-specific extensions."""
 
 
 from a2a.types import (
@@ -74,7 +74,7 @@ from ..extension import (
 __all__ = [
 
     "Task",
-    "Message", 
+    "Message",
     "AgentCard",
     "AgentCapabilities",
     "AgentSkill",
@@ -82,11 +82,11 @@ __all__ = [
     "TaskStatus",
 
     "AgentExecutor",
-    "RequestContext", 
+    "RequestContext",
     "EventQueue",
 
     "PaymentRequirements",
-    "x402PaymentRequiredResponse", 
+    "x402PaymentRequiredResponse",
     "PaymentPayload",
     "VerifyResponse",
     "SettleResponse",
@@ -104,7 +104,7 @@ __all__ = [
     "x402Metadata",
 
     "x402Error",
-    "MessageError", 
+    "MessageError",
     "ValidationError",
     "PaymentError",
     "StateError",
@@ -117,6 +117,6 @@ __all__ = [
     "x402ServerConfig",
 
     "get_extension_declaration",
-    "check_extension_activation", 
+    "check_extension_activation",
     "add_extension_activation_header"
 ]

@@ -40,8 +40,8 @@ from google.genai import types
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
-from a2a_x402.core.utils import x402Utils
-from a2a_x402.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
+from x402_a2a.core.utils import x402Utils
+from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
 
 logger = logging.getLogger(__name__)
 

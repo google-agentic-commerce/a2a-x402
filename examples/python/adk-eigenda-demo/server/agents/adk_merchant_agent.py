@@ -9,8 +9,8 @@ from x402.types import PaymentRequirements
 
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
-from a2a_x402.types import x402PaymentRequiredException
-from a2a_x402 import (
+from x402_a2a.types import x402PaymentRequiredException
+from x402_a2a import (
     x402ExtensionConfig,
     PaymentStatus,
     x402Utils,

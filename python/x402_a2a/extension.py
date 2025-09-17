@@ -17,7 +17,7 @@ from .types.config import x402_EXTENSION_URI
 
 
 def get_extension_declaration(
-    description: str = "Supports x402 payments", 
+    description: str = "Supports x402 payments",
     required: bool = True
 ) -> dict:
     """Creates extension declaration for AgentCard."""

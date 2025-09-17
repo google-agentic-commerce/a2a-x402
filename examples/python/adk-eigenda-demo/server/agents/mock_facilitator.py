@@ -1,14 +1,14 @@
 import logging
 from typing import override
 
-from a2a_x402.types import (
+from x402_a2a.types import (
     ExactPaymentPayload,
     PaymentPayload,
     PaymentRequirements,
     SettleResponse,
     VerifyResponse,
 )
-from a2a_x402 import FacilitatorClient
+from x402_a2a import FacilitatorClient
 
 
 class MockFacilitator(FacilitatorClient):

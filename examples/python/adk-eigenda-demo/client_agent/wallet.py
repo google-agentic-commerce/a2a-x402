@@ -23,7 +23,7 @@ from eth_account.messages import encode_defunct
 from web3 import Web3
 from web3.providers import HTTPProvider
 
-from a2a_x402.types import PaymentPayload, x402PaymentRequiredResponse
+from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse
 
 
 class Wallet(ABC):

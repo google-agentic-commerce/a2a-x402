@@ -37,4 +37,4 @@ adk = "google.adk.cli:main"
 members = ["client"]
 
 [tool.uv.sources]
-a2a-x402 = { path = "../../../python/a2a_x402", editable = true }
+a2a-x402 = { path = "../../../python/x402_a2a", editable = true }

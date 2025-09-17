@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Executors package exports for a2a_x402."""
+"""Executors package exports for x402_a2a."""
 
 from .base import x402BaseExecutor
 from .server import x402ServerExecutor
@@ -19,6 +19,6 @@ from .client import x402ClientExecutor
 
 __all__ = [
     "x402BaseExecutor",
-    "x402ServerExecutor", 
+    "x402ServerExecutor",
     "x402ClientExecutor"
 ]

@@ -18,7 +18,7 @@ from x402.types import (
     SettleResponse,
     VerifyResponse,
 )
-from a2a_x402 import FacilitatorClient
+from x402_a2a import FacilitatorClient
 
 
 # Standard ERC20 ABI for transfer and balanceOf functions

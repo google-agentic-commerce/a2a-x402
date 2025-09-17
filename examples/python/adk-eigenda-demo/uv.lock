@@ -21,7 +21,7 @@ wheels = [
 [[package]]
 name = "a2a-x402"
 version = "1.0.0"
-source = { editable = "../../../python/a2a_x402" }
+source = { editable = "../../../python/x402_a2a" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "eth-account" },
@@ -81,7 +81,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk" },
-    { name = "a2a-x402", editable = "../../../python/a2a_x402" },
+    { name = "a2a-x402", editable = "../../../python/x402_a2a" },
     { name = "cdp-sdk", specifier = ">=1.20.0" },
     { name = "click", specifier = ">=8.2.0" },
     { name = "docker", specifier = ">=7.0.0" },
