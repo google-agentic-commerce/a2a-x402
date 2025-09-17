@@ -16,6 +16,7 @@ from ._adk_agent_executor import ADKAgentExecutor
 from x402_a2a.executors import x402ServerExecutor
 from .adk_merchant_agent import AdkMerchantAgent
 from .mock_facilitator import MockFacilitator
+from .real_facilitator import RealFacilitator
 from x402_a2a.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
 from x402_a2a import (
     FacilitatorClient,
@@ -43,7 +44,7 @@ class x402MerchantExecutor(x402ServerExecutor):
             self._facilitator = MockFacilitator()
         else:
             print("--- Using REAL Facilitator ---")
-            self._facilitator = FacilitatorClient(facilitator_config)
+            self._facilitator = RealFacilitator()
 
     @override
     async def verify_payment(
