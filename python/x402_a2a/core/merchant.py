@@ -33,9 +33,12 @@ def create_payment_requirements(
     max_timeout_seconds: int = 600,
     output_schema: Optional[Any] = None,
     mint_url: Optional[str] = None,
+    mint_urls: Optional[list[str]] = None,
     facilitator_url: Optional[str] = None,
     keyset_id: Optional[str] = None,
+    keyset_ids: Optional[list[str]] = None,
     unit: str = "sat",
+    locks: Optional[Any] = None,
     **kwargs
 ) -> PaymentRequirements:
     """Creates PaymentRequirements for A2A payment requests.
@@ -63,10 +66,19 @@ def create_payment_requirements(
             "bitcoin-testnet": "https://nofees.testnut.cashu.space/",
             "bitcoin-mainnet": "https://mint.minibits.cash/Bitcoin",
         }
-        if mint_url is None:
-            mint_url = default_mints.get(network)
-        if mint_url is None:
-            raise ValueError("mint_url is required when scheme='cashu-token'")
+
+        resolved_mints: list[str] = []
+        if mint_urls:
+            resolved_mints = mint_urls
+        elif mint_url:
+            resolved_mints = [mint_url]
+        else:
+            default_mint = default_mints.get(network)
+            if default_mint:
+                resolved_mints = [default_mint]
+
+        if not resolved_mints:
+            raise ValueError("At least one mint URL is required when scheme='cashu-token'")
 
         if isinstance(price, dict):
             raise ValueError("cashu-token scheme expects a numeric price, not TokenAmount")
@@ -80,11 +92,18 @@ def create_payment_requirements(
         else:
             raise ValueError("Unsupported price type for cashu-token scheme")
 
-        extra = {"mintUrl": mint_url, "unit": unit}
+        extra: dict[str, Any] = {"mints": resolved_mints, "unit": unit}
         if facilitator_url:
             extra["facilitatorUrl"] = facilitator_url
-        if keyset_id:
-            extra["keysetId"] = keyset_id
+        resolved_keysets: list[str] = []
+        if keyset_ids:
+            resolved_keysets = keyset_ids
+        elif keyset_id:
+            resolved_keysets = [keyset_id]
+        if resolved_keysets:
+            extra["keysetIds"] = resolved_keysets
+        if locks is not None:
+            extra["nut10"] = locks
 
         return PaymentRequirements(
             scheme=scheme,
