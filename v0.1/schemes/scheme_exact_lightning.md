@@ -86,7 +86,7 @@ Once decoded, the `X-PAYMENT-RESPONSE` is a JSON string with the following prope
 }
 ```
 
-Alternatively, a failure response may look a like:
+Alternatively, a failure response may look like:
 
 ```json
 {
