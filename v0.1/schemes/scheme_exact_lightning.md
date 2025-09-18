@@ -35,7 +35,7 @@ The protocol flow for `exact` on Lightning Network is client-driven:
   "network": "lightning",
   "maxAmountRequired": "5000000",
   "asset": "BTC",
-  "payTo": "bc1ab2c3d4e5f6789...",
+  "payTo": "03a1b2c3d4e5f6789...",
   "resource": "https://api.example.com/ai-service",
   "description": "Batch AI inference request",
   "mimeType": "application/json",
@@ -77,12 +77,22 @@ The `payload` field contains the preimage, which serves as the proof of payment 
 
 The `X-PAYMENT-RESPONSE` header is base64 encoded and returned to the client from the resource server.
 
-Once decoded, the `X-PAYMENT-RESPONSE` is a JSON string with the following properties:
+Once decoded, the `X-PAYMENT-RESPONSE` is a JSON string with the following properties if succeeded:
 
 ```json
 {
-  "success": true | false,
+  "success": true,
   "network": "lightning"
+}
+```
+
+Alternatively, a failure response may look a like:
+
+```json
+{
+  "success": false,
+  "network": "lightning",
+  "error": "EXPIRED_PAYMENT"
 }
 ```
 
