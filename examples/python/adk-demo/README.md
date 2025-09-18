@@ -61,7 +61,7 @@ This will start the ADK web server, usually on `localhost:8000`. Open this URL i
 ### 4. Try the Payment Demo
 Once both servers are running and you've navigated to the web UI, you can test the x402 payment flow by selecting the `client_agent` and asking about purchasing an item such as "I want to buy a banana". The client agent will discover available merchants, request payment details, and guide you through the purchase process.
 
-![Demo Purchase Flow](assets/buy_banana.png)
+![Demo Purchase Flow 🍌](assets/buy_banana.png)
 
 ## Architectural Flow
 
