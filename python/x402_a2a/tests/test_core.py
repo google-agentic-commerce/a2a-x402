@@ -16,7 +16,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 from a2a.types import Task, Message, TaskState, TaskStatus, TextPart
 from x402_a2a.executors.server import x402ServerExecutor
+from x402_a2a.core.merchant import create_payment_requirements
+from x402_a2a.core.wallet import process_payment, process_payment_required
 from x402_a2a.types import (
+    CashuPaymentPayload,
     PaymentStatus,
     x402Metadata,
     x402PaymentRequiredResponse,
@@ -171,3 +174,207 @@ async def test_server_executor_payment_flow():
     executor.verify_payment.assert_called_once()
     delegate.execute.assert_called_once()
     executor.settle_payment.assert_called_once()
+
+
+def test_create_cashu_payment_requirements():
+    requirements = create_payment_requirements(
+        price=6000,
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+        mint_urls=["https://nofees.testnut.cashu.space/"],
+        keyset_id="keyset-1",
+    )
+
+    assert requirements.scheme == "cashu-token"
+    assert requirements.max_amount_required == "6000"
+    assert requirements.extra["mints"] == ["https://nofees.testnut.cashu.space/"]
+
+
+def test_create_cashu_payment_requirements_missing_mint():
+    with pytest.raises(ValueError) as exc:
+        create_payment_requirements(
+            price=1000,
+            pay_to_address="cashu:merchant",
+            resource="/cashu",
+            network="bitcoin-regtest",
+            scheme="cashu-token",
+        )
+
+    assert "network 'bitcoin-regtest'" in str(exc.value)
+
+
+def test_create_cashu_payment_requirements_fractional_price():
+    with pytest.raises(ValueError) as exc:
+        create_payment_requirements(
+            price=0.5,
+            pay_to_address="cashu:merchant",
+            resource="/cashu",
+            network="bitcoin-testnet",
+            scheme="cashu-token",
+        )
+
+    assert "whole number" in str(exc.value)
+
+
+def test_create_cashu_payment_requirements_invalid_string_price():
+    with pytest.raises(ValueError):
+        create_payment_requirements(
+            price="12.3",
+            pay_to_address="cashu:merchant",
+            resource="/cashu",
+            network="bitcoin-testnet",
+            scheme="cashu-token",
+        )
+
+
+def test_process_cashu_payment():
+    requirements = create_payment_requirements(
+        price="5000",
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+        mint_urls=["https://nofees.testnut.cashu.space/"],
+    )
+
+    payload = CashuPaymentPayload(
+        tokens=[
+            {
+                "mint": "https://nofees.testnut.cashu.space/",
+                "proofs": [
+                    {
+                        "amount": 5000,
+                        "secret": "secret",
+                        "C": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                        "id": "001122aabbccdd",
+                    }
+                ],
+            }
+        ],
+        encoded=["cashuBexample"],
+        payer="payer-id",
+    )
+
+    result = process_payment(
+        requirements=requirements,
+        account=MagicMock(),
+        cashu_payload=payload,
+    )
+
+    assert result.scheme == "cashu-token"
+    assert result.payload.tokens[0].mint == "https://nofees.testnut.cashu.space/"
+
+
+def test_process_cashu_payment_requires_payload():
+    requirements = create_payment_requirements(
+        price=1000,
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+    )
+
+    with pytest.raises(ValueError):
+        process_payment(requirements=requirements, account=MagicMock())
+
+
+def test_process_cashu_payment_mismatched_mints():
+    requirements = create_payment_requirements(
+        price=1000,
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+        mint_urls=["https://nofees.testnut.cashu.space/"],
+    )
+
+    payload = CashuPaymentPayload(
+        tokens=[
+            {
+                "mint": "https://mint.minibits.cash/Bitcoin",
+                "proofs": [
+                    {
+                        "amount": 1000,
+                        "secret": "secret",
+                        "C": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                        "id": "001122aabbccdd",
+                    }
+                ],
+            }
+        ],
+        encoded=["cashuBexample"],
+    )
+
+    with pytest.raises(ValueError) as exc:
+        process_payment(requirements=requirements, account=MagicMock(), cashu_payload=payload)
+
+    assert "mint.minibits.cash" in str(exc.value)
+
+
+def test_process_cashu_payment_encoded_length_mismatch():
+    requirements = create_payment_requirements(
+        price=1000,
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+    )
+
+    valid_payload = CashuPaymentPayload(
+        tokens=[
+            {
+                "mint": "https://nofees.testnut.cashu.space/",
+                "proofs": [
+                    {
+                        "amount": 1000,
+                        "secret": "secret",
+                        "C": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                        "id": "001122aabbccdd",
+                    }
+                ],
+            }
+        ],
+        encoded=["cashuBexample"],
+    )
+    payload = CashuPaymentPayload.model_construct(
+        tokens=valid_payload.tokens,
+        encoded=[],
+        memo=valid_payload.memo,
+        unit=valid_payload.unit,
+        locks=valid_payload.locks,
+        payer=valid_payload.payer,
+        expiry=valid_payload.expiry,
+    )
+
+    with pytest.raises(ValueError):
+        process_payment(requirements=requirements, account=MagicMock(), cashu_payload=payload)
+
+
+def test_process_payment_required_rejects_cashu(monkeypatch):
+    cashu_requirement = create_payment_requirements(
+        price=1000,
+        pay_to_address="cashu:merchant",
+        resource="/cashu",
+        network="bitcoin-testnet",
+        scheme="cashu-token",
+    )
+
+    class DummyClient:
+        def __init__(self, *_, **__):
+            pass
+
+        def select_payment_requirements(self, accepts):
+            return accepts[0]
+
+    monkeypatch.setattr("x402_a2a.core.wallet.x402Client", DummyClient)
+
+    payment_required = x402PaymentRequiredResponse(
+        x402_version=1,
+        accepts=[cashu_requirement],
+        error="",
+    )
+
+    with pytest.raises(ValueError):
+        process_payment_required(payment_required, account=MagicMock())
