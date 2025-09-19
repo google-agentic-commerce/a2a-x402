@@ -17,7 +17,6 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Optional, Dict, List
 
-from a2a.types import Task, TaskState, TaskStatus
 from a2a.server.tasks import TaskUpdater
 
 from .base import x402BaseExecutor
@@ -105,7 +104,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             contextId=context.context_id,
             status=TaskStatus(state=TaskState.working),
         )
-        status = self.utils.get_payment_status(task)
+        self.utils.get_payment_status(task)
 
         if (
             self.utils.get_payment_status_from_task(context.current_task)
