@@ -11,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
 import json
 import logging
-from collections import namedtuple
 from collections.abc import AsyncGenerator
-from urllib.parse import parse_qs, urlparse
 
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
@@ -34,13 +31,11 @@ from a2a.types import (
     UnsupportedOperationError,
 )
 from a2a.utils.errors import ServerError
-from a2a.utils.message import new_agent_text_message
 from google.adk import Runner
-from google.adk.auth import AuthConfig
 from google.adk.events import Event
 from google.genai import types
 
-from x402_a2a.core.utils import x402Utils, PaymentStatus
+from x402_a2a.core.utils import x402Utils
 from x402_a2a.types import x402PaymentRequiredException
 
 logger = logging.getLogger(__name__)

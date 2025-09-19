@@ -13,7 +13,6 @@
 # limitations under the License.
 import json
 import logging
-import time
 import uuid
 
 import httpx
@@ -28,19 +27,16 @@ from a2a.types import (
     TaskState,
     TextPart,
 )
-import eth_account
-from eth_account.messages import encode_defunct
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
-from google.genai import types
 
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
 from x402_a2a.core.utils import x402Utils
-from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
+from x402_a2a.types import PaymentStatus
 
 logger = logging.getLogger(__name__)
 
