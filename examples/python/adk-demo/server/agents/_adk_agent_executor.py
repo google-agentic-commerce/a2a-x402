@@ -46,9 +46,9 @@ from x402_a2a.types import x402PaymentRequiredException
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 class ADKAgentExecutor(AgentExecutor):
     """An AgentExecutor that runs an ADK-based Agent."""
-
 
     def __init__(self, runner: Runner, card: AgentCard):
         self.runner = runner
@@ -71,7 +71,7 @@ class ADKAgentExecutor(AgentExecutor):
     ) -> None:
         session = await self._upsert_session(session_id)
         session_id = session.id
-        
+
         current_message = new_message
 
         # The ADK agent can have multiple turns (e.g., tool call -> tool response -> final answer)
@@ -79,22 +79,22 @@ class ADKAgentExecutor(AgentExecutor):
         while True:
             # Get the stream of events from the agent for the current turn
             event_stream = self._run_agent(session_id, current_message)
-            
+
             function_calls_to_execute = []
-            
+
             async for event in event_stream:
                 if event.is_final_response():
                     # The agent is done, send the final result and terminate.
-                    parts = [] 
+                    parts = []
                     if event.content and event.content.parts:
                         parts = convert_genai_parts_to_a2a(event.content.parts)
-                    
+
                     logger.debug("Yielding final response: %s", parts)
                     if parts:
                         await task_updater.add_artifact(parts)
-                    
+
                     await task_updater.complete()
-                    return # Exit the loop and the method
+                    return  # Exit the loop and the method
 
                 if event.get_function_calls():
                     # The agent wants to call a tool. Collect all calls for this turn.
@@ -111,7 +111,6 @@ class ADKAgentExecutor(AgentExecutor):
                 else:
                     logger.debug("Skipping empty event: %s", event)
 
-
             if not function_calls_to_execute:
                 # The stream ended without a final response or a tool call.
                 # This indicates an unexpected state. We'll complete the task to avoid hanging.
@@ -124,35 +123,58 @@ class ADKAgentExecutor(AgentExecutor):
             for call in function_calls_to_execute:
                 tool_name = call.name
                 tool_args = dict(call.args)
-                
-                logger.debug(f"Attempting to execute tool '{tool_name}' with args: {tool_args}")
+
+                logger.debug(
+                    f"Attempting to execute tool '{tool_name}' with args: {tool_args}"
+                )
 
                 # Find the corresponding tool function registered with the agent
-                target_tool = next((t for t in self.runner.agent.tools if getattr(t, '__name__', None) == tool_name), None)
+                target_tool = next(
+                    (
+                        t
+                        for t in self.runner.agent.tools
+                        if getattr(t, "__name__", None) == tool_name
+                    ),
+                    None,
+                )
 
                 if not target_tool:
-                    raise ValueError(f"Tool '{tool_name}' requested by the LLM but not found on the agent.")
-                
+                    raise ValueError(
+                        f"Tool '{tool_name}' requested by the LLM but not found on the agent."
+                    )
+
                 try:
                     # Execute the tool. This is where the x402PaymentRequiredException will be raised.
                     tool_result = target_tool(**tool_args)
                     tool_outputs.append(
-                        types.Part(function_response=types.FunctionResponse(name=tool_name, response={'result': tool_result}))
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                name=tool_name, response={"result": tool_result}
+                            )
+                        )
                     )
                 except x402PaymentRequiredException:
                     # This special exception must propagate up to the x402ServerExecutor.
                     raise
                 except Exception as e:
                     # Any other tool error should be reported back to the LLM.
-                    logger.error(f"Tool '{tool_name}' execution failed: {e}", exc_info=True)
+                    logger.error(
+                        f"Tool '{tool_name}' execution failed: {e}", exc_info=True
+                    )
                     tool_outputs.append(
-                        types.Part(function_response=types.FunctionResponse(name=tool_name, response={'error': str(e)}))
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                name=tool_name, response={"error": str(e)}
+                            )
+                        )
                     )
 
             # Prepare the next message to send to the agent, containing the tool results.
             current_message = types.Content(parts=tool_outputs, role="tool")
 
-    async def _preprocess_and_find_payment_payload(self, context: RequestContext) -> str | None:
+    async def _preprocess_and_find_payment_payload(
+        self, context: RequestContext
+    ) -> str | None:
         """
         Inspects incoming message parts to find a JSON string containing an
         x402_payment_object and extracts the object's value.
@@ -182,17 +204,28 @@ class ADKAgentExecutor(AgentExecutor):
         session = await self._upsert_session(context.context_id)
 
         # Check if the x402 wrapper has verified a payment by looking at the task metadata.
-        if context.current_task and context.current_task.metadata.get("x402_payment_verified", False):
+        if context.current_task and context.current_task.metadata.get(
+            "x402_payment_verified", False
+        ):
             # If payment is verified, write structured data to the session state.
             # The agent's `before_agent_callback` will read this.
-            product_name = context.current_task.status.message.metadata.get("x402.payment.required", {}).get("accepts", [{}])[0].get("extra", {}).get("name", "the item")
-            session.state['payment_verified_data'] = {
+            product_name = (
+                context.current_task.status.message.metadata.get(
+                    "x402.payment.required", {}
+                )
+                .get("accepts", [{}])[0]
+                .get("extra", {})
+                .get("name", "the item")
+            )
+            session.state["payment_verified_data"] = {
                 "product": product_name,
-                "status": "SUCCESS"
+                "status": "SUCCESS",
             }
             # We still need to send a message to trigger the agent's turn.
             # The content doesn't matter as much, as the callback will intercept it.
-            user_message = types.UserContent(parts=[types.Part(text="Payment verified. Please proceed.")])
+            user_message = types.UserContent(
+                parts=[types.Part(text="Payment verified. Please proceed.")]
+            )
             # --- CRITICAL ---
             # We must re-fetch the session here to ensure the state changes
             # from the x402 executor are reflected before the agent's
@@ -209,7 +242,7 @@ class ADKAgentExecutor(AgentExecutor):
             session.id,
             task_updater,
         )
-        
+
         logger.debug(f"[{self._card.name}] execute exiting")
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue):
@@ -239,7 +272,9 @@ def convert_a2a_part_to_genai(part: Part) -> types.Part:
         return types.Part(text=part.text)
     if isinstance(part, DataPart):
         json_string = json.dumps(part.data)
-        return types.Part(text=f"Received structured data:\n```json\n{json_string}\n```")
+        return types.Part(
+            text=f"Received structured data:\n```json\n{json_string}\n```"
+        )
     if isinstance(part, FilePart):
         if isinstance(part.file, FileWithUri):
             return types.Part(
@@ -289,7 +324,5 @@ def convert_genai_part_to_a2a(part: types.Part) -> Part:
             )
         )
     if part.function_response:
-        return Part(
-            root=DataPart(data=part.function_response.response)
-        )
+        return Part(root=DataPart(data=part.function_response.response))
     raise ValueError(f"Unsupported part type: {part}")

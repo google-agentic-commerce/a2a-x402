@@ -99,7 +99,7 @@ def _create_routes(
         session_service=session_service,
         memory_service=memory_service,
     )
-    
+
     # 1. Create the base executor that runs the ADK agent.
     agent_executor = ADKAgentExecutor(runner, agent_card)
 
@@ -117,6 +117,4 @@ def _create_routes(
     )
     agent_json_address = full_path + "/.well-known/agent-card.json"
     print(f"{agent_json_address}")
-    return a2a_app.routes(
-        agent_card_url=agent_json_address, rpc_url=full_path
-    )
+    return a2a_app.routes(agent_card_url=agent_json_address, rpc_url=full_path)

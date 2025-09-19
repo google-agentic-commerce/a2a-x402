@@ -17,6 +17,7 @@ import eth_account
 from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse
 from x402_a2a.core.wallet import process_payment_required
 
+
 class Wallet(ABC):
     """
     An abstract base class for a wallet that can sign payment requirements.
@@ -42,7 +43,9 @@ class MockLocalWallet(Wallet):
         """
         Signs a payment requirement using x402.exact EIP-3009 signing.
         """
-        private_key = "0x0000000000000000000000000000000000000000000000000000000000000001"
+        private_key = (
+            "0x0000000000000000000000000000000000000000000000000000000000000001"
+        )
         account = eth_account.Account.from_key(private_key)
-        
+
         return process_payment_required(requirements, account)
