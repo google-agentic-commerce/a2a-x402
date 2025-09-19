@@ -1,0 +1,45 @@
+name: Publish x402-a2a to PyPI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish-pypi-x402-a2a:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./python/x402_a2a
+    environment:
+      name: pypi
+      url: https://pypi.org/p/x402-a2a
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@a44c2b7303e8291c17dec9b43af59ae612a289f7 # 4.1.7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f390daa34 # v4.8.0
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build package
+        id: build
+        run: |
+          uv build
+          echo "version=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)" >> $GITHUB_OUTPUT
+
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
+        with:
+          packages-dir: python/x402_a2a/dist/
