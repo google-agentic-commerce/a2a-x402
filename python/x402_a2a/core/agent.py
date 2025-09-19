@@ -30,10 +30,10 @@ def create_x402_agent_card(
     model: Optional[str] = None,
     default_input_modes: Optional[List[str]] = None,
     default_output_modes: Optional[List[str]] = None,
-    streaming: bool = True
+    streaming: bool = True,
 ) -> AgentCard:
     """Create an AgentCard with x402 extension capabilities.
-    
+
     Args:
         name: Name of the agent
         description: Description of the agent
@@ -46,7 +46,7 @@ def create_x402_agent_card(
         default_input_modes: Supported input modes
         default_output_modes: Supported output modes
         streaming: Whether streaming is supported
-        
+
     Returns:
         AgentCard with x402 extension capabilities
     """
@@ -57,13 +57,12 @@ def create_x402_agent_card(
         default_output_modes = ["text", "text/plain"]
     if skills is None:
         skills = []
-    
+
     # Create base capabilities
     capabilities = AgentCapabilities(
-        streaming=streaming,
-        extensions=[get_extension_declaration()]
+        streaming=streaming, extensions=[get_extension_declaration()]
     )
-    
+
     # Create the agent card data
     card_data = {
         "name": name,
@@ -73,13 +72,13 @@ def create_x402_agent_card(
         "defaultInputModes": default_input_modes,
         "defaultOutputModes": default_output_modes,
         "capabilities": capabilities,
-        "skills": skills
+        "skills": skills,
     }
-    
+
     # Add optional fields if provided
     if instructions:
         card_data["instructions"] = instructions
     if model:
         card_data["model"] = model
-    
+
     return AgentCard(**card_data)

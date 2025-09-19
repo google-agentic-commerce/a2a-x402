@@ -21,20 +21,17 @@ from ..types import (
     RequestContext,
     EventQueue,
     x402ExtensionConfig,
-    X402_EXTENSION_URI
+    X402_EXTENSION_URI,
 )
 from ..core.utils import x402Utils
 
+
 class x402BaseExecutor(ABC):
     """Base executor with x402 protocol support."""
-    
-    def __init__(
-        self,
-        delegate: AgentExecutor,
-        config: x402ExtensionConfig
-    ):
+
+    def __init__(self, delegate: AgentExecutor, config: x402ExtensionConfig):
         """Initialize base executor.
-        
+
         Args:
             delegate: The underlying agent executor to wrap
             config: x402 extension configuration
@@ -45,15 +42,15 @@ class x402BaseExecutor(ABC):
 
     def is_active(self, context: RequestContext) -> bool:
         """Check if x402 extension is activated for this request.
-        
+
         Args:
             context: Request context containing headers and request info
-            
+
         Returns:
             True if x402 extension should be active
         """
 
-        headers = getattr(context, 'headers', {})
+        headers = getattr(context, "headers", {})
         if isinstance(headers, dict):
             extensions_header = headers.get("X-A2A-Extensions", "")
             if X402_EXTENSION_URI in extensions_header:
@@ -62,13 +59,9 @@ class x402BaseExecutor(ABC):
         return False
 
     @abstractmethod
-    async def execute(
-        self,
-        context: RequestContext,
-        event_queue: EventQueue
-    ):
+    async def execute(self, context: RequestContext, event_queue: EventQueue):
         """Execute the agent with x402 payment middleware.
-        
+
         Args:
             context: Request context
             event_queue: Event queue for task updates

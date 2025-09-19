@@ -43,7 +43,7 @@ from ..types import (
     TaskStatus,
     TaskState,
     x402PaymentRequiredResponse,
-    VerifyResponse
+    VerifyResponse,
 )
 
 
@@ -52,14 +52,14 @@ logger = logging.getLogger(__name__)
 
 class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     """Server-side payment middleware for merchant agents.
-    
+
     Exception-based payment requirements:
     Delegate agents throw x402PaymentRequiredException to request payment dynamically.
-    
+
     Example:
         # Create executor (no configuration needed)
         server = x402ServerExecutor(my_agent, config)
-        
+
         # In your delegate agent:
         raise x402PaymentRequiredException.for_service(
             price="$1.00",
@@ -67,17 +67,17 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             resource="/premium-feature"
         )
     """
-    
+
     # Class-level store to persist across requests for a single server instance.
     _payment_requirements_store: Dict[str, List[PaymentRequirements]] = {}
-    
+
     def __init__(
         self,
         delegate: AgentExecutor,
         config: x402ExtensionConfig,
     ):
         """Initialize server executor.
-        
+
         Args:
             delegate: Underlying agent executor for business logic
             config: x402 extension configuration
@@ -97,12 +97,8 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     ) -> SettleResponse:
         """Settles the payment with a facilitator."""
         raise NotImplementedError
-    
-    async def execute(
-        self,
-        context: RequestContext,
-        event_queue: EventQueue
-    ):
+
+    async def execute(self, context: RequestContext, event_queue: EventQueue):
         """Payment middleware: verify → execute service → settle."""
         # The wrapper MUST take responsibility for starting the task.
         # This ensures the task exists in the TaskManager before the delegate runs.
@@ -111,14 +107,12 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             await updater.submit()
         await updater.start_work()
 
-
         task = context.current_task or Task(
             id=context.task_id,
             contextId=context.context_id,
             status=TaskStatus(state=TaskState.working),
         )
         status = self.utils.get_payment_status(task)
-
 
         if (
             self.utils.get_payment_status_from_task(context.current_task)
@@ -127,17 +121,15 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             == PaymentStatus.PAYMENT_SUBMITTED
         ):
             return await self._process_paid_request(context, event_queue)
-        
+
         try:
             return await self._delegate.execute(context, event_queue)
         except x402PaymentRequiredException as e:
             await self._handle_payment_required_exception(e, context, event_queue)
             return
-    
+
     async def _process_paid_request(
-        self,
-        context: RequestContext,
-        event_queue: EventQueue
+        self, context: RequestContext, event_queue: EventQueue
     ):
         """Process paid request: verify → execute → settle."""
         logger.info("Starting payment processing...")
@@ -146,40 +138,74 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             logger.error("Task not found in context during payment processing.")
             raise ValueError("Task not found in context")
 
-        logger.info(f"✅ Received payment payload. Beginning verification for task: {task.id}")
+        logger.info(
+            f"✅ Received payment payload. Beginning verification for task: {task.id}"
+        )
 
         payment_payload = self.utils.get_payment_payload(
             task
         ) or self.utils.get_payment_payload_from_message(context.message)
         if not payment_payload:
-            logger.warning("Payment payload missing from both task and message metadata.")
-            return await self._fail_payment(task, x402ErrorCode.INVALID_SIGNATURE, "Missing payment data", event_queue)
-        
-        logger.info(f"Retrieved payment payload: {payment_payload.model_dump_json(indent=2)}")
+            logger.warning(
+                "Payment payload missing from both task and message metadata."
+            )
+            return await self._fail_payment(
+                task,
+                x402ErrorCode.INVALID_SIGNATURE,
+                "Missing payment data",
+                event_queue,
+            )
 
-        logger.info(f"Attempting to retrieve payment requirements for task ID: {task.id}")
+        logger.info(
+            f"Retrieved payment payload: {payment_payload.model_dump_json(indent=2)}"
+        )
+
+        logger.info(
+            f"Attempting to retrieve payment requirements for task ID: {task.id}"
+        )
         payment_requirements = self._extract_payment_requirements_from_context(
             task, context
         )
         if not payment_requirements:
             logger.warning("Payment requirements missing from context.")
-            return await self._fail_payment(task, x402ErrorCode.INVALID_SIGNATURE, "Missing payment requirements", event_queue)
-        
-        logger.info(f"Retrieved payment requirements: {payment_requirements.model_dump_json(indent=2)}")
-        
+            return await self._fail_payment(
+                task,
+                x402ErrorCode.INVALID_SIGNATURE,
+                "Missing payment requirements",
+                event_queue,
+            )
+
+        logger.info(
+            f"Retrieved payment requirements: {payment_requirements.model_dump_json(indent=2)}"
+        )
+
         try:
             logger.info("Calling self.verify_payment...")
             verify_response = await self.verify_payment(
                 payment_payload, payment_requirements
             )
-            logger.info(f"Verification response: {verify_response.model_dump_json(indent=2)}")
+            logger.info(
+                f"Verification response: {verify_response.model_dump_json(indent=2)}"
+            )
             if not verify_response.is_valid:
-                logger.warning(f"Payment verification failed: {verify_response.invalid_reason}")
-                return await self._fail_payment(task, x402ErrorCode.INVALID_SIGNATURE, verify_response.invalid_reason or "Invalid payment", event_queue)
+                logger.warning(
+                    f"Payment verification failed: {verify_response.invalid_reason}"
+                )
+                return await self._fail_payment(
+                    task,
+                    x402ErrorCode.INVALID_SIGNATURE,
+                    verify_response.invalid_reason or "Invalid payment",
+                    event_queue,
+                )
         except Exception as e:
             logger.error(f"Exception during payment verification: {e}", exc_info=True)
-            return await self._fail_payment(task, x402ErrorCode.INVALID_SIGNATURE, f"Verification failed: {e}", event_queue)
-        
+            return await self._fail_payment(
+                task,
+                x402ErrorCode.INVALID_SIGNATURE,
+                f"Verification failed: {e}",
+                event_queue,
+            )
+
         logger.info("Payment verified successfully. Recording and updating task.")
         task = self.utils.record_payment_verified(task)
         await event_queue.enqueue_event(task)
@@ -190,7 +216,10 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         task.metadata["x402_payment_verified"] = True
         logger.info("Set x402_payment_verified=True in task.metadata")
 
-        if not hasattr(task.status.message, 'metadata') or not task.status.message.metadata:
+        if (
+            not hasattr(task.status.message, "metadata")
+            or not task.status.message.metadata
+        ):
             task.status.message.metadata = {}
         try:
             logger.info("Executing delegate agent...")
@@ -198,8 +227,13 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             logger.info("Delegate agent execution finished.")
         except Exception as e:
             logger.error(f"Exception during delegate execution: {e}", exc_info=True)
-            return await self._fail_payment(task, x402ErrorCode.SETTLEMENT_FAILED, f"Service failed: {e}", event_queue)
-        
+            return await self._fail_payment(
+                task,
+                x402ErrorCode.SETTLEMENT_FAILED,
+                f"Service failed: {e}",
+                event_queue,
+            )
+
         logger.info("Delegate execution complete. Proceeding to settlement.")
 
         try:
@@ -207,7 +241,9 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             settle_response = await self.settle_payment(
                 payment_payload, payment_requirements
             )
-            logger.info(f"Settlement response: {settle_response.model_dump_json(indent=2)}")
+            logger.info(
+                f"Settlement response: {settle_response.model_dump_json(indent=2)}"
+            )
             if settle_response.success:
                 logger.info("Settlement successful. Recording payment success.")
                 task = self.utils.record_payment_success(task, settle_response)
@@ -215,16 +251,27 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 self._payment_requirements_store.pop(task.id, None)
             else:
                 logger.warning(f"Settlement failed: {settle_response.error_reason}")
-                error_code = x402ErrorCode.INSUFFICIENT_FUNDS if "insufficient" in (settle_response.error_reason or "").lower() else x402ErrorCode.SETTLEMENT_FAILED
-                task = self.utils.record_payment_failure(task, error_code, settle_response)
+                error_code = (
+                    x402ErrorCode.INSUFFICIENT_FUNDS
+                    if "insufficient" in (settle_response.error_reason or "").lower()
+                    else x402ErrorCode.SETTLEMENT_FAILED
+                )
+                task = self.utils.record_payment_failure(
+                    task, error_code, settle_response
+                )
 
                 self._payment_requirements_store.pop(task.id, None)
             await event_queue.enqueue_event(task)
             logger.info("Settlement processing finished.")
         except Exception as e:
             logger.error(f"Exception during settlement: {e}", exc_info=True)
-            await self._fail_payment(task, x402ErrorCode.SETTLEMENT_FAILED, f"Settlement failed: {e}", event_queue)
-    
+            await self._fail_payment(
+                task,
+                x402ErrorCode.SETTLEMENT_FAILED,
+                f"Settlement failed: {e}",
+                event_queue,
+            )
+
     def _find_matching_payment_requirement(
         self,
         accepts_array: List[PaymentRequirements],
@@ -243,7 +290,9 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 logger.info("  => Found a matching payment requirement.")
                 return requirement
 
-        logger.warning("No matching payment requirement found after checking all options.")
+        logger.warning(
+            "No matching payment requirement found after checking all options."
+        )
         return None
 
     def _extract_payment_requirements_from_context(
@@ -267,10 +316,15 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             return None
 
         return self._find_matching_payment_requirement(accepts_array, payment_payload)
-    
-    async def _handle_payment_required_exception(self, exception: x402PaymentRequiredException, context: RequestContext, event_queue: EventQueue):
+
+    async def _handle_payment_required_exception(
+        self,
+        exception: x402PaymentRequiredException,
+        context: RequestContext,
+        event_queue: EventQueue,
+    ):
         """Handle x402PaymentRequiredException to request payment.
-        
+
         Extracts payment requirements directly from the exception and creates
         a payment required response for the client.
         """
@@ -280,44 +334,46 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             # create a temporary one using the IDs from the context. The TaskManager
             # will find the real task using the ID.
             if not context.task_id:
-                raise ValueError("Cannot handle payment exception: task_id is missing from the context.")
-            
+                raise ValueError(
+                    "Cannot handle payment exception: task_id is missing from the context."
+                )
+
             task = Task(
                 id=context.task_id,
                 contextId=context.context_id,
                 status=TaskStatus(state=TaskState.input_required),
-                metadata={}
+                metadata={},
             )
         else:
             # Ensure the existing task is always in the input_required state
             task.status.state = TaskState.input_required
-        
+
         # Extract payment requirements directly from the exception
         accepts_array = exception.get_accepts_array()
         error_message = str(exception)
 
         # Store payment requirements for later correlation
         self._payment_requirements_store[task.id] = accepts_array
-        
+
         payment_required = x402PaymentRequiredResponse(
-            x402_version=1,
-            accepts=accepts_array,
-            error=error_message
+            x402_version=1, accepts=accepts_array, error=error_message
         )
-        
+
         # Update task with payment requirements
         task = self.utils.create_payment_required_task(task, payment_required)
-        
+
         # Send the payment required response
         await event_queue.enqueue_event(task)
-    
 
-    async def _fail_payment(self, task, error_code: str, error_reason: str, event_queue: EventQueue):
+    async def _fail_payment(
+        self, task, error_code: str, error_reason: str, event_queue: EventQueue
+    ):
         """Handle payment failure."""
-        failure_response = SettleResponse(success=False, network="base", error_reason=error_reason)
+        failure_response = SettleResponse(
+            success=False, network="base", error_reason=error_reason
+        )
         task = self.utils.record_payment_failure(task, error_code, failure_response)
-        
 
         self._payment_requirements_store.pop(task.id, None)
-        
+
         await event_queue.enqueue_event(task)
