@@ -107,7 +107,7 @@ class x402PaymentRequiredException(x402Error):
         price: Union[str, int, TokenAmount],
         pay_to_address: str,
         resource: str,
-        network: str = "base",
+        network: str = "eip155:8453",
         description: str = "Payment required for this service",
         message: Optional[str] = None
     ) -> 'x402PaymentRequiredException':

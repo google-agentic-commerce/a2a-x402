@@ -26,7 +26,7 @@ In addition to the standard x402 `PaymentRequirements` fields, the `exact` schem
 ```json
 {
   "scheme": "exact",
-  "network": "uma",
+  "network": "lightning:mainnet",
   "maxAmountRequired": "1000", // in lowest denomination of asset
   "asset": "USD",
   "payTo": "$receiver@vasp.com",
@@ -50,7 +50,7 @@ Once decoded, the `X-PAYMENT` header is a JSON string with the following propert
 {
  "x402Version": 1,
  "scheme": "exact",
- "network": "uma",
+ "network": "lightning:mainnet",
  "payload": {
    "preimage": "..."
  }
@@ -67,8 +67,8 @@ Once decoded, the `X-PAYMENT-RESPONSE` is a JSON string with the following prope
 
 ```json
 {
- "success": true | false
- "network": "uma"
+ "success": true | false,
+ "network": "lightning:mainnet"
 }
 ```
 

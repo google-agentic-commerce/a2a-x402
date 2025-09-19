@@ -118,7 +118,7 @@ When a Client Agent requests a service, the Merchant Agent determines that payme
             "x402Version": 1,
             "accepts": [{
               "scheme": "exact",
-              "network": "base",
+              "network": "eip155:8453",
               "resource": "https://api.example.com/generate-image",
               "description": "Generate an image",
               "mimeType": "application/json",
@@ -202,7 +202,7 @@ The Agent **MUST** include ALL payment receipts created in the lifetime of a Tas
           "x402.payment.receipts": [{
             "success": true,
             "transaction": "0xabc123...",
-            "network": "base",
+            "network": "eip155:8453",
             "payer": "0xpayerAddress"
           }]
         }
@@ -230,10 +230,17 @@ Sent by the Merchant Agent in the `metadata` of a `Task` to request payment.
 
 Describes a single way a client can pay.
 
+**Note on Network Identifiers:** The `network` field uses the CAIP-2 format (`namespace:reference`) to uniquely identify blockchain networks. Common examples:
+- Ethereum mainnet: `eip155:1`
+- Base: `eip155:8453` 
+- Polygon: `eip155:137`
+- Bitcoin mainnet: `bip122:000000000019d6689c085ae165831e93`
+- Lightning Network: `lightning:mainnet`
+
 | Field | Type | Required | Description |
 | ----- | ----- | ----- | ----- |
 | `scheme` | string | Yes | The payment scheme (e.g., "exact"). |
-| `network` | string | Yes | The blockchain network identifier (e.g., "base"). |
+| `network` | string | Yes | The blockchain network identifier in CAIP-2 format (e.g., "eip155:8453" for Base). |
 | `asset` | string | Yes | The contract address of the token to be paid. |
 | `payTo` | string | Yes | The recipient's wallet address. |
 | `maxAmountRequired` | string | Yes | The required payment amount in the token's smallest unit (e.g., wei). |
@@ -249,7 +256,7 @@ Created by the Signing Service, containing the signed payment authorization.
 | Field | Type | Required | Description |
 | ----- | ----- | ----- | ----- |
 | `x402Version` | number | Yes | The version of the x402 protocol being used. |
-| `network` | string | Yes | The blockchain network for the payment. |
+| `network` | string | Yes | The blockchain network for the payment in CAIP-2 format. |
 | `scheme` | string | Yes | The payment scheme being used. |
 | `payload` | object | Yes | The signed payment details, specific to the scheme. |
 
@@ -262,7 +269,7 @@ Returned by the Merchant Agent in `Task`'s `Message` metadata after a successful
 | `success` | bool | Yes | Status of the transaction settlement |
 | `errorReason` | string | No | Error reason for unsuccessful settlement |
 | `transaction` | string | No | The on-chain transaction hash of the settled payment. Present only if `success` is true. |
-| `network` | string | Yes | The network where the payment was settled. |
+| `network` | string | Yes | The network where the payment was settled in CAIP-2 format. |
 | `payer` | string | No | The payer of the settled transaction |
 
 ## **6\. Metadata and State Management**
@@ -338,7 +345,7 @@ The management of Task states at payment failure is at the discretion of the Mer
         "x402.payment.receipts": [{
             "success": false,
             "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
-            "network": "base",
+            "network": "eip155:8453",
         "transaction": ""
         }]
       }

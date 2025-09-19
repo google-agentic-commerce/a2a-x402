@@ -314,7 +314,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
 
     async def _fail_payment(self, task, error_code: str, error_reason: str, event_queue: EventQueue):
         """Handle payment failure."""
-        failure_response = SettleResponse(success=False, network="base", error_reason=error_reason)
+        failure_response = SettleResponse(success=False, network="eip155:8453", error_reason=error_reason)
         task = self.utils.record_payment_failure(task, error_code, failure_response)
         
 

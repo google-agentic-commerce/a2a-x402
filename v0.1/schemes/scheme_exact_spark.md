@@ -27,7 +27,7 @@ In addition to the standard x402 `PaymentRequirements` fields, the `exact` schem
 ```json
 {
   "scheme": "exact",
-  "network": "spark",
+  "network": "bip122:000000000019d6689c085ae165831e93",
   "maxAmountRequired": "1000",
   "asset": "BTC",
   "payTo": "spark1...",
@@ -58,7 +58,7 @@ Once decoded, the `X-PAYMENT` header is a JSON string with the following propert
 {
   "x402Version": 1,
   "scheme": "exact",
-  "network": "spark",
+  "network": "bip122:000000000019d6689c085ae165831e93",
   "payload": {
     "paymentType": "SPARK" | "LIGHTNING" | "L1",
     "transfer_id": "...",  // Spark (unset if not paid over Spark)
@@ -81,7 +81,7 @@ Once decoded, the `X-PAYMENT-RESPONSE` is a JSON string with the following prope
 ```json
 {
   "success": true | false,
-  "network": "spark",
+  "network": "bip122:000000000019d6689c085ae165831e93",
   "transfer_id": "hex-encoded identifier for the Spark transfer"
 }
 ```

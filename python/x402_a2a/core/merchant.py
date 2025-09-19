@@ -26,7 +26,7 @@ def create_payment_requirements(
     price: Price,
     pay_to_address: str,
     resource: str,
-    network: str = "base",
+    network: str = "eip155:8453",
     description: str = "",
     mime_type: str = "application/json",
     scheme: str = "exact",
