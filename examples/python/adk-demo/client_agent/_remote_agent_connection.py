@@ -66,7 +66,7 @@ class RemoteAgentConnections:
                 # Otherwise we are in the Task + TaskUpdate cycle.
                 if task_callback and event:
                     task = task_callback(event)
-                if hasattr(event, 'final') and event.final:
+                if hasattr(event, "final") and event.final:
                     break
             return task
         else:  # Non-streaming

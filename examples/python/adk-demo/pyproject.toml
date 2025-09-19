@@ -34,3 +34,11 @@ members = ["client"]
 
 [tool.uv.sources]
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
+
+[tool.ruff]
+target-version = "py313"
+
+[dependency-groups]
+lint = [
+    "ruff>=0.13.1",
+]

@@ -12,29 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from typing import List, override
+from typing import override
 
-from a2a.server.apps import A2AStarletteApplication
 from a2a.server.agent_execution import AgentExecutor
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import AgentCard
-from google.adk.agents import LlmAgent
-from google.adk.runners import Runner
-from starlette.routing import BaseRoute
 
 # Import the executors and wrappers
-from ._adk_agent_executor import ADKAgentExecutor
 
 from x402_a2a.executors import x402ServerExecutor
-from .adk_merchant_agent import AdkMerchantAgent
 from .mock_facilitator import MockFacilitator
-from x402_a2a.types import PaymentPayload, PaymentRequirements, SettleResponse, VerifyResponse
-from x402_a2a import (
-    FacilitatorClient,
-    x402ExtensionConfig,
-    FacilitatorConfig
+from x402_a2a.types import (
+    PaymentPayload,
+    PaymentRequirements,
+    SettleResponse,
+    VerifyResponse,
 )
+from x402_a2a import FacilitatorClient, x402ExtensionConfig, FacilitatorConfig
 
 
 # ==============================================================================

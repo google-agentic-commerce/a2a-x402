@@ -25,9 +25,7 @@ from a2a.types import (
 )
 
 # Local imports
-from ._remote_agent_connection import (
-    TaskCallbackArg
-)
+from ._remote_agent_connection import TaskCallbackArg
 
 
 class TaskStore:
@@ -103,7 +101,8 @@ class TaskStore:
             return
         if task.history and (
             task.status.message
-            and task.status.message.message_id not in [x.message_id for x in task.history]
+            and task.status.message.message_id
+            not in [x.message_id for x in task.history]
         ):
             task.history.append(task.status.message)
         elif not task.history and task.status.message:
