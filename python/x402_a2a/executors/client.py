@@ -23,10 +23,8 @@ from ..types import (
     EventQueue,
     PaymentStatus,
     x402ExtensionConfig,
-    x402PaymentRequiredResponse,
 )
 from ..core import process_payment_required
-from ..core.utils import create_payment_submission_message
 
 
 class x402ClientExecutor(x402BaseExecutor):

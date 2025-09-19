@@ -13,19 +13,14 @@
 # limitations under the License.
 """Server-side executor for merchant implementations."""
 
-import json
 import logging
 from abc import ABCMeta, abstractmethod
-from pathlib import Path
-from tempfile import gettempdir
 from typing import Optional, Dict, List
 
 from a2a.types import Task, TaskState, TaskStatus
-from x402.common import find_matching_payment_requirements
 from a2a.server.tasks import TaskUpdater
 
 from .base import x402BaseExecutor
-from ..core import verify_payment, settle_payment
 from ..types import (
     AgentExecutor,
     RequestContext,
@@ -34,10 +29,8 @@ from ..types import (
     PaymentRequirements,
     SettleResponse,
     x402ExtensionConfig,
-    FacilitatorClient,
     x402ErrorCode,
     x402PaymentRequiredException,
-    Message,
     PaymentPayload,
     Task,
     TaskStatus,

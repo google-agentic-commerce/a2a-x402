@@ -18,7 +18,6 @@ from x402.types import (
     PaymentRequirements,
     x402PaymentRequiredResponse,
     PaymentPayload,
-    VerifyResponse,
     SettleResponse,
     ExactPaymentPayload,
     EIP3009Authorization,

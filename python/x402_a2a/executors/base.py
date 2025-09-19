@@ -14,7 +14,6 @@
 """Base executor types and interfaces for x402 payment middleware."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from ..types import (
     AgentExecutor,

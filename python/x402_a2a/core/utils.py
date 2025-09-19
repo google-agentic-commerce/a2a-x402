@@ -23,7 +23,6 @@ from ..types import (
     x402Metadata,
     x402PaymentRequiredResponse,
     PaymentPayload,
-    ExactPaymentPayload,
     SettleResponse,
     TaskState,
     TaskStatus,

@@ -14,7 +14,7 @@
 """Configuration types for x402_a2a."""
 
 from typing import Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 from x402.types import TokenAmount
