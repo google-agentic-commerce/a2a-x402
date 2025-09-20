@@ -29,15 +29,22 @@ from x402_a2a.core.utils import x402Utils
 
 # --- Fixtures ---
 
+
 @pytest.fixture
 def utils():
     """Returns an instance of x402Utils."""
     return x402Utils()
 
+
 @pytest.fixture
 def sample_task():
     """Returns a sample Task object."""
-    return Task(id="task-123", contextId="context-456", status=TaskStatus(state=TaskState.working))
+    return Task(
+        id="task-123",
+        contextId="context-456",
+        status=TaskStatus(state=TaskState.working),
+    )
+
 
 @pytest.fixture
 def sample_payment_requirements():
@@ -53,6 +60,7 @@ def sample_payment_requirements():
         mime_type="application/json",
         max_timeout_seconds=600,
     )
+
 
 @pytest.fixture
 def sample_payment_payload():
@@ -74,7 +82,9 @@ def sample_payment_payload():
         },
     )
 
+
 # --- Tests for x402Utils ---
+
 
 def test_create_payment_required_task(utils, sample_task, sample_payment_requirements):
     """
@@ -82,14 +92,22 @@ def test_create_payment_required_task(utils, sample_task, sample_payment_require
     status and metadata.
     """
     payment_required_response = x402PaymentRequiredResponse(
-        x402_version=1, accepts=[sample_payment_requirements], error="Payment is required"
+        x402_version=1,
+        accepts=[sample_payment_requirements],
+        error="Payment is required",
     )
-    
-    updated_task = utils.create_payment_required_task(sample_task, payment_required_response)
+
+    updated_task = utils.create_payment_required_task(
+        sample_task, payment_required_response
+    )
 
     assert updated_task.status.state == TaskState.input_required
-    assert updated_task.status.message.metadata[x402Metadata.STATUS_KEY] == PaymentStatus.PAYMENT_REQUIRED.value
+    assert (
+        updated_task.status.message.metadata[x402Metadata.STATUS_KEY]
+        == PaymentStatus.PAYMENT_REQUIRED.value
+    )
     assert updated_task.status.message.metadata[x402Metadata.REQUIRED_KEY] is not None
+
 
 def test_get_payment_payload_from_message(utils, sample_payment_payload):
     """
@@ -102,7 +120,7 @@ def test_get_payment_payload_from_message(utils, sample_payment_payload):
         parts=[TextPart(text="test")],
         metadata={
             x402Metadata.PAYLOAD_KEY: sample_payment_payload.model_dump(by_alias=True)
-        }
+        },
     )
 
     extracted_payload = utils.get_payment_payload_from_message(message)
@@ -110,15 +128,19 @@ def test_get_payment_payload_from_message(utils, sample_payment_payload):
     assert extracted_payload.scheme == "exact"
     assert extracted_payload.payload.signature == "0xabc"
 
+
 # --- Tests for x402ServerExecutor ---
+
 
 class MockConcreteExecutor(x402ServerExecutor):
     """A concrete implementation of the abstract x402ServerExecutor for testing."""
+
     async def verify_payment(self, payload, requirements):
         return VerifyResponse(is_valid=True, payer="0x789")
 
     async def settle_payment(self, payload, requirements):
         return SettleResponse(success=True)
+
 
 @pytest.mark.asyncio
 async def test_server_executor_payment_flow():
@@ -127,14 +149,16 @@ async def test_server_executor_payment_flow():
     when it receives a payment-submitted message.
     """
     delegate = AsyncMock()
-    facilitator = MagicMock() # Not used directly, but required by constructor in some versions
-    
+    (MagicMock())  # Not used directly, but required by constructor in some versions
+
     # In a real scenario, the executor would be subclassed and these methods implemented.
     # For this test, we can mock them directly on an instance.
     executor = MockConcreteExecutor(delegate=delegate, config=MagicMock())
-    executor.verify_payment = AsyncMock(return_value=VerifyResponse(is_valid=True, payer="0x789"))
+    executor.verify_payment = AsyncMock(
+        return_value=VerifyResponse(is_valid=True, payer="0x789")
+    )
     executor.settle_payment = AsyncMock(return_value=SettleResponse(success=True))
-    
+
     # Simulate the context and event queue
     context = MagicMock()
     context.task_id = "task-123"
@@ -146,7 +170,17 @@ async def test_server_executor_payment_flow():
         x402_version=1,
         scheme="exact",
         network="base-sepolia",
-        payload={"signature": "0xabc", "authorization": {"from": "0x789", "to": "0x123", "value": "100", "valid_after": "0", "valid_before": "9999999999", "nonce": "0xdef"}}
+        payload={
+            "signature": "0xabc",
+            "authorization": {
+                "from": "0x789",
+                "to": "0x123",
+                "value": "100",
+                "valid_after": "0",
+                "valid_before": "9999999999",
+                "nonce": "0xdef",
+            },
+        },
     )
     context.message = Message(
         messageId="msg-1",
@@ -154,14 +188,29 @@ async def test_server_executor_payment_flow():
         parts=[TextPart(text="test")],
         metadata={
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
-        }
+            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True),
+        },
     )
-    context.current_task = Task(id="task-123", contextId="context-456", status=TaskStatus(state=TaskState.working), metadata={})
-    
+    context.current_task = Task(
+        id="task-123",
+        contextId="context-456",
+        status=TaskStatus(state=TaskState.working),
+        metadata={},
+    )
+
     # Mock the internal requirement store to simulate a pending payment
     executor._payment_requirements_store[context.current_task.id] = [
-        PaymentRequirements(scheme="exact", network="base-sepolia", max_amount_required="100", resource="/test", description="Test", mime_type="text/plain", pay_to="0x123", max_timeout_seconds=60, asset="0x456")
+        PaymentRequirements(
+            scheme="exact",
+            network="base-sepolia",
+            max_amount_required="100",
+            resource="/test",
+            description="Test",
+            mime_type="text/plain",
+            pay_to="0x123",
+            max_timeout_seconds=60,
+            asset="0x456",
+        )
     ]
 
     # Execute the flow
