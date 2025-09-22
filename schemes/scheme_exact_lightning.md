@@ -10,14 +10,15 @@ This scheme facilitates instant, low-fee Bitcoin payments using native Lightning
 
 ## Key Features
 
+- **Proven Standard**: Uses broadly adopted BOLT11 spec to maximize compatibility
 - **Instant Settlement**: Sub-second payment confirmation
 - **Micropayment Friendly**: Sub-cent transactions with minimal fees
 - **High Reliability**: Exceptional payment success rates with robust error handling
 - **Security Hardened**: Protects against preimage reuse and routing attacks
 
-## Protocol Flow
+## Protocol Flow Overview
 
-The protocol flow for `exact` on Lightning Network follows the standard x402 facilitator pattern:
+The protocol flow for `exact` on Lightning Network follows the standard [x402 pattern](https://github.com/coinbase/x402?tab=readme-ov-file#v1-protocol-sequencing):
 
 1. **Client** makes an HTTP request to a **Resource Server**
 2. **Resource Server** calls Lightning Facilitator to generate payment requirements with BOLT11 invoice
@@ -27,6 +28,31 @@ The protocol flow for `exact` on Lightning Network follows the standard x402 fac
 6. **Resource Server** calls Lightning Facilitator to verify the preimage against invoice database
 7. **Resource Server** calls Lightning Facilitator to settle the payment
 8. **Resource Server** grants the **Client** access to the resource
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+   participant Client
+   participant ResourceServer
+   participant LightningFacilitator
+   participant LightningNetwork
+
+   Client->>ResourceServer: Request service
+   ResourceServer->>LightningFacilitator: Generate payment requirements
+   LightningFacilitator-->>ResourceServer: PaymentRequirements with BOLT11 invoice
+   ResourceServer-->>Client: 402 Payment Required
+
+   Client->>LightningNetwork: Pay BOLT11 invoice
+   LightningNetwork-->>Client: Payment complete (preimage)
+
+   Client->>ResourceServer: Submit PaymentPayload with preimage
+   ResourceServer->>LightningFacilitator: Verify payment
+   LightningFacilitator-->>ResourceServer: VerifyResponse (valid/invalid)
+   ResourceServer->>LightningFacilitator: Settle payment
+   LightningFacilitator-->>ResourceServer: SettleResponse (success/failure)
+   ResourceServer-->>Client: Service delivered
+```
 
 ## `PaymentRequirements` for `exact`
 
@@ -93,31 +119,6 @@ The Lightning Facilitator handles all Lightning-specific operations:
 - Record successful payment in facilitator's database
 - Return `SettleResponse` with transaction details
 - Clean up used preimages and expired invoices
-
-## Sequence Diagram
-
-```mermaid
-sequenceDiagram
-   participant Client
-   participant ResourceServer
-   participant LightningFacilitator
-   participant Lightning_Network
-
-   Client->>ResourceServer: Request service
-   ResourceServer->>LightningFacilitator: Generate payment requirements
-   LightningFacilitator-->>ResourceServer: PaymentRequirements with BOLT11 invoice
-   ResourceServer-->>Client: 402 Payment Required
-
-   Client->>Lightning_Network: Pay BOLT11 invoice
-   Lightning_Network-->>Client: Payment complete (preimage)
-
-   Client->>ResourceServer: Submit PaymentPayload with preimage
-   ResourceServer->>LightningFacilitator: Verify payment
-   LightningFacilitator-->>ResourceServer: VerifyResponse (valid/invalid)
-   ResourceServer->>LightningFacilitator: Settle payment
-   LightningFacilitator-->>ResourceServer: SettleResponse (success/failure)
-   ResourceServer-->>Client: Service delivered
-```
 
 ## Security Considerations
 
