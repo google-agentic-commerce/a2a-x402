@@ -15,7 +15,7 @@ x402-a2a/
 ├── v0.1/
 │   └── spec.md             # The official x402 extension specification
 │
-├── schemes/                # Payment schemes for x402 protocol
+├── schemes/                # Directory contains experimental x402 payment schemes drafted by partners and other contributors
 │
 ├── {language}/             # Language-specific implementations (e.g., python/, typescript/)
 │   └── x402_a2a/           # The core library for the x402 extension
