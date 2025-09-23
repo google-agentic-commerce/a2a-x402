@@ -23,10 +23,10 @@ The protocol flow for `exact` on Lightning Network follows the standard [x402 pa
 1. **Client** makes an HTTP request to a **Resource Server**
 2. **Resource Server** calls Lightning Facilitator to generate payment requirements with BOLT11 invoice
 3. **Resource Server** responds with a `402 Payment Required` status containing the `paymentRequirements`
-4. **Client** pays the Lightning invoice and obtains the preimage
-5. **Client** sends payment submission with `PaymentPayload` containing the preimage
-6. **Resource Server** calls Lightning Facilitator to verify the preimage against invoice database
-7. **Resource Server** calls Lightning Facilitator to settle the payment
+4. **Client** creates signed authorization to pay the specific BOLT11 invoice
+5. **Client** sends payment submission with `PaymentPayload` containing the signed authorization
+6. **Resource Server** calls Lightning Facilitator to verify the client's authorization signature
+7. **Resource Server** calls Lightning Facilitator to settle payment (facilitator pays Lightning invoice)
 8. **Resource Server** grants the **Client** access to the resource
 
 ## Sequence Diagram
@@ -43,13 +43,13 @@ sequenceDiagram
    LightningFacilitator-->>ResourceServer: PaymentRequirements with BOLT11 invoice
    ResourceServer-->>Client: 402 Payment Required
 
-   Client->>LightningNetwork: Pay BOLT11 invoice
-   LightningNetwork-->>Client: Payment complete (preimage)
-
-   Client->>ResourceServer: Submit PaymentPayload with preimage
-   ResourceServer->>LightningFacilitator: Verify payment
+   Client->>Client: Create signed authorization for BOLT11 invoice
+   Client->>ResourceServer: Submit PaymentPayload with authorization
+   ResourceServer->>LightningFacilitator: Verify authorization
    LightningFacilitator-->>ResourceServer: VerifyResponse (valid/invalid)
    ResourceServer->>LightningFacilitator: Settle payment
+   LightningFacilitator->>LightningNetwork: Pay BOLT11 invoice
+   LightningNetwork-->>LightningFacilitator: Payment complete (preimage)
    LightningFacilitator-->>ResourceServer: SettleResponse (success/failure)
    ResourceServer-->>Client: Service delivered
 ```
@@ -83,7 +83,7 @@ sequenceDiagram
 
 ## `PaymentPayload` Structure
 
-The client submits payment using the standard x402 `PaymentPayload` format:
+The client submits payment authorization using the standard x402 `PaymentPayload` format:
 
 ```json
 {
@@ -91,12 +91,14 @@ The client submits payment using the standard x402 `PaymentPayload` format:
   "scheme": "exact",
   "network": "lightning",
   "payload": {
-    "preimage": "a1b2c3d4e5f6789..."
+    "invoice": "lnbc50u1...",
+    "signature": "0x123abc...",
+    "from": "0x456def..."
   }
 }
 ```
 
-The `payload` field contains the preimage obtained from the Lightning Network after successful payment.
+The `payload` field contains the client's signed authorization to pay the specific BOLT11 invoice, not the preimage (which the facilitator obtains when executing the payment).
 
 ## Lightning Facilitator Responsibilities
 
@@ -108,26 +110,36 @@ The Lightning Facilitator handles all Lightning-specific operations:
 - Return `PaymentRequirements` with invoice in `extra.invoice` field
 
 ### Payment Verification
-- Receive `PaymentPayload` with preimage from server
-- Compute payment_hash = SHA256(preimage)
-- Lookup stored invoice using payment_hash
-- Validate invoice amount matches original requirements
-- Check preimage hasn't been used before (prevent replay attacks)
+- Receive `PaymentPayload` with client authorization from server
+- Validate client's signature on the authorization
+- Confirm authorization matches a generated BOLT11 invoice
+- Check client has authority to authorize this payment
+- Verify invoice hasn't expired or been used
 - Return `VerifyResponse` with validation result
 
 ### Payment Settlement
-- Record successful payment in facilitator's database
+- Use verified authorization to pay the BOLT11 invoice on Lightning Network
+- Obtain preimage as proof of successful Lightning payment
+- Record settlement in facilitator's database with preimage proof
 - Return `SettleResponse` with transaction details
-- Clean up used preimages and expired invoices
+- Clean up used authorizations and expired invoices
 
 ## Security Considerations
 
 **Lightning Facilitator Security**:
 - MUST store invoice metadata securely with payment_hash indexing
-- MUST validate preimage corresponds to a legitimate invoice
-- MUST prevent preimage reuse through blacklisting or nonce tracking
+- MUST validate client signatures on payment authorizations
+- MUST verify authorization corresponds to a legitimate generated invoice
+- MUST prevent authorization reuse through nonce tracking
 - MUST validate invoice amounts match original payment requirements
-- MUST handle invoice expiry properly
+- MUST handle invoice expiry and authorization timeouts properly
+- MUST secure Lightning Network credentials for payment execution
+
+**Resource Server Security**:
+- MUST delegate all Lightning verification and settlement to the facilitator
+- MUST NOT implement Lightning-specific logic directly
+- MUST follow standard x402 verify/settle pattern
+- MUST NOT store or handle Lightning Network credentials
 
 ---
 
