@@ -30,10 +30,12 @@ logger = logging.getLogger(__name__)
 class EigenDAService:
     """Service for managing EigenDA Docker container and operations"""
     
-    def __init__(self, port: int = 3100):
+    def __init__(self, payment_key: str, eth_rpc_url: str, port: int = 3100):
         self.port = port
         self.base_url = f"http://127.0.0.1:{port}"
         self.container_name = "eigenda-proxy"
+        self.payment_key = payment_key
+        self.eth_rpc_url = eth_rpc_url
         self.client = docker.from_env()
         self.container = None
         self._initialized = False
@@ -60,7 +62,13 @@ class EigenDAService:
             print(f"Starting EigenDA Proxy on port {self.port}...")
             self.container = self.client.containers.run(
                 "ghcr.io/layr-labs/eigenda-proxy:latest",
-                command=["--memstore.enabled", "--port", str(self.port)],
+                command=["--eigenda.v2.network", "sepolia_testnet", 
+                "--eigenda.v2.signer-payment-key-hex", self.payment_key,
+                "--storage.backends-to-enable", "V2",
+                "--eigenda.v2.cert-verifier-router-or-immutable-verifier-addr", "0x17ec4112c4BbD540E2c1fE0A49D264a280176F0D",
+                "--eigenda.v2.eth-rpc", self.eth_rpc_url,
+                "--storage.dispersal-backend", "V2",
+                "--port", str(self.port)],
                 name=self.container_name,
                 ports={f"{self.port}/tcp": self.port},
                 detach=True,
@@ -124,7 +132,7 @@ class EigenDAService:
 
 
 # Single instance of EigenDA service
-eigenda_service = EigenDAService()
+eigenda_service = EigenDAService(os.environ.get("PAYMENT_PRIVATE_KEY"), os.environ.get("ETH_RPC_URL"))
 
 
 class EigenDAAgent(BaseAgent):
@@ -154,9 +162,11 @@ class EigenDAAgent(BaseAgent):
             logger.warning(f"Invalid data type: {type(text_data)}")
             return {"error": "Text data must be a string."}
         
-        if len(text_data) > 100000:  # 100KB limit
-            logger.warning(f"Text too large: {len(text_data)} characters")
-            return {"error": f"Text is too large ({len(text_data)} characters). Maximum allowed is 100,000 characters."}
+        # Check byte limit of 16,252,897 bytes
+        byte_length = len(text_data.encode('utf-8'))
+        if byte_length > 16252897:
+            logger.warning(f"Text too large: {byte_length} bytes (maximum allowed is 16,252,897 bytes)")
+            return {"error": f"Text is too large ({byte_length} bytes). Maximum allowed is 16,252,897 bytes."}
 
         # Ensure EigenDA service is running (synchronously)
         try:

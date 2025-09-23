@@ -97,10 +97,10 @@ Assistant: Here are your stored certificates:
 │   Agent     │◀────│   Agent     │◀────│   Docker    │
 └─────────────┘     └─────────────┘     └─────────────┘
       │                    │                     │
-      │   1. Store text    │   2. Submit data   │
+      │   1. Store text    │   2. Submit data    │
       │───────────────────▶│────────────────────▶│
       │                    │                     │
-      │   3. Payment req   │   4. Certificate   │
+      │   3. Payment req   │   4. Certificate    │
       │◀───────────────────│◀────────────────────│
       │                    │                     │
       │   5. Approve pay   │                     │
