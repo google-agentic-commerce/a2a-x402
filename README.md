@@ -54,7 +54,7 @@ This design provides both flexibility and ease of use, allowing developers to ei
 
 *   **[Specification](spec/v0.1/spec.md)**: The complete technical specification for the x402 extension.
 *   **[Python Library](python/x402_a2a/README.md)**: The documentation for the Python implementation of the x402 extension.
-*   **[Examples](python/examples/)**: The directory containing demonstration applications for various languages.
+*   **[Python Examples](python/examples/)**: The directory containing demonstration applications for the Python implementation.
 *   **[A2A Protocol](https://github.com/a2aproject/a2a-python)**: The core agent-to-agent protocol.
 *   **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
 
