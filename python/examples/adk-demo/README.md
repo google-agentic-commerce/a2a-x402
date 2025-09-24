@@ -20,7 +20,7 @@ First, sync the virtual environment to install all necessary dependencies, inclu
 
 Run this command from the root of the `a2a-x402` repository:
 ```bash
-uv sync --directory=examples/python/adk-demo
+uv sync --directory=python/examples/adk-demo
 ```
 
 Set your Google API key as an environment variable:
@@ -45,7 +45,7 @@ The merchant server hosts the agent that sells products.
 
 Run this command from the root of the `a2a-x402` repository:
 ```bash
-uv --directory=examples/python/adk-demo run server
+uv --directory=python/examples/adk-demo run server
 ```
 You should see logs indicating the server is running, typically on `localhost:10000`.
 
@@ -54,7 +54,7 @@ The client agent is an orchestrator that communicates with the merchant. The ADK
 
 Run this command from the root of the `a2a-x402` repository:
 ```bash
-uv --directory=examples/python/adk-demo run adk web --port=8000
+uv --directory=python/examples/adk-demo run adk web --port=8000
 ```
 This will start the ADK web server, usually on `localhost:8000`. Open this URL in your browser to interact with the client agent and start the purchase flow.
 
