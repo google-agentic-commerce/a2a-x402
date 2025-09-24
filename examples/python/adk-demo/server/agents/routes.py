@@ -22,10 +22,7 @@ from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.sessions import InMemorySessionService
-from starlette.requests import Request
-from starlette.responses import PlainTextResponse
 from starlette.routing import BaseRoute, Route
-from x402_a2a import FacilitatorClient, x402ExtensionConfig
 
 # --- Local Imports ---
 
@@ -40,7 +37,6 @@ from .adk_merchant_agent import AdkMerchantAgent
 
 # The concrete x402 executor wrappers
 from .x402_merchant_executor import x402MerchantExecutor
-from .mock_facilitator import MockFacilitator
 
 
 # A dictionary mapping the URL path to the agent factory
@@ -99,7 +95,7 @@ def _create_routes(
         session_service=session_service,
         memory_service=memory_service,
     )
-    
+
     # 1. Create the base executor that runs the ADK agent.
     agent_executor = ADKAgentExecutor(runner, agent_card)
 
@@ -117,6 +113,4 @@ def _create_routes(
     )
     agent_json_address = full_path + "/.well-known/agent-card.json"
     print(f"{agent_json_address}")
-    return a2a_app.routes(
-        agent_card_url=agent_json_address, rpc_url=full_path
-    )
+    return a2a_app.routes(agent_card_url=agent_json_address, rpc_url=full_path)

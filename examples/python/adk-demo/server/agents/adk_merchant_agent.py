@@ -23,13 +23,11 @@ from x402_a2a.types import PaymentRequirements
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
 from x402_a2a.types import x402PaymentRequiredException
-from x402_a2a import (
-    x402Utils,
-    get_extension_declaration
-)
+from x402_a2a import x402Utils, get_extension_declaration
 
 # This is the new, clean ADK Merchant Agent.
 # It now implements the BaseAgent interface.
+
 
 class AdkMerchantAgent(BaseAgent):
     """
@@ -37,7 +35,9 @@ class AdkMerchantAgent(BaseAgent):
     The business logic is implemented as tools.
     """
 
-    def __init__(self, wallet_address: str = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"):
+    def __init__(
+        self, wallet_address: str = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
+    ):
         self._wallet_address = wallet_address
         self.x402 = x402Utils()
 
@@ -73,10 +73,10 @@ class AdkMerchantAgent(BaseAgent):
                 "name": "USDC",
                 "version": "2",
                 "product": {
-                    "sku": f"{product_name}_sku", 
-                    "name":  product_name, 
-                    "version": '1'
-                }
+                    "sku": f"{product_name}_sku",
+                    "name": product_name,
+                    "version": "1",
+                },
             },
         )
 
@@ -88,11 +88,11 @@ class AdkMerchantAgent(BaseAgent):
         """
         Injects a 'virtual' tool response if payment has been verified.
         """
-        payment_data = callback_context.state.get('payment_verified_data')
+        payment_data = callback_context.state.get("payment_verified_data")
         if payment_data:
             # Consume the data so it's not used again in the same session.
-            del callback_context.state['payment_verified_data']
-            
+            del callback_context.state["payment_verified_data"]
+
             # Create a Content object that looks like a tool call response.
             # This is a structured way to inform the LLM of the payment status.
             tool_response = types.Part(
@@ -103,7 +103,6 @@ class AdkMerchantAgent(BaseAgent):
             )
             # Set this as the new, overriding input for this turn.
             callback_context.new_user_message = types.Content(parts=[tool_response])
-
 
     @override
     def create_agent(self) -> LlmAgent:
