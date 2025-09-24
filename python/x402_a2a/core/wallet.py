@@ -25,7 +25,6 @@ from ..types import (
     PaymentPayload,
     ExactPaymentPayload,
     EIP3009Authorization,
-    CashuPaymentPayload,
 )
 
 
@@ -50,7 +49,7 @@ def process_payment_required(
 
     if selected_requirement.scheme == "cashu-token":
         raise ValueError(
-            "cashu-token requirements must be processed with explicit Cashu proofs via process_payment"
+            "cashu-token requirements must be processed with explicit Cashu proofs via partners.cashu helpers"
         )
 
     # Create payment payload
@@ -61,7 +60,6 @@ def process_payment(
     requirements: PaymentRequirements,
     account: Account,
     max_value: Optional[int] = None,
-    cashu_payload: Optional[CashuPaymentPayload] = None,
 ) -> PaymentPayload:
     """Create PaymentPayload using proper x402.exact signing logic.
     Same as create_payment_header but returns PaymentPayload object (not base64 encoded).
@@ -70,39 +68,15 @@ def process_payment(
         requirements: Single PaymentRequirements to sign
         account: Ethereum account for signing
         max_value: Maximum payment value willing to pay
-        cashu_payload: Pre-built Cashu payment payload when scheme == "cashu-token"
 
     Returns:
         Signed PaymentPayload object
     """
     # TODO: Future x402 library update will provide direct PaymentPayload creation
     # For now, we use the prepare -> sign -> decode pattern
-    
     if requirements.scheme == "cashu-token":
-        if cashu_payload is None:
-            raise ValueError(
-                "cashu_payload must be provided when processing cashu-token payments"
-            )
-
-        extra = requirements.extra if isinstance(requirements.extra, dict) else {}
-        accepted_mints = set(extra.get("mints", []))
-        if accepted_mints:
-            payload_mints = {token.mint for token in cashu_payload.tokens}
-            missing = sorted(payload_mints - accepted_mints)
-            if missing:
-                raise ValueError(
-                    "Cashu payload contains mints not accepted by the payment requirements: "
-                    + ", ".join(missing)
-                )
-
-        if len(cashu_payload.encoded) != len(cashu_payload.tokens):
-            raise ValueError("Cashu payload encoded tokens must align with provided token entries")
-
-        return PaymentPayload(
-            x402_version=x402_VERSION,
-            scheme=requirements.scheme,
-            network=requirements.network,
-            payload=cashu_payload,
+        raise ValueError(
+            "cashu-token requirements must be handled via partners.cashu helpers"
         )
 
     # Step 1: Prepare unsigned payment header
