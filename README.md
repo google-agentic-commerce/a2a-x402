@@ -12,17 +12,17 @@ This repository contains the specification, core libraries, and example implemen
 
 ```
 x402-a2a/
-├── v0.1/
-│   └── spec.md             # The official x402 extension specification
+├── spec/
+│   └── v0.1/
+│       └── spec.md         # The official x402 extension specification
 │
 ├── schemes/                # Directory contains experimental x402 payment schemes drafted by partners and other contributors
 │
-├── {language}/             # Language-specific implementations (e.g., python/, typescript/)
-│   └── x402_a2a/           # The core library for the x402 extension
-│
-└── examples/
-    └── {language}/         # Demonstrations for each language implementation
-        └── {demo}/
+└── {language}/             # Language-specific implementations (e.g., python/, typescript/)
+    ├── x402_a2a/           # The core library for the x402 extension
+    │
+    └── examples/
+        └── {demo}/         # Demonstrations for each language implementation
 ```
 
 ## 🤔 **How It Works**
@@ -52,12 +52,12 @@ This design provides both flexibility and ease of use, allowing developers to ei
 
 ## 📚 **Learn More**
 
-*   **[Specification](v0.1/spec.md)**: The complete technical specification for the x402 extension.
+*   **[Specification](spec/v0.1/spec.md)**: The complete technical specification for the x402 extension.
 *   **[Python Library](python/x402_a2a/README.md)**: The documentation for the Python implementation of the x402 extension.
-*   **[Examples](examples/)**: The directory containing demonstration applications for various languages.
+*   **[Examples](python/examples/)**: The directory containing demonstration applications for various languages.
 *   **[A2A Protocol](https://github.com/a2aproject/a2a-python)**: The core agent-to-agent protocol.
 *   **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
 
 ## 🤝 **Contributing**
 
-Contributions are welcome! Please read the [specification](v0.1/spec.md) and the existing code to understand the project's design and goals. Then, feel free to open a pull request with your changes.
+Contributions are welcome! Please read the [specification](spec/v0.1/spec.md) and the existing code to understand the project's design and goals. Then, feel free to open a pull request with your changes.
