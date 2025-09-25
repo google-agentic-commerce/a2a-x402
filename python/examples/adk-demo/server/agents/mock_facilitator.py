@@ -20,8 +20,9 @@ from x402_a2a.types import (
     PaymentRequirements,
     SettleResponse,
     VerifyResponse,
+    SparkPaymentType,
 )
-from x402_a2a import FacilitatorClient
+from x402_a2a import FacilitatorClient, get_spark_payment_payload
 
 
 class MockFacilitator(FacilitatorClient):
@@ -43,9 +44,17 @@ class MockFacilitator(FacilitatorClient):
         logging.info(f"Received payload:\n{payload.model_dump_json(indent=2)}")
 
         payer = None
-        # The top-level object is PaymentPayload, the nested is ExactPaymentPayload
+        # The top-level object is PaymentPayload, the nested is scheme-specific
         if isinstance(payload.payload, ExactPaymentPayload):
             payer = payload.payload.authorization.from_
+        elif payload.network.lower() == "spark":
+            spark_payload = get_spark_payment_payload(payload)
+            if spark_payload.payment_type == SparkPaymentType.SPARK:
+                payer = spark_payload.transfer_id
+            elif spark_payload.payment_type == SparkPaymentType.LIGHTNING:
+                payer = spark_payload.preimage
+            else:
+                payer = spark_payload.txid
         else:
             raise TypeError(f"Unsupported payload type: {type(payload.payload)}")
 
@@ -60,5 +69,22 @@ class MockFacilitator(FacilitatorClient):
         """Mocks the settlement step."""
         logging.info("--- MOCK FACILITATOR: SETTLE ---")
         if self._is_settled:
-            return SettleResponse(success=True, network="mock-network")
-        return SettleResponse(success=False, error_reason="mock_settlement_failed")
+            transaction = None
+            if payload.network.lower() == "spark":
+                spark_payload = get_spark_payment_payload(payload)
+                transaction = (
+                    spark_payload.transfer_id
+                    or spark_payload.preimage
+                    or spark_payload.txid
+                )
+            return SettleResponse(
+                success=True,
+                network=payload.network,
+                transaction=transaction
+            )
+
+        return SettleResponse(
+            success=False,
+            network=payload.network,
+            error_reason="mock_settlement_failed"
+        )

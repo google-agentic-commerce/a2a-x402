@@ -13,6 +13,7 @@
 # limitations under the License.
 import json
 import logging
+import time
 import uuid
 
 import httpx
@@ -27,16 +28,20 @@ from a2a.types import (
     TaskState,
     TextPart,
 )
+import eth_account
+from eth_account.messages import encode_defunct
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
+from google.genai import types
 
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
 from x402_a2a.core.utils import x402Utils
-from x402_a2a.types import PaymentStatus
+from x402_a2a import dump_payment_payload
+from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -140,31 +145,23 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             # This is the second step: user has confirmed payment.
             purchase_task_data = state.get("purchase_task")
             if not purchase_task_data:
-                raise ValueError(
-                    "State inconsistency: 'purchase_task' not found to sign payment."
-                )
-
+                raise ValueError("State inconsistency: 'purchase_task' not found to sign payment.")
+            
             original_task = Task.model_validate(purchase_task_data)
             task_id = original_task.id
-
+            
             requirements = self.x402.get_payment_requirements(original_task)
             if not requirements:
-                raise ValueError(
-                    "Could not find payment requirements in the original task."
-                )
+                raise ValueError("Could not find payment requirements in the original task.")
 
             # Sign the payment and prepare the payload for the merchant.
             signed_payload = self.wallet.sign_payment(requirements)
-            message_metadata[self.x402.PAYLOAD_KEY] = signed_payload.model_dump(
-                by_alias=True
-            )
-            message_metadata[self.x402.STATUS_KEY] = (
-                PaymentStatus.PAYMENT_SUBMITTED.value
-            )
-
+            message_metadata[self.x402.PAYLOAD_KEY] = dump_payment_payload(signed_payload)
+            message_metadata[self.x402.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
+            
             # The message text to the merchant is a simple confirmation.
             message = "send_signed_payment_payload"
-
+        
         # --- Construct the message with metadata ---
         request = MessageSendParams(
             message=Message(
@@ -176,7 +173,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 metadata=message_metadata if message_metadata else None,
             )
         )
-
+        
         # Send the message and wait for the task result
         response_task = await client.send_message(
             request.message.message_id, request, self.task_callback
@@ -184,9 +181,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
         # --- Handle potential server errors ---
         if isinstance(response_task, JSONRPCError):
-            logger.error(
-                f"Received JSONRPCError from {agent_name}: {response_task.message}"
-            )
+            logger.error(f"Received JSONRPCError from {agent_name}: {response_task.message}")
             return f"Agent '{agent_name}' returned an error: {response_task.message} (Code: {response_task.code})"
 
         # Update state with the latest task info
@@ -198,22 +193,18 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             # The merchant requires payment. Store the task and ask the user for confirmation.
             state["purchase_task"] = response_task.model_dump(by_alias=True)
             requirements = self.x402.get_payment_requirements(response_task)
-
+            
             if not requirements:
                 raise ValueError("Server requested payment but sent no requirements.")
 
             if not requirements.accepts:
-                raise ValueError(
-                    "Server requested payment but sent no valid payment options."
-                )
+                raise ValueError("Server requested payment but sent no valid payment options.")
 
             # Extract details for the confirmation message.
             payment_option = requirements.accepts[0]
             currency_amount = payment_option.max_amount_required
             currency_name = payment_option.extra.get("name", "TOKEN")
-            product_name = payment_option.extra.get("product", {}).get(
-                "name", "the item"
-            )
+            product_name = payment_option.extra.get("product", {}).get("name", "the item")
 
             return f"The merchant is requesting payment for '{product_name}' for {currency_amount} {currency_name}. Do you want to approve this payment?"
 
@@ -226,19 +217,16 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                         part_root = part.root
                         if isinstance(part_root, TextPart):
                             final_text.append(part_root.text)
-
+            
             if final_text:
                 return " ".join(final_text)
-
+            
             # Fallback for tasks with no text artifacts (e.g., payment settlement)
-            if (
-                self.x402.get_payment_status(response_task)
-                == PaymentStatus.PAYMENT_COMPLETED
-            ):
+            if self.x402.get_payment_status(response_task) == PaymentStatus.PAYMENT_COMPLETED:
                 return "Payment successful! Your purchase is complete."
 
             return f"Task with {agent_name} is {response_task.status.state.value}."
-
+        
         else:
             # Handle other states like 'working'
             return f"Task with {agent_name} is now in state: {response_task.status.state.value}"
