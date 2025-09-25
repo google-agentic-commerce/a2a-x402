@@ -202,13 +202,14 @@ def create_payment_submission_message(
     message_id: Optional[str] = None  # Optional specific message ID
 ) -> Message:
     """Creates correlated payment submission message per spec."""
+    # Use dump_payment_payload to preserve scheme-specific payloads (Spark, etc.).
     return Message(
         task_id=task_id,  # Spec mandates this correlation
         role="user", 
         parts=[{"kind": "text", "text": text}],
         metadata={
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
+            x402Metadata.PAYLOAD_KEY: dump_payment_payload(payment_payload)
         }
     )
 
@@ -564,7 +565,7 @@ class x402Utils:
             task.status.message.metadata = {}
             
         task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
-        task.status.message.metadata[self.PAYLOAD_KEY] = payment_payload.model_dump(by_alias=True)
+        task.status.message.metadata[self.PAYLOAD_KEY] = dump_payment_payload(payment_payload)
         # Note: Keep requirements for verification - will be cleaned up after settlement
         return task
 

@@ -14,7 +14,15 @@
 """Core package exports for x402_a2a."""
 
 from .merchant import create_payment_requirements
-from .wallet import process_payment_required, process_payment
+from .wallet import (
+    process_payment_required,
+    process_payment,
+    create_spark_payment_payload,
+    encode_spark_payment_header,
+    decode_spark_payment_header,
+    get_spark_payment_payload,
+    dump_payment_payload,
+)
 from .protocol import verify_payment, settle_payment
 from .utils import (
     x402Utils,
@@ -38,6 +46,11 @@ __all__ = [
     "create_payment_requirements",
     "process_payment_required",
     "process_payment",
+    "create_spark_payment_payload",
+    "encode_spark_payment_header",
+    "decode_spark_payment_header",
+    "get_spark_payment_payload",
+    "dump_payment_payload",
     
     # Protocol functions
     "verify_payment",
