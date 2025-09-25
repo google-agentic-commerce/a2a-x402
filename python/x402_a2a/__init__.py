@@ -18,6 +18,7 @@ from x402.types import (
     PaymentRequirements,
     x402PaymentRequiredResponse,
     PaymentPayload,
+    VerifyResponse,
     SettleResponse,
     ExactPaymentPayload,
     EIP3009Authorization,
@@ -25,20 +26,26 @@ from x402.types import (
     TokenAsset,
     EIP712Domain,
     SupportedNetworks,
-    VerifyResponse,
+    VerifyResponse
 )
 
-from x402.facilitator import FacilitatorConfig, FacilitatorClient
+from x402.facilitator import (
+    FacilitatorConfig,
+    FacilitatorClient
+)
 
 # A2A Extension Types & Functions
 from .types import (
     # Extension Constants
     X402_EXTENSION_URI,
+    
     # A2A-Specific Types
     PaymentStatus,
     x402Metadata,
+    
     # Configuration
     x402ExtensionConfig,
+    
     # Error Types
     x402Error,
     MessageError,
@@ -47,10 +54,11 @@ from .types import (
     StateError,
     x402PaymentRequiredException,
     x402ErrorCode,
+    
     # Extension utilities
     get_extension_declaration,
     check_extension_activation,
-    add_extension_activation_header,
+    add_extension_activation_header
 )
 
 # Core Functions
@@ -59,12 +67,19 @@ from .core import (
     create_payment_requirements,
     process_payment_required,
     process_payment,
+    create_spark_payment_payload,
+    encode_spark_payment_header,
+    decode_spark_payment_header,
+    get_spark_payment_payload,
+    dump_payment_payload,
     verify_payment,
     settle_payment,
+    
     # State Management
     x402Utils,
     create_payment_submission_message,
     extract_task_id,
+    
     # Helper functions (new exception-based approach)
     require_payment,
     require_payment_choice,
@@ -72,12 +87,17 @@ from .core import (
     smart_paid_service,
     create_tiered_payment_options,
     check_payment_context,
+    
     # Agent utilities
-    create_x402_agent_card,
+    create_x402_agent_card
 )
 
 # Optional Middleware
-from .executors import x402BaseExecutor, x402ServerExecutor, x402ClientExecutor
+from .executors import (
+    x402BaseExecutor,
+    x402ServerExecutor,
+    x402ClientExecutor
+)
 
 __version__ = "1.0.0"
 
@@ -85,59 +105,75 @@ __all__ = [
     # Core x402 Protocol Types
     "PaymentRequirements",
     "x402PaymentRequiredResponse",
-    "PaymentPayload",
+    "PaymentPayload", 
     "VerifyResponse",
     "SettleResponse",
     "ExactPaymentPayload",
     "EIP3009Authorization",
     "TokenAmount",
-    "TokenAsset",
+    "TokenAsset", 
     "EIP712Domain",
     "SupportedNetworks",
     "VerifyResponse",
+    
     # Facilitator
     "FacilitatorConfig",
     "FacilitatorClient",
+    
     # Extension Constants
     "X402_EXTENSION_URI",
+    
     # A2A-Specific Types
     "PaymentStatus",
     "x402Metadata",
+    
     # Configuration
     "x402ExtensionConfig",
+    
     # Error Types
     "x402Error",
     "MessageError",
-    "ValidationError",
+    "ValidationError", 
     "PaymentError",
     "StateError",
     "x402PaymentRequiredException",
     "x402ErrorCode",
+    
     # Extension utilities
     "get_extension_declaration",
     "check_extension_activation",
     "add_extension_activation_header",
+    
     # Core Functions
     "create_payment_requirements",
-    "process_payment_required",
+    "process_payment_required", 
     "process_payment",
+    "create_spark_payment_payload",
+    "encode_spark_payment_header",
+    "decode_spark_payment_header",
+    "get_spark_payment_payload",
+    "dump_payment_payload",
     "verify_payment",
     "settle_payment",
+    
     # State Management
     "x402Utils",
     "create_payment_submission_message",
     "extract_task_id",
+    
     # Helper functions (new exception-based approach)
     "require_payment",
     "require_payment_choice",
-    "paid_service",
+    "paid_service", 
     "smart_paid_service",
     "create_tiered_payment_options",
     "check_payment_context",
+    
     # Agent utilities
     "create_x402_agent_card",
+    
     # Optional Middleware
     "x402BaseExecutor",
     "x402ServerExecutor",
-    "x402ClientExecutor",
+    "x402ClientExecutor"
 ]

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Types package for x402_a2a - re-exports x402.types and A2A SDK types, adds A2A-specific extensions."""
 
+
 from a2a.types import (
     Task,
     Message,
@@ -20,7 +21,7 @@ from a2a.types import (
     AgentCapabilities,
     AgentSkill,
     TaskState,
-    TaskStatus,
+    TaskStatus
 )
 from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
@@ -36,11 +37,17 @@ from x402.types import (
     TokenAmount,
     TokenAsset,
     EIP712Domain,
-    SupportedNetworks,
+    SupportedNetworks
 )
-from x402.facilitator import FacilitatorConfig, FacilitatorClient
+from x402.facilitator import (
+    FacilitatorConfig,
+    FacilitatorClient
+)
 
-from .state import PaymentStatus, x402Metadata
+from .state import (
+    PaymentStatus,
+    x402Metadata
+)
 
 from .errors import (
     x402Error,
@@ -50,29 +57,40 @@ from .errors import (
     StateError,
     x402PaymentRequiredException,
     x402ErrorCode,
-    map_error_to_code,
+    map_error_to_code
 )
 
-from .config import X402_EXTENSION_URI, x402ExtensionConfig, x402ServerConfig
+from .config import (
+    X402_EXTENSION_URI,
+    x402ExtensionConfig,
+    x402ServerConfig
+)
+from .payloads import (
+    ExactSparkPaymentPayload,
+    SparkPaymentType
+)
 from ..extension import (
     get_extension_declaration,
     check_extension_activation,
-    add_extension_activation_header,
+    add_extension_activation_header
 )
 
 __all__ = [
+
     "Task",
-    "Message",
+    "Message", 
     "AgentCard",
     "AgentCapabilities",
     "AgentSkill",
     "TaskState",
     "TaskStatus",
+
     "AgentExecutor",
-    "RequestContext",
+    "RequestContext", 
     "EventQueue",
+
     "PaymentRequirements",
-    "x402PaymentRequiredResponse",
+    "x402PaymentRequiredResponse", 
     "PaymentPayload",
     "VerifyResponse",
     "SettleResponse",
@@ -82,22 +100,30 @@ __all__ = [
     "TokenAsset",
     "EIP712Domain",
     "SupportedNetworks",
+
     "FacilitatorConfig",
     "FacilitatorClient",
+
     "PaymentStatus",
     "x402Metadata",
+
     "x402Error",
-    "MessageError",
+    "MessageError", 
     "ValidationError",
     "PaymentError",
     "StateError",
     "x402PaymentRequiredException",
     "x402ErrorCode",
     "map_error_to_code",
+
     "X402_EXTENSION_URI",
     "x402ExtensionConfig",
     "x402ServerConfig",
+
+    "ExactSparkPaymentPayload",
+    "SparkPaymentType",
+
     "get_extension_declaration",
-    "check_extension_activation",
-    "add_extension_activation_header",
+    "check_extension_activation", 
+    "add_extension_activation_header"
 ]
