@@ -24,7 +24,7 @@ from ..types import (
     x402PaymentRequiredResponse,
     PaymentPayload,
     ExactPaymentPayload,
-    EIP3009Authorization
+    EIP3009Authorization,
 )
 
 
@@ -46,7 +46,12 @@ def process_payment_required(
     # Use x402Client for payment requirement selection
     client = x402Client(account=account, max_value=max_value)
     selected_requirement = client.select_payment_requirements(payment_required.accepts)
-    
+
+    if selected_requirement.scheme == "cashu-token":
+        raise ValueError(
+            "cashu-token requirements must be processed with explicit Cashu proofs via partners.cashu helpers"
+        )
+
     # Create payment payload
     return process_payment(selected_requirement, account, max_value)
 
@@ -54,22 +59,26 @@ def process_payment_required(
 def process_payment(
     requirements: PaymentRequirements,
     account: Account,
-    max_value: Optional[int] = None
+    max_value: Optional[int] = None,
 ) -> PaymentPayload:
     """Create PaymentPayload using proper x402.exact signing logic.
     Same as create_payment_header but returns PaymentPayload object (not base64 encoded).
-    
+
     Args:
         requirements: Single PaymentRequirements to sign
         account: Ethereum account for signing
         max_value: Maximum payment value willing to pay
-        
+
     Returns:
         Signed PaymentPayload object
     """
     # TODO: Future x402 library update will provide direct PaymentPayload creation
     # For now, we use the prepare -> sign -> decode pattern
-    
+    if requirements.scheme == "cashu-token":
+        raise ValueError(
+            "cashu-token requirements must be handled via partners.cashu helpers"
+        )
+
     # Step 1: Prepare unsigned payment header
     unsigned_payload = prepare_payment_header(
         sender_address=account.address,
@@ -114,4 +123,3 @@ def process_payment(
         network=signed_payload["network"],
         payload=exact_payload
     )
-
