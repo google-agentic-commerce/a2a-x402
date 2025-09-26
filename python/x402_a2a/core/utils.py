@@ -16,6 +16,8 @@
 import logging
 import uuid
 from typing import Optional
+
+from pydantic import ValidationError
 from ..types import (
     Task,
     Message,
@@ -29,13 +31,31 @@ from ..types import (
     TaskStatus
 )
 from a2a.types import TextPart
+from .wallet import dump_payment_payload
 
 
 def _parse_payment_payload(payload_data: dict) -> PaymentPayload:
     """Parse the payment payload using the top-level Pydantic model."""
     # The PaymentPayload model from x402.types is designed to handle the
     # entire structure, including the nested payload based on the scheme.
-    return PaymentPayload.model_validate(payload_data)
+    network = payload_data.get("network")
+    if isinstance(network, str) and network.lower() == "spark":
+        from .wallet import _parse_spark_header_payload  # Lazy import to avoid cycle
+
+        return _parse_spark_header_payload(payload_data)
+
+    payload = PaymentPayload.model_validate(payload_data)
+
+    if payload.scheme == "exact" and not isinstance(payload.payload, ExactPaymentPayload):
+        try:
+            payload.payload = ExactPaymentPayload.model_validate(payload.payload)
+        except ValidationError as exc:
+            logging.warning(
+                "Could not validate nested exact payload; falling back to raw dict: %s",
+                exc,
+            )
+    
+    return payload
 
 
 def create_payment_submission_message(
@@ -60,7 +80,7 @@ def create_payment_submission_message(
         parts=[TextPart(kind="text", text=text)],
         metadata={
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
+            x402Metadata.PAYLOAD_KEY: dump_payment_payload(payment_payload)
         }
     )
 

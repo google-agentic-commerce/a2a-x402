@@ -24,8 +24,24 @@ from x402_a2a.types import (
     PaymentRequirements,
     VerifyResponse,
     SettleResponse,
+    ExactSparkPaymentPayload,
+    SparkPaymentType,
 )
-from x402_a2a.core.utils import x402Utils
+from x402_a2a.core.utils import x402Utils, create_payment_submission_message
+from x402_a2a.core.protocol import verify_payment, settle_payment
+from x402_a2a.core.wallet import (
+    create_spark_payment_payload,
+    encode_spark_payment_header,
+    decode_spark_payment_header,
+    get_spark_payment_payload,
+    dump_payment_payload,
+)
+
+
+def _spark_hex(seed: int) -> str:
+    """Return a deterministic 32-byte hex string for Spark fixtures."""
+
+    return bytes([seed % 256] * 32).hex()
 
 # --- Fixtures ---
 
@@ -101,7 +117,7 @@ def test_get_payment_payload_from_message(utils, sample_payment_payload):
         role="user",
         parts=[TextPart(text="test")],
         metadata={
-            x402Metadata.PAYLOAD_KEY: sample_payment_payload.model_dump(by_alias=True)
+            x402Metadata.PAYLOAD_KEY: dump_payment_payload(sample_payment_payload)
         }
     )
 
@@ -154,7 +170,7 @@ async def test_server_executor_payment_flow():
         parts=[TextPart(text="test")],
         metadata={
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True)
+            x402Metadata.PAYLOAD_KEY: dump_payment_payload(payment_payload)
         }
     )
     context.current_task = Task(id="task-123", contextId="context-456", status=TaskStatus(state=TaskState.working), metadata={})
@@ -171,3 +187,118 @@ async def test_server_executor_payment_flow():
     executor.verify_payment.assert_called_once()
     delegate.execute.assert_called_once()
     executor.settle_payment.assert_called_once()
+
+
+@pytest.mark.unit
+def test_exact_spark_payment_payload_validation():
+    """Spark payload enforces transport-specific required fields."""
+
+    spark_payload = ExactSparkPaymentPayload(
+        payment_type=SparkPaymentType.SPARK,
+        transfer_id="abc123"
+    )
+    assert spark_payload.transfer_id == "abc123"
+
+    lightning_payload = ExactSparkPaymentPayload(
+        payment_type=SparkPaymentType.LIGHTNING,
+        preimage="00ff"
+    )
+    assert lightning_payload.preimage == "00ff"
+
+    l1_payload = ExactSparkPaymentPayload(
+        payment_type=SparkPaymentType.L1,
+        txid=_spark_hex(0x42)
+    )
+    assert l1_payload.txid == _spark_hex(0x42)
+
+    with pytest.raises(ValueError):
+        ExactSparkPaymentPayload(payment_type=SparkPaymentType.SPARK)
+
+
+@pytest.mark.unit
+def test_spark_payment_header_roundtrip():
+    """Encoding and decoding the Spark header preserves payload data."""
+
+    payment_payload = create_spark_payment_payload(
+        SparkPaymentType.SPARK,
+        transfer_id="transfer-123"
+    )
+
+    header_value = encode_spark_payment_header(payment_payload)
+    decoded_payload = decode_spark_payment_header(header_value)
+
+    spark_payload = get_spark_payment_payload(decoded_payload)
+    assert spark_payload.transfer_id == "transfer-123"
+
+    dumped_payload = dump_payment_payload(decoded_payload)
+    assert dumped_payload["payload"]["paymentType"] == "SPARK"
+    assert dumped_payload["payload"]["transfer_id"] == "transfer-123"
+    assert "preimage" not in dumped_payload["payload"]
+
+
+@pytest.mark.unit
+def test_spark_payload_preserved_in_message_metadata(utils):
+    """Spark metadata dumped into messages keeps transport-specific details."""
+
+    payment_payload = create_spark_payment_payload(
+        SparkPaymentType.LIGHTNING,
+        preimage=_spark_hex(0x24)
+    )
+
+    message = create_payment_submission_message("task-99", payment_payload)
+    metadata = message.metadata[x402Metadata.PAYLOAD_KEY]
+
+    assert metadata["payload"]["paymentType"] == "LIGHTNING"
+    assert metadata["payload"]["preimage"] == _spark_hex(0x24)
+    assert "transfer_id" not in metadata["payload"]
+
+
+@pytest.mark.asyncio
+async def test_facilitator_preserves_spark_payload(sample_payment_requirements):
+    """Facilitator requests see Spark-specific fields during verify/settle."""
+
+    verify_payload = create_spark_payment_payload(
+        SparkPaymentType.LIGHTNING,
+        preimage=_spark_hex(0x11)
+    )
+    settle_payload = create_spark_payment_payload(
+        SparkPaymentType.SPARK,
+        transfer_id="spark-transfer-001"
+    )
+
+    class RecordingFacilitator:
+        def __init__(self):
+            self.seen_verify = None
+            self.seen_settle = None
+
+        async def verify(self, payload, requirements):
+            self.seen_verify = payload
+            return VerifyResponse(is_valid=True, payer="spark")
+
+        async def settle(self, payload, requirements):
+            self.seen_settle = payload
+            return SettleResponse(success=True, network=requirements.network)
+
+    facilitator = RecordingFacilitator()
+
+    verify_response = await verify_payment(
+        verify_payload,
+        sample_payment_requirements,
+        facilitator_client=facilitator
+    )
+    assert verify_response.is_valid is True
+
+    settle_response = await settle_payment(
+        settle_payload,
+        sample_payment_requirements,
+        facilitator_client=facilitator
+    )
+    assert settle_response.success is True
+
+    assert isinstance(facilitator.seen_verify, PaymentPayload)
+    verify_dump = facilitator.seen_verify.model_dump(by_alias=True)
+    assert verify_dump["payload"]["preimage"] == _spark_hex(0x11)
+
+    assert isinstance(facilitator.seen_settle, PaymentPayload)
+    settle_dump = facilitator.seen_settle.model_dump(by_alias=True)
+    assert settle_dump["payload"]["transfer_id"] == "spark-transfer-001"

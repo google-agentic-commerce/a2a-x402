@@ -67,6 +67,11 @@ from .core import (
     create_payment_requirements,
     process_payment_required,
     process_payment,
+    create_spark_payment_payload,
+    encode_spark_payment_header,
+    decode_spark_payment_header,
+    get_spark_payment_payload,
+    dump_payment_payload,
     verify_payment,
     settle_payment,
     
@@ -143,6 +148,11 @@ __all__ = [
     "create_payment_requirements",
     "process_payment_required", 
     "process_payment",
+    "create_spark_payment_payload",
+    "encode_spark_payment_header",
+    "decode_spark_payment_header",
+    "get_spark_payment_payload",
+    "dump_payment_payload",
     "verify_payment",
     "settle_payment",
     

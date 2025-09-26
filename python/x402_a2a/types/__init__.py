@@ -65,6 +65,10 @@ from .config import (
     x402ExtensionConfig,
     x402ServerConfig
 )
+from .payloads import (
+    ExactSparkPaymentPayload,
+    SparkPaymentType
+)
 from ..extension import (
     get_extension_declaration,
     check_extension_activation,
@@ -115,6 +119,9 @@ __all__ = [
     "X402_EXTENSION_URI",
     "x402ExtensionConfig",
     "x402ServerConfig",
+
+    "ExactSparkPaymentPayload",
+    "SparkPaymentType",
 
     "get_extension_declaration",
     "check_extension_activation", 

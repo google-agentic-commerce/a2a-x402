@@ -40,6 +40,7 @@ from google.genai import types
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
 from x402_a2a.core.utils import x402Utils
+from x402_a2a import dump_payment_payload
 from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse, PaymentStatus
 
 logger = logging.getLogger(__name__)
@@ -155,7 +156,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             # Sign the payment and prepare the payload for the merchant.
             signed_payload = self.wallet.sign_payment(requirements)
-            message_metadata[self.x402.PAYLOAD_KEY] = signed_payload.model_dump(by_alias=True)
+            message_metadata[self.x402.PAYLOAD_KEY] = dump_payment_payload(signed_payload)
             message_metadata[self.x402.STATUS_KEY] = PaymentStatus.PAYMENT_SUBMITTED.value
             
             # The message text to the merchant is a simple confirmation.
