@@ -25,6 +25,19 @@ from ..types import (
 from .wallet import dump_payment_payload
 
 
+def _prepare_payload_for_facilitator(
+    payment_payload: PaymentPayload,
+) -> PaymentPayload:
+    """Return a facilitator-friendly payload, preserving Spark fields."""
+
+    if payment_payload.network.lower() == "spark":
+        return PaymentPayload.model_construct(
+            **dump_payment_payload(payment_payload)
+        )
+
+    return payment_payload
+
+
 async def verify_payment(
     payment_payload: PaymentPayload,
     payment_requirements: PaymentRequirements,
@@ -43,15 +56,8 @@ async def verify_payment(
     if facilitator_client is None:
         facilitator_client = FacilitatorClient()
 
-    if payment_payload.network.lower() == "spark":
-        payload_for_facilitator = PaymentPayload.model_construct(
-            **dump_payment_payload(payment_payload)
-        )
-    else:
-        payload_for_facilitator = payment_payload
-
     return await facilitator_client.verify(
-        payload_for_facilitator,
+        _prepare_payload_for_facilitator(payment_payload),
         payment_requirements
     )
 
@@ -74,16 +80,9 @@ async def settle_payment(
     if facilitator_client is None:
         facilitator_client = FacilitatorClient()
 
-    if payment_payload.network.lower() == "spark":
-        payload_for_facilitator = PaymentPayload.model_construct(
-            **dump_payment_payload(payment_payload)
-        )
-    else:
-        payload_for_facilitator = payment_payload
-
     # Call facilitator to settle payment
     settle_response = await facilitator_client.settle(
-        payload_for_facilitator,
+        _prepare_payload_for_facilitator(payment_payload),
         payment_requirements
     )
     
