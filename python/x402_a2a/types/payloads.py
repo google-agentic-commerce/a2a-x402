@@ -15,10 +15,11 @@ class SparkPaymentType(str, Enum):
 
 
 class ExactSparkPaymentPayload(BaseModel):
-    """Payload carried in the exact scheme when network == spark.
+    """Payload carried in the exact scheme when ``network == spark``.
 
     The JSON representation maps to the `X-PAYMENT` header body described in
-    `schemes/scheme_exact_spark.md` and mirrors its required/optional fields.
+    `schemes/scheme_exact_spark.md` and mirrors its required and optional
+    fields.
     """
 
     model_config = ConfigDict(
@@ -33,12 +34,24 @@ class ExactSparkPaymentPayload(BaseModel):
 
     @model_validator(mode="after")
     def _validate_required_fields(self) -> "ExactSparkPaymentPayload":
-        """Enforce transport-specific requirements from the scheme specification."""
+        """Enforce scheme-specific transport requirements."""
 
-        if self.payment_type is SparkPaymentType.SPARK and not self.transfer_id:
-            raise ValueError("transfer_id is required when paymentType is SPARK")
-        if self.payment_type is SparkPaymentType.LIGHTNING and not self.preimage:
-            raise ValueError("preimage is required when paymentType is LIGHTNING")
+        if (
+            self.payment_type is SparkPaymentType.SPARK
+            and not self.transfer_id
+        ):
+            raise ValueError(
+                "transfer_id is required when paymentType is SPARK"
+            )
+        if (
+            self.payment_type is SparkPaymentType.LIGHTNING
+            and not self.preimage
+        ):
+            raise ValueError(
+                "preimage is required when paymentType is LIGHTNING"
+            )
         if self.payment_type is SparkPaymentType.L1 and not self.txid:
-            raise ValueError("txid is required when paymentType is L1")
+            raise ValueError(
+                "txid is required when paymentType is L1"
+            )
         return self

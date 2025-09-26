@@ -145,13 +145,16 @@ def create_spark_payment_payload(
 
     Args:
         payment_type: Transport used to settle the Spark payment.
-        transfer_id: Spark network transfer identifier (required when payment_type is SPARK).
-        preimage: Lightning preimage proof (required when payment_type is LIGHTNING).
-        txid: Bitcoin L1 transaction id (required when payment_type is L1).
+        transfer_id: Spark network transfer identifier required when
+            payment_type is SPARK.
+        preimage: Lightning preimage proof required when payment_type is
+            LIGHTNING.
+        txid: Bitcoin L1 transaction id required when payment_type is L1.
         x402_version: Protocol version carried in the payload (defaults to 1).
 
     Returns:
-        PaymentPayload ready to embed in `X-PAYMENT` headers or A2A metadata.
+        PaymentPayload ready to embed in `X-PAYMENT` headers or A2A
+        metadata.
     """
 
     spark_payload = ExactSparkPaymentPayload(
@@ -173,7 +176,9 @@ def encode_spark_payment_header(payment_payload: PaymentPayload) -> str:
     """Encode a spark payment payload for use in the ``X-PAYMENT`` header."""
 
     if payment_payload.network.lower() != "spark":
-        raise ValueError("encode_spark_payment_header expects a Spark payment payload")
+        raise ValueError(
+            "encode_spark_payment_header expects a Spark payment payload"
+        )
 
     spark_payload = get_spark_payment_payload(payment_payload)
 
@@ -184,7 +189,11 @@ def encode_spark_payment_header(payment_payload: PaymentPayload) -> str:
         "payload": _spark_payload_to_dict(spark_payload),
     }
 
-    header_json = json.dumps(payload_dict, separators=(",", ":"), sort_keys=True)
+    header_json = json.dumps(
+        payload_dict,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
     return base64.b64encode(header_json.encode("utf-8")).decode("utf-8")
 
 
@@ -214,7 +223,10 @@ def _parse_spark_header_payload(payload_data: dict) -> PaymentPayload:
     payload_dict = payload_data.get("payload", {})
     spark_payload = ExactSparkPaymentPayload.model_validate(payload_dict)
 
-    x402_version = payload_data.get("x402Version", payload_data.get("x402_version", 1))
+    x402_version = payload_data.get(
+        "x402Version",
+        payload_data.get("x402_version", 1),
+    )
     scheme = payload_data.get("scheme", "exact")
 
     return PaymentPayload.model_construct(
@@ -235,7 +247,9 @@ def _spark_payload_to_dict(spark_payload: ExactSparkPaymentPayload) -> dict:
     return payload_dict
 
 
-def get_spark_payment_payload(payment_payload: PaymentPayload) -> ExactSparkPaymentPayload:
+def get_spark_payment_payload(
+    payment_payload: PaymentPayload,
+) -> ExactSparkPaymentPayload:
     """Return the structured Spark payload for a spark network PaymentPayload."""
 
     if payment_payload.network.lower() != "spark":
