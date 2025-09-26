@@ -16,6 +16,8 @@
 import logging
 import uuid
 from typing import Optional
+
+from pydantic import ValidationError
 from ..types import (
     Task,
     Message,
@@ -47,9 +49,12 @@ def _parse_payment_payload(payload_data: dict) -> PaymentPayload:
     if payload.scheme == "exact" and not isinstance(payload.payload, ExactPaymentPayload):
         try:
             payload.payload = ExactPaymentPayload.model_validate(payload.payload)
-        except Exception:
-            pass
-
+        except ValidationError as exc:
+            logging.warning(
+                "Could not validate nested exact payload; falling back to raw dict: %s",
+                exc,
+            )
+    
     return payload
 
 
