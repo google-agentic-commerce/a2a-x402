@@ -17,15 +17,11 @@ from .types.config import X402_EXTENSION_URI
 
 
 def get_extension_declaration(
-    description: str = "Supports x402 payments", 
-    required: bool = True
+    description: str = "Supports x402 payments", required: bool = True
 ) -> dict:
     """Creates extension declaration for AgentCard."""
-    return {
-        "uri": X402_EXTENSION_URI,
-        "description": description,
-        "required": required
-    }
+    return {"uri": X402_EXTENSION_URI, "description": description, "required": required}
+
 
 def check_extension_activation(request_headers: dict) -> bool:
     """Check if x402 extension is activated via HTTP headers."""

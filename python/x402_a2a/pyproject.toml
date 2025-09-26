@@ -26,6 +26,9 @@ dev = [
     "pytest-mock>=3.14.1",
     "trio>=0.22.0",
 ]
+lint = [
+    "ruff>=0.13.1",
+]
 
 [project.scripts]
 test = "pytest:main"
@@ -51,10 +54,5 @@ markers = [
     "async: Async tests"
 ]
 
-
-
-
-
-
-
-
+[tool.ruff]
+target-version = "py311"

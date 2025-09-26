@@ -13,13 +13,10 @@
 # limitations under the License.
 """Payment requirements creation functions."""
 
-from typing import Optional, Any, Union, cast
+from typing import Optional, Any, cast
 from x402.common import process_price_to_atomic_amount
 from x402.types import Price
-from ..types import (
-    PaymentRequirements, 
-    SupportedNetworks
-)
+from ..types import PaymentRequirements, SupportedNetworks
 
 
 def create_payment_requirements(
@@ -32,10 +29,10 @@ def create_payment_requirements(
     scheme: str = "exact",
     max_timeout_seconds: int = 600,
     output_schema: Optional[Any] = None,
-    **kwargs
+    **kwargs,
 ) -> PaymentRequirements:
     """Creates PaymentRequirements for A2A payment requests.
-    
+
     Args:
         price: Payment price. Can be:
             - Money: USD amount as string/int (e.g., "$3.10", 0.10, "0.001") - defaults to USDC
@@ -49,13 +46,15 @@ def create_payment_requirements(
         max_timeout_seconds: Payment validity timeout
         output_schema: Response schema
         **kwargs: Additional fields passed to PaymentRequirements
-        
+
     Returns:
         PaymentRequirements object ready for x402PaymentRequiredResponse
     """
 
-    max_amount_required, asset_address, eip712_domain = process_price_to_atomic_amount(price, network)
-    
+    max_amount_required, asset_address, eip712_domain = process_price_to_atomic_amount(
+        price, network
+    )
+
     return PaymentRequirements(
         scheme=scheme,
         network=cast(SupportedNetworks, network),
@@ -68,5 +67,5 @@ def create_payment_requirements(
         max_timeout_seconds=max_timeout_seconds,
         output_schema=output_schema,
         extra=eip712_domain,
-        **kwargs
+        **kwargs,
     )
