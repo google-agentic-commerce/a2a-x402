@@ -143,7 +143,6 @@ async def test_server_executor_payment_flow():
     when it receives a payment-submitted message.
     """
     delegate = AsyncMock()
-    facilitator = MagicMock() # Not used directly, but required by constructor in some versions
     
     # In a real scenario, the executor would be subclassed and these methods implemented.
     # For this test, we can mock them directly on an instance.
