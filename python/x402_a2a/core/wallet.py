@@ -19,7 +19,7 @@ from x402.clients.base import x402Client
 from x402.common import x402_VERSION
 from x402.exact import prepare_payment_header, sign_payment_header, decode_payment
 
-from ..types import (
+from ..type_defs import (
     PaymentRequirements,
     x402PaymentRequiredResponse,
     PaymentPayload,

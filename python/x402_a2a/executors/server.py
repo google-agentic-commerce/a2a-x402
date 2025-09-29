@@ -20,7 +20,7 @@ from typing import Optional, Dict, List
 from a2a.server.tasks import TaskUpdater
 
 from .base import x402BaseExecutor
-from ..types import (
+from ..type_defs import (
     AgentExecutor,
     RequestContext,
     EventQueue,

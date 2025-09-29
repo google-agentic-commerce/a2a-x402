@@ -13,7 +13,7 @@
 # limitations under the License.
 """Extension declaration and constants for A2A x402 protocol."""
 
-from .types.config import X402_EXTENSION_URI
+from .type_defs.config import X402_EXTENSION_URI
 
 
 def get_extension_declaration(

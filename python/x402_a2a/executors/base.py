@@ -15,7 +15,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..types import (
+from ..type_defs import (
     AgentExecutor,
     RequestContext,
     EventQueue,

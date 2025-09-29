@@ -16,7 +16,7 @@
 from typing import List, Optional
 from a2a.types import AgentCard, AgentCapabilities
 
-from ..types import x402ExtensionConfig, get_extension_declaration
+from ..type_defs import x402ExtensionConfig, get_extension_declaration
 
 
 def create_x402_agent_card(

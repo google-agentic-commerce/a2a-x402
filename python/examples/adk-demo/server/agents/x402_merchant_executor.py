@@ -20,7 +20,7 @@ from a2a.server.agent_execution import AgentExecutor
 
 from x402_a2a.executors import x402ServerExecutor
 from .mock_facilitator import MockFacilitator
-from x402_a2a.types import (
+from x402_a2a.type_defs import (
     PaymentPayload,
     PaymentRequirements,
     SettleResponse,

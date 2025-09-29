@@ -16,7 +16,7 @@
 from typing import Optional, Any, cast
 from x402.common import process_price_to_atomic_amount
 from x402.types import Price
-from ..types import PaymentRequirements, SupportedNetworks
+from ..type_defs import PaymentRequirements, SupportedNetworks
 
 
 def create_payment_requirements(

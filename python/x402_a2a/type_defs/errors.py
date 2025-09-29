@@ -54,7 +54,7 @@ class x402PaymentRequiredException(x402Error):
     requirements instead of relying on static server configuration.
 
     Example:
-        from x402_a2a.types.errors import x402PaymentRequiredException
+        from x402_a2a.type_defs.errors import x402PaymentRequiredException
         from x402_a2a.core.merchant import create_payment_requirements
 
         # Single payment option

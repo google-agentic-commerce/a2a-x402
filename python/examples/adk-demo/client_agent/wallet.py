@@ -14,7 +14,7 @@
 from abc import ABC, abstractmethod
 import eth_account
 
-from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse
+from x402_a2a.type_defs import PaymentPayload, x402PaymentRequiredResponse
 from x402_a2a.core.wallet import process_payment_required
 
 
