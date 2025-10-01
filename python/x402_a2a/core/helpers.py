@@ -24,7 +24,7 @@ def require_payment(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
     resource: Optional[str] = None,
-    network: str = "base",
+    network: str = "eip155:8453",
     description: str = "Payment required for this service",
     message: Optional[str] = None,
 ) -> x402PaymentRequiredException:
@@ -34,9 +34,10 @@ def require_payment(
 
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
-        pay_to_address: Ethereum address to receive payment
+        pay_to_address: Address to receive payment (format depends on network)
         resource: Resource identifier (auto-generated if None)
-        network: Blockchain network (default: "base")
+        network: Blockchain network in CAIP-2 format (default: "eip155:8453" for Base).
+            Examples: "eip155:1" (Ethereum), "bip122:000000000019d6689c085ae165831e93" (Bitcoin)
         description: Human-readable description
         message: Exception message (default: uses description)
 
@@ -98,16 +99,16 @@ def paid_service(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
     resource: Optional[str] = None,
-    network: str = "base",
+    network: str = "eip155:8453",
     description: str = "Payment required for this service",
 ):
     """Decorator to automatically require payment for a function or method.
 
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
-        pay_to_address: Ethereum address to receive payment
+        pay_to_address: Address to receive payment (format depends on network)
         resource: Resource identifier (auto-generated from function name if None)
-        network: Blockchain network (default: "base")
+        network: Blockchain network in CAIP-2 format (default: "eip155:8453" for Base)
         description: Human-readable description
 
     Example:
@@ -149,16 +150,16 @@ def create_tiered_payment_options(
     pay_to_address: str,
     resource: str,
     tiers: Optional[List[dict]] = None,
-    network: str = "base",
+    network: str = "eip155:8453",
 ) -> List[PaymentRequirements]:
     """Create multiple payment options with different tiers/features.
 
     Args:
         base_price: Base payment amount
-        pay_to_address: Ethereum address to receive payment
+        pay_to_address: Address to receive payment (format depends on network)
         resource: Base resource identifier
         tiers: List of tier definitions with 'multiplier', 'suffix', 'description'
-        network: Blockchain network (default: "base")
+        network: Blockchain network in CAIP-2 format (default: "eip155:8453" for Base)
 
     Returns:
         List of PaymentRequirements for different service tiers
@@ -246,7 +247,7 @@ def smart_paid_service(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
     resource: Optional[str] = None,
-    network: str = "base",
+    network: str = "eip155:8453",
     description: str = "Payment required for this service",
 ):
     """Smart decorator that only requires payment if not already paid.
@@ -256,9 +257,9 @@ def smart_paid_service(
 
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
-        pay_to_address: Ethereum address to receive payment
+        pay_to_address: Address to receive payment (format depends on network)
         resource: Resource identifier (auto-generated from function name if None)
-        network: Blockchain network (default: "base")
+        network: Blockchain network in CAIP-2 format (default: "eip155:8453" for Base)
         description: Human-readable description
 
     Example:

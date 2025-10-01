@@ -142,7 +142,7 @@ class x402ServerConfig(BaseModel):
     """Configuration for how a server expects to be paid"""
     price: Union[str, int, TokenAmount]        # Payment price (Money or TokenAmount)
     pay_to_address: str                        # Ethereum address to receive payment
-    network: str = "base"                      # Blockchain network
+    network: str = "eip155:8453"               # Blockchain network (CAIP-2 format, Base mainnet)
     description: str = "Payment required..."   # Human-readable description
     mime_type: str = "application/json"        # Expected response type
     max_timeout_seconds: int = 600             # Payment validity timeout
@@ -383,7 +383,7 @@ def create_payment_requirements(
     price: Union[str, int, TokenAmount],  # Price can be Money or TokenAmount
     pay_to_address: str,
     resource: str,
-    network: str = "base",
+    network: str = "eip155:8453",
     description: str = "",
     mime_type: str = "application/json",
     scheme: str = "exact",
@@ -808,7 +808,7 @@ async def handle_payment_request(task: Task, price: str, resource: str):
         price=price,  # Can be "$1.00", 1.00, or TokenAmount
         pay_to_address="0x...",  # Merchant's address
         resource=resource,
-        network="base",
+        network="eip155:8453",
         description="Service payment"
     )
     
@@ -837,7 +837,7 @@ async def handle_payment_submission(task: Task, payment_requirements: PaymentReq
     if not verify_response.is_valid:
         task = utils.record_payment_failure(
             task, "verification_failed", 
-            SettleResponse(success=False, network="base", error_reason=verify_response.invalid_reason)
+            SettleResponse(success=False, network="eip155:8453", error_reason=verify_response.invalid_reason)
         )
         return task
     
@@ -851,7 +851,7 @@ async def handle_payment_submission(task: Task, payment_requirements: PaymentReq
     settle_response_result = SettleResponse(
         success=settle_response.success,
         transaction=settle_response.transaction,
-        network=settle_response.network or "base",
+        network=settle_response.network or "eip155:8453",
         payer=settle_response.payer,
         error_reason=settle_response.error_reason
     )

@@ -37,7 +37,7 @@ class x402ServerConfig(BaseModel):
 
     price: Union[str, int, TokenAmount]
     pay_to_address: str
-    network: str = "base"
+    network: str = "eip155:8453"  # Base network in CAIP-2 format
     description: str = "Payment required..."
     mime_type: str = "application/json"
     max_timeout_seconds: int = 600
