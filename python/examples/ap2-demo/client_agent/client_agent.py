@@ -152,7 +152,7 @@ class ClientAgent:
 
         try:
             # The wallet's /sign endpoint expects the raw EIP-712 typed data object
-            response = httpx.post("http://localhost:5001/sign", json=request_to_sign)
+            response = httpx.post(f"{os.getenv('MOCK_WALLET_URL', 'http://localhost:5001')}/sign", json=request_to_sign)
             logger.info(f"Received response from wallet: {response.status_code}")
             response.raise_for_status()
 
