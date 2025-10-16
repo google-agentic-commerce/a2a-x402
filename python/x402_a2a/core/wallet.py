@@ -36,7 +36,9 @@ from ..types import (
 
 # Contract address for the asset being used. Can be overridden by an environment variable.
 # Defaults to the Base Sepolia USDC Asset Contract
-ASSET_CONTRACT_ADDRESS = os.getenv("ASSET_CONTRACT_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e")
+ASSET_CONTRACT_ADDRESS = os.getenv(
+    "ASSET_CONTRACT_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+)
 ASSET_ABI = json.loads(
     """
 [
@@ -85,6 +87,7 @@ ASSET_ABI = json.loads(
 """
 )
 
+
 def process_payment_required(
     payment_required: x402PaymentRequiredResponse,
     account: Account,
@@ -99,7 +102,7 @@ def process_payment_required(
     rpc_url = os.getenv(
         "RPC_URL", "https://base-mainnet.g.alchemy.com/v2/powzh9JFbTRlAV_cLhknU"
     )
-    
+
     return process_payment(
         selected_requirement,
         account,
@@ -177,7 +180,7 @@ def process_payment(
 
     # --- 1. Get the current nonce from the contract ---
     nonce_uint = asset_contract.functions.nonces(account.address).call()
-    nonce_bytes = nonce_uint.to_bytes(32, 'big')
+    nonce_bytes = nonce_uint.to_bytes(32, "big")
 
     # --- 2. Generate the authorization data ONCE ---
     auth_data = {
@@ -185,8 +188,15 @@ def process_payment(
         "to": requirements.to,
         "value": int(requirements.value),
         "valid_after": valid_after if valid_after is not None else 0,
-        "valid_before": valid_before if valid_before is not None else int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)).timestamp()),
-        "nonce": nonce_bytes
+        "valid_before": valid_before
+        if valid_before is not None
+        else int(
+            (
+                datetime.datetime.now(datetime.timezone.utc)
+                + datetime.timedelta(hours=1)
+            ).timestamp()
+        ),
+        "nonce": nonce_bytes,
     }
 
     # --- Get EIP-712 domain info from the contract ---
@@ -213,7 +223,9 @@ def process_payment(
 
     logging.info("--- SIGNING DEBUG DATA (Client) ---")
     logging.info(f"domain: {json.dumps(typed_data['domain'], indent=2)}")
-    logging.info(f"message: {json.dumps({k: (f'0x{v.hex()}' if isinstance(v, bytes) else v) for k, v in typed_data['message'].items()}, indent=2)}")
+    logging.info(
+        f"message: {json.dumps({k: (f'0x{v.hex()}' if isinstance(v, bytes) else v) for k, v in typed_data['message'].items()}, indent=2)}"
+    )
     logging.info("-----------------------------------")
 
     # --- 3. Sign THIS EXACT DATA OBJECT ---

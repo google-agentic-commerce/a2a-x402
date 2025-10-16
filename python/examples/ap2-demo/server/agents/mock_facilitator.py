@@ -72,10 +72,8 @@ class MockFacilitator(FacilitatorClient):
             Web3.HTTPProvider(base_sepolia_rpc_url, request_kwargs={"timeout": 120})
         )
         # TODO: Replace with your facilitator's private key
-        self.facilitator_private_key = (
-            os.getenv(
-                "FACILITATOR_PRIVATE_KEY",
-                "0000000000000000000000000000000000000001")
+        self.facilitator_private_key = os.getenv(
+            "FACILITATOR_PRIVATE_KEY", "0000000000000000000000000000000000000001"
         )
 
     @override
