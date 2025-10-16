@@ -65,11 +65,8 @@ class ADKAgentExecutor(AgentExecutor):
         session_id: str,
         task_updater: TaskUpdater,
     ) -> None:
-        logger.info(f"ADKAgentExecutor received messagee: {new_message}")
         session = await self._upsert_session(session_id)
         session_id = session.id
-
-        logger.info("are we at least processing request?")
 
         current_message = new_message
 
@@ -79,14 +76,10 @@ class ADKAgentExecutor(AgentExecutor):
             # Get the stream of events from the agent for the current turn
             event_stream = self._run_agent(session_id, current_message)
 
-            logger.debug("were at ln _adk 80")
-
             function_calls_to_execute = []
 
             async for event in event_stream:
-                logger.debug("were at ln _adk 85 ")
                 if event.is_final_response():
-                    logger.debug("final response")
                     # The agent is done, send the final result and terminate.
                     parts = []
                     if event.content and event.content.parts:
@@ -100,7 +93,6 @@ class ADKAgentExecutor(AgentExecutor):
                     return  # Exit the loop and the method
 
                 if event.get_function_calls():
-                    logger.debug("funcction calls response")
                     # The agent wants to call a tool. Collect all calls for this turn.
                     function_calls_to_execute.extend(event.get_function_calls())
                 elif event.content and event.content.parts:
