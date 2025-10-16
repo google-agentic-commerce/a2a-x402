@@ -50,7 +50,9 @@ class AdkMerchantAgent(BaseAgent):
         self,
     ):
         load_dotenv()
-        self._wallet_address = os.getenv("MERCHANT_WALLET_ADDRESS", "0x00000000000000000000000000000000")
+        self._wallet_address = os.getenv(
+            "MERCHANT_WALLET_ADDRESS", "0x00000000000000000000000000000000"
+        )
         self._facilitator = MockFacilitator()
         self._current_payment_requirements = None  # To hold requirements across turns
 
