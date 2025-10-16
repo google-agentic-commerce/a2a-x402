@@ -28,7 +28,7 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 
 from .base_agent import BaseAgent
-from .mock_facilitator import MockFacilitator
+from .local_facilitator import LocalFacilitator
 from x402_a2a import get_extension_declaration
 from x402_a2a.types import (
     ExactPaymentPayload,
@@ -53,7 +53,7 @@ class AdkMerchantAgent(BaseAgent):
         self._wallet_address = os.getenv(
             "MERCHANT_WALLET_ADDRESS", "0x00000000000000000000000000000000"
         )
-        self._facilitator = MockFacilitator()
+        self._facilitator = LocalFacilitator()
         self._current_payment_requirements = None  # To hold requirements across turns
 
     def _get_product_price(self, product_name: str) -> int:

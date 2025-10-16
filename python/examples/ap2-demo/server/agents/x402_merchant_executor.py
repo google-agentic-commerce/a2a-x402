@@ -19,7 +19,7 @@ from a2a.server.agent_execution import AgentExecutor
 # Import the executors and wrappers
 
 from x402_a2a.executors import x402ServerExecutor
-from .mock_facilitator import MockFacilitator
+from .local_facilitator import LocalFacilitator
 from x402_a2a.types import (
     PaymentPayload,
     PaymentRequirements,
@@ -47,7 +47,7 @@ class x402MerchantExecutor(x402ServerExecutor):
         use_mock = os.getenv("USE_MOCK_FACILITATOR", "true").lower() == "true"
         if use_mock:
             print("--- Using Mock Facilitator ---")
-            self._facilitator = MockFacilitator()
+            self._facilitator = LocalFacilitator()
         else:
             print("--- Using REAL Facilitator ---")
             self._facilitator = FacilitatorClient(facilitator_config)

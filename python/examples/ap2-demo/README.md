@@ -41,7 +41,7 @@ You need to run the three services in separate terminals.
 
 From the `python/examples/ap2-demo` directory, run:
 ```bash
-uv run python mock_wallet.py
+uv run python local_wallet.py
 ```
 
 **Terminal 2: Client Agent (ADK Web UI)**

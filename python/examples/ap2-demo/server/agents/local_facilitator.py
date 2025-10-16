@@ -54,10 +54,10 @@ USDC_ABI = json.loads(
 )
 
 
-class MockFacilitator(FacilitatorClient):
+class LocalFacilitator(FacilitatorClient):
     """
-    A mock facilitator that can be swapped in for testing.
-    It bypasses any real network calls and allows for predictable responses.
+    A local facilitator that can be swapped in for testing.
+    It makes calls to default base sepolia network endpoints.
     """
 
     def __init__(self, is_valid: bool = True, is_settled: bool = True):
