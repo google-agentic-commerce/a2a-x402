@@ -13,7 +13,7 @@
 # limitations under the License.
 from typing import Callable
 
-from numpy import number
+from typing import Callable
 
 import httpx
 from a2a.client import A2AClient
