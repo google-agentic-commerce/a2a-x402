@@ -71,7 +71,7 @@ class TaskStore:
             # We'll print the content of any text parts to the console.
             for part in task.artifact.parts:
                 if part.root and hasattr(part.root, "text"):
-                    print(part.root.text)
+                    logger.debug(part.root.text)
 
             current_task = self._add_or_get_task(task)
             self._process_artifact_event(current_task, task)
