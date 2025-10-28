@@ -12,6 +12,7 @@ name: release-please
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'google-agentic-commerce'
     steps:
       - uses: googleapis/release-please-action@v4
         with:
