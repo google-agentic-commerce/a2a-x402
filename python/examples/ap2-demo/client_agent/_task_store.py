@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import os
 import uuid
 
@@ -26,6 +27,8 @@ from a2a.types import (
 
 # Local imports
 from ._remote_agent_connection import TaskCallbackArg
+
+logger = logging.getLogger(__name__)
 
 
 class TaskStore:
