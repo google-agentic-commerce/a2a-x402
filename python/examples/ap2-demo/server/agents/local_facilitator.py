@@ -72,7 +72,7 @@ class LocalFacilitator(FacilitatorClient):
             Web3.HTTPProvider(base_sepolia_rpc_url, request_kwargs={"timeout": 120})
         )
         # TODO: Replace with your facilitator's private key
-        self.facilitator_private_key = os.getenv(
+        self.__facilitator_private_key = os.getenv(
             "FACILITATOR_PRIVATE_KEY", "0000000000000000000000000000000000000001"
         )
 
@@ -106,7 +106,7 @@ class LocalFacilitator(FacilitatorClient):
 
             auth = payload.payload.authorization
             facilitator_account = self.w3.eth.account.from_key(
-                self.facilitator_private_key
+                self.__facilitator_private_key
             )
             facilitator_address = facilitator_account.address
 
@@ -220,7 +220,7 @@ class LocalFacilitator(FacilitatorClient):
             )
 
             signed_tx = self.w3.eth.account.sign_transaction(
-                tx_unsigned, self.facilitator_private_key
+                tx_unsigned, self.__facilitator_private_key
             )
             tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)

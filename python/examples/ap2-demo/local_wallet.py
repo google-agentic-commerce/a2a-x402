@@ -31,13 +31,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load private key from environment variable
-private_key = os.environ.get("CLIENT_PRIVATE_KEY")
-if not private_key:
+__private_key = os.environ.get("CLIENT_PRIVATE_KEY")
+if not __private_key:
     raise ValueError(
         "CLIENT_PRIVATE_KEY environment variable not set. Make sure you have a .env file with this variable set."
     )
 
-account: LocalAccount = Account.from_key(private_key)
+account: LocalAccount = Account.from_key(__private_key)
 
 
 @app.route("/address", methods=["GET"])
