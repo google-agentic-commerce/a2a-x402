@@ -16,7 +16,7 @@
 import logging
 import uuid
 from typing import Optional
-from ..types import (
+from ..type_defs import (
     Task,
     Message,
     PaymentStatus,
@@ -181,7 +181,7 @@ class x402Utils:
 
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
+            from ..type_defs import Message
             from a2a.types import TextPart
 
             task.status.message = Message(
@@ -215,7 +215,7 @@ class x402Utils:
         """Record payment verification in task metadata."""
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
+            from ..type_defs import Message
             from a2a.types import TextPart
 
             task.status.message = Message(
@@ -243,7 +243,7 @@ class x402Utils:
         """Record successful payment with settlement response."""
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
+            from ..type_defs import Message
             from a2a.types import TextPart
 
             task.status.message = Message(
@@ -280,7 +280,7 @@ class x402Utils:
         """Record payment failure with error details."""
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
+            from ..type_defs import Message
             from a2a.types import TextPart
 
             task.status.message = Message(

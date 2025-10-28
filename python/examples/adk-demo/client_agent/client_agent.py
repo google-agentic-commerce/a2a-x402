@@ -36,7 +36,7 @@ from google.adk.tools.tool_context import ToolContext
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
 from x402_a2a.core.utils import x402Utils
-from x402_a2a.types import PaymentStatus
+from x402_a2a.type_defs import PaymentStatus
 
 logger = logging.getLogger(__name__)
 

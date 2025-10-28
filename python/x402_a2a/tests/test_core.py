@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from a2a.types import Task, Message, TaskState, TaskStatus, TextPart
 from x402_a2a.executors.server import x402ServerExecutor
-from x402_a2a.types import (
+from x402_a2a.type_defs import (
     PaymentStatus,
     x402Metadata,
     x402PaymentRequiredResponse,

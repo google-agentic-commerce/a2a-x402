@@ -15,7 +15,7 @@
 
 from typing import Optional
 
-from ..types import (
+from ..type_defs import (
     PaymentPayload,
     PaymentRequirements,
     SettleResponse,

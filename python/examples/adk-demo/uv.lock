@@ -60,7 +60,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.34.2" },
     { name = "web3", specifier = ">=7.10.0" },
     { name = "x402", specifier = ">=0.1.4" },
-    { name = "x402-a2a", editable = "../../../python/x402_a2a" },
+    { name = "x402-a2a", editable = "../../x402_a2a" },
 ]
 
 [package.metadata.requires-dev]
@@ -2714,7 +2714,7 @@ wheels = [
 [[package]]
 name = "x402-a2a"
 version = "1.0.0"
-source = { editable = "../../../python/x402_a2a" }
+source = { editable = "../../x402_a2a" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "eth-account" },
@@ -2742,7 +2742,10 @@ dev = [
     { name = "pytest-mock", specifier = ">=3.14.1" },
     { name = "trio", specifier = ">=0.22.0" },
 ]
-lint = [{ name = "ruff", specifier = ">=0.13.1" }]
+lint = [
+    { name = "mypy", specifier = ">=1.8.0" },
+    { name = "ruff", specifier = ">=0.13.1" },
+]
 
 [[package]]
 name = "yarl"

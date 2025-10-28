@@ -18,11 +18,11 @@ from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
-from x402_a2a.types import PaymentRequirements
+from x402_a2a.type_defs import PaymentRequirements
 
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
-from x402_a2a.types import x402PaymentRequiredException
+from x402_a2a.type_defs import x402PaymentRequiredException
 from x402_a2a import x402Utils, get_extension_declaration
 
 # This is the new, clean ADK Merchant Agent.

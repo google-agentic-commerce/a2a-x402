@@ -31,7 +31,7 @@ from x402.types import (
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
 
 # A2A Extension Types & Functions
-from .types import (
+from .type_defs import (
     # Extension Constants
     X402_EXTENSION_URI,
     # A2A-Specific Types

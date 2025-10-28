@@ -16,7 +16,7 @@
 from typing import Union, Optional, List, Callable, Any
 from functools import wraps
 
-from ..types import x402PaymentRequiredException, PaymentRequirements, TokenAmount
+from ..type_defs import x402PaymentRequiredException, PaymentRequirements, TokenAmount
 from .merchant import create_payment_requirements
 
 

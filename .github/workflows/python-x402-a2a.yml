@@ -33,3 +33,6 @@ jobs:
 
       - name: Format
         run: uvx ruff format --check .
+
+      - name: Typecheck
+        run: uv run typecheck

@@ -14,7 +14,7 @@
 import logging
 from typing import override
 
-from x402_a2a.types import (
+from x402_a2a.type_defs import (
     ExactPaymentPayload,
     PaymentPayload,
     PaymentRequirements,

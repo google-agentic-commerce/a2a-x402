@@ -36,7 +36,7 @@ from google.adk.events import Event
 from google.genai import types
 
 from x402_a2a.core.utils import x402Utils
-from x402_a2a.types import x402PaymentRequiredException
+from x402_a2a.type_defs import x402PaymentRequiredException
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

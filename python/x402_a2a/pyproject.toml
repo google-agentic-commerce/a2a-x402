@@ -28,17 +28,19 @@ dev = [
 ]
 lint = [
     "ruff>=0.13.1",
+    "mypy>=1.8.0",
 ]
 
 [project.scripts]
 test = "pytest:main"
+typecheck = "mypy.main:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-force-include = { "__init__.py" = "x402_a2a/__init__.py", "core" = "x402_a2a/core", "executors" = "x402_a2a/executors", "types" = "x402_a2a/types", "extension.py" = "x402_a2a/extension.py" }
+force-include = { "__init__.py" = "x402_a2a/__init__.py", "core" = "x402_a2a/core", "executors" = "x402_a2a/executors", "type_defs" = "x402_a2a/type_defs", "extension.py" = "x402_a2a/extension.py" }
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -56,3 +58,6 @@ markers = [
 
 [tool.ruff]
 target-version = "py311"
+
+[tool.mypy]
+files = ["core", "executors", "*.py"]

@@ -17,7 +17,7 @@ from typing import Optional
 from eth_account import Account
 
 from .base import x402BaseExecutor
-from ..types import (
+from ..type_defs import (
     AgentExecutor,
     RequestContext,
     EventQueue,
@@ -99,7 +99,7 @@ class x402ClientExecutor(x402BaseExecutor):
 
         except Exception as e:
             # Payment processing failed
-            from ..types import SettleResponse, x402ErrorCode
+            from ..type_defs import SettleResponse, x402ErrorCode
 
             failure_response = SettleResponse(
                 success=False, network="base", error_reason=f"Payment failed: {e}"
