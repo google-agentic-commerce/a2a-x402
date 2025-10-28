@@ -140,7 +140,7 @@ class ClientAgent:
             ],
         )
 
-    def sign_payment_request(self, tool_context: ToolContext):
+    async def sign_payment_request(self, tool_context: ToolContext):
         """Signs the payment request stored in the state using the mock wallet."""
         logger.info("Attempting to sign payment request.")
         request_to_sign = tool_context.state.get("payment_request_to_sign")
@@ -152,7 +152,10 @@ class ClientAgent:
 
         try:
             # The wallet's /sign endpoint expects the raw EIP-712 typed data object
-            response = httpx.post(f"{os.getenv('MOCK_WALLET_URL', 'http://localhost:5001')}/sign", json=request_to_sign)
+            response = await self.httpx_client.post(
+                f"{os.getenv('MOCK_WALLET_URL', 'http://localhost:5001')}/sign",
+                json=request_to_sign
+            )
             logger.info(f"Received response from wallet: {response.status_code}")
             response.raise_for_status()
 
@@ -342,7 +345,7 @@ class ClientAgent:
                 "user_message": "An unexpected error occurred while preparing the payment."
             }
 
-    def sign_payment_mandate(self, tool_context: ToolContext):
+    async def sign_payment_mandate(self, tool_context: ToolContext):
         """Signs the payment mandate stored in the state using the mock wallet."""
         logger.info("Attempting to sign payment mandate.")
         mandate_to_sign = tool_context.state.get("payment_mandate_to_sign")
@@ -356,7 +359,7 @@ class ClientAgent:
             # The wallet expects a JSON string payload
             payload_to_sign = json.dumps(mandate_to_sign)
 
-            response = httpx.post(
+            response = await self.httpx_client.post(
                 "http://localhost:5001/sign", json={"payload": payload_to_sign}
             )
             logger.info(f"Received response from wallet: {response.status_code}")
@@ -417,7 +420,7 @@ class ClientAgent:
             "user_message": f"I have created the Intent Mandate: '{mandate.natural_language_description}'. Please approve by sending the message 'sign intent mandate'."
         }
 
-    def sign_intent_mandate(self, tool_context: ToolContext):
+    async def sign_intent_mandate(self, tool_context: ToolContext):
         """Signs the intent mandate stored in the state using the mock wallet."""
         logger.info("Attempting to sign intent mandate.")
         mandate_to_sign = tool_context.state.get("intent_mandate_to_sign")
@@ -430,7 +433,7 @@ class ClientAgent:
         try:
             payload_to_sign = json.dumps(mandate_to_sign)
 
-            response = httpx.post(
+            response = await self.httpx_client.post(
                 "http://localhost:5001/sign", json={"payload": payload_to_sign}
             )
             logger.info(f"Received response from wallet: {response.status_code}")
