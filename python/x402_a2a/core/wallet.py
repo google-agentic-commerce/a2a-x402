@@ -99,9 +99,7 @@ def process_payment_required(
     client = x402Client(account=account, max_value=max_value)
     selected_requirement = client.select_payment_requirements(payment_required.accepts)
 
-    rpc_url = os.getenv(
-        "RPC_URL", "https://sepolia.base.org"
-    )
+    rpc_url = os.getenv("RPC_URL", "https://sepolia.base.org")
 
     return process_payment(
         selected_requirement,
@@ -172,9 +170,7 @@ def process_payment(
 ) -> PaymentPayload:
     """Creates a PaymentPayload containing a valid EIP-3009 signature."""
 
-    rpc_url = os.getenv(
-        "RPC_URL", "https://sepolia.base.org"
-    )
+    rpc_url = os.getenv("RPC_URL", "https://sepolia.base.org")
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     asset_contract = w3.eth.contract(address=ASSET_CONTRACT_ADDRESS, abi=ASSET_ABI)
 
