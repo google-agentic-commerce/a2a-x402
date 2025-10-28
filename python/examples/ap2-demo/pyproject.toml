@@ -34,6 +34,7 @@ members = ["client"]
 
 [tool.uv.sources]
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
+ap2 = { path = "../../../../AP2", editable = true }
 
 [tool.ruff]
 target-version = "py313"

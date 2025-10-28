@@ -161,11 +161,13 @@ wheels = [
 [[package]]
 name = "ap2"
 version = "0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/95/ec/c78500b08f533eb79100bd78835df5e57b0097328f8634ad43df99a4faef/ap2-0.1.0.tar.gz", hash = "sha256:852ef09af6815719120151fe03d5e1bb0a38716965252f6879b23053be11d635", size = 9714, upload-time = "2025-09-18T08:03:26.104Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/83/1aa0921b27487aa15aa122d031e390c90a39556caa83135f92b22271b754/ap2-0.1.0-py3-none-any.whl", hash = "sha256:ad41349647a22801b2487210a271d574ae259e180484f1f2e359d57cf1b998ae", size = 10010, upload-time = "2025-09-18T08:03:24.986Z" },
+source = { editable = "../../../../AP2" }
+dependencies = [
+    { name = "pydantic" },
 ]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic" }]
 
 [[package]]
 name = "ap2-demo"
@@ -194,7 +196,7 @@ lint = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ap2" },
+    { name = "ap2", editable = "../../../../AP2" },
     { name = "click" },
     { name = "eth-account" },
     { name = "flask" },
