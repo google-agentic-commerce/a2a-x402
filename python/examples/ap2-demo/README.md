@@ -32,6 +32,7 @@ cp .env.example .env
 Now, edit the `.env` file:
 - `CLIENT_PRIVATE_KEY`: Your Ethereum private key. This account will be used for signing and must have Base Sepolia USDC test tokens.
 - `MERCHANT_WALLET_ADDRESS`: The public Ethereum address of the merchant who will receive the payment.
+- `GOOGLE_API_KEY`: Your Google API key for the ADK agent. Get one from [Google AI Studio](https://aistudio.google.com/apikey).
 
 ### 4. Run the Demo
 
