@@ -46,7 +46,7 @@ class RemoteAgentConnections:
 
     async def send_message(
         self,
-        id: number | str,
+        id: int | str,
         request: MessageSendParams,
         task_callback: TaskUpdateCallback | None,
     ) -> Task | Message | None:
