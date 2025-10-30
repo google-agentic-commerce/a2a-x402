@@ -275,11 +275,11 @@ class ClientAgent:
             selected_requirement = requirements["accepts"][0]
 
             # --- Get EIP-712 domain info and nonce from the contract ---
-            netowrk_rpc_url = os.getenv(
+            network_rpc_url = os.getenv(
                 "RPC_URL",
                 "https://sepolia.base.org",
             )
-            w3 = Web3(Web3.HTTPProvider(netowrk_rpc_url))
+            w3 = Web3(Web3.HTTPProvider(network_rpc_url))
             usdc_contract = w3.eth.contract(
                 address=selected_requirement["asset"], abi=USDC_ABI
             )
@@ -666,11 +666,11 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 )
 
             # Construct the typed data for signing
-            netowrk_rpc_url = os.getenv(
+            network_rpc_url = os.getenv(
                 "RPC_URL",
                 "https://sepolia.base.org",
             )
-            w3 = Web3(Web3.HTTPProvider(netowrk_rpc_url))
+            w3 = Web3(Web3.HTTPProvider(network_rpc_url))
             chain_id = w3.eth.chain_id
 
             # Create the typed data payload
