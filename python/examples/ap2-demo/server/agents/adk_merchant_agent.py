@@ -15,6 +15,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import uuid
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
@@ -50,19 +51,16 @@ class AdkMerchantAgent(BaseAgent):
         self,
     ):
         load_dotenv()
-        self._wallet_address = os.getenv(
-            "MERCHANT_WALLET_ADDRESS", "0x00000000000000000000000000000000"
-        )
+        self._wallet_address = os.getenv("MERCHANT_WALLET_ADDRESS")
+        if not self._wallet_address:
+            raise ValueError("MERCHANT_WALLET_ADDRESS environment variable not set.")
         self._facilitator = LocalFacilitator()
         self._current_payment_requirements = None  # To hold requirements across turns
 
     def _get_product_price(self, product_name: str) -> int:
         """Generates a deterministic price for a product in the smallest unit (e.g., 10^-6 for USDC)."""
         # Simple deterministic price for demo purposes
-        return (
-            int(hashlib.sha256(product_name.lower().encode()).hexdigest(), 16)
-            % 99000000
-        ) + 1000000  # Price between 1 and 100 USDC
+        return random.randint(1 * 10**6, 5 * 10**6)  # Price between 1 and 5 USDC
 
     async def get_product_details_and_create_cart(
         self, product_name: str

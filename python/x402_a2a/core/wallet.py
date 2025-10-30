@@ -34,11 +34,6 @@ from ..types import (
     EIP3009Authorization,
 )
 
-# Contract address for the asset being used. Can be overridden by an environment variable.
-# Defaults to the Base Sepolia USDC Asset Contract
-ASSET_CONTRACT_ADDRESS = os.getenv(
-    "ASSET_CONTRACT_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-)
 ASSET_ABI = json.loads(
     """
 [
@@ -99,14 +94,9 @@ def process_payment_required(
     client = x402Client(account=account, max_value=max_value)
     selected_requirement = client.select_payment_requirements(payment_required.accepts)
 
-    rpc_url = os.getenv("RPC_URL", "https://sepolia.base.org")
-
     return process_payment(
         selected_requirement,
         account,
-        rpc_url,
-        ASSET_CONTRACT_ADDRESS,
-        ASSET_ABI,
         max_value,
         valid_after,
         valid_before,
@@ -172,7 +162,7 @@ def process_payment(
 
     rpc_url = os.getenv("RPC_URL", "https://sepolia.base.org")
     w3 = Web3(Web3.HTTPProvider(rpc_url))
-    asset_contract = w3.eth.contract(address=ASSET_CONTRACT_ADDRESS, abi=ASSET_ABI)
+    asset_contract = w3.eth.contract(address=requirements.asset, abi=ASSET_ABI)
 
     # --- 1. Get the current nonce from the contract ---
     nonce_uint = asset_contract.functions.nonces(account.address).call()
@@ -212,7 +202,7 @@ def process_payment(
         valid_before=auth_data["valid_before"],
         nonce=auth_data["nonce"],
         chain_id=chain_id,
-        contract_address=ASSET_CONTRACT_ADDRESS,
+        contract_address=requirements.asset,
         token_name=token_name,
         token_version=token_version,
     )
@@ -248,7 +238,7 @@ def process_payment(
 
     return PaymentPayload(
         x402_version=x402_VERSION,
-        scheme="exact",
+        scheme=requirements.scheme,
         network=requirements.network,
         payload=exact_payload,
     )

@@ -13,8 +13,6 @@
 # limitations under the License.
 from typing import Callable
 
-from typing import Callable
-
 import httpx
 from a2a.client import A2AClient
 from a2a.types import (
@@ -55,7 +53,6 @@ class RemoteAgentConnections:
             async for response in self.agent_client.send_message_streaming(
                 SendStreamingMessageRequest(id=id, params=request)
             ):
-                print(f"THE RESULT RESPONSE {response}")
                 if not response.root.result:
                     return response.root.error
                 # In the case a message is returned, that is the end of the interaction.
