@@ -22,7 +22,7 @@ from ..types import (
     x402ExtensionConfig,
     X402_EXTENSION_URI,
 )
-from ..core.utils import x402Utils
+from ..core.utils import NvmUtils
 
 
 class x402BaseExecutor(ABC):
@@ -37,7 +37,7 @@ class x402BaseExecutor(ABC):
         """
         self._delegate = delegate
         self.config = config
-        self.utils = x402Utils()
+        self.utils = NvmUtils()
 
     def is_active(self, context: RequestContext) -> bool:
         """Check if x402 extension is activated for this request.

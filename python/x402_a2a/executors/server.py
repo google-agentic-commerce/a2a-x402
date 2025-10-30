@@ -34,7 +34,8 @@ from ..types import (
     Task,
     TaskStatus,
     TaskState,
-    x402PaymentRequiredResponse,
+    # x402PaymentRequiredResponse,
+    NvmPaymentRequiredResponse,
     VerifyResponse,
 )
 
@@ -347,8 +348,8 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         # Store payment requirements for later correlation
         self._payment_requirements_store[task.id] = accepts_array
 
-        payment_required = x402PaymentRequiredResponse(
-            x402_version=1, accepts=accepts_array, error=error_message
+        payment_required = NvmPaymentRequiredResponse(
+            nvm_version=1, accepts=accepts_array, error=error_message
         )
 
         # Update task with payment requirements

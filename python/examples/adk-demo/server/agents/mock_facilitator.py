@@ -15,7 +15,8 @@ import logging
 from typing import override
 
 from x402_a2a.types import (
-    ExactPaymentPayload,
+    # ExactPaymentPayload,
+    SessionKeyPayload,
     PaymentPayload,
     PaymentRequirements,
     SettleResponse,
@@ -42,16 +43,16 @@ class MockFacilitator(FacilitatorClient):
         logging.info("--- MOCK FACILITATOR: VERIFY ---")
         logging.info(f"Received payload:\n{payload.model_dump_json(indent=2)}")
 
-        payer = None
+        session_key = None
         # The top-level object is PaymentPayload, the nested is ExactPaymentPayload
-        if isinstance(payload.payload, ExactPaymentPayload):
-            payer = payload.payload.authorization.from_
+        if isinstance(payload.payload, SessionKeyPayload):
+            session_key = payload.payload.session_key
         else:
             raise TypeError(f"Unsupported payload type: {type(payload.payload)}")
 
         if self._is_valid:
-            return VerifyResponse(is_valid=True, payer=payer)
-        return VerifyResponse(is_valid=False, invalid_reason="mock_invalid_payload")
+            return VerifyResponse(is_valid=True, session_key=session_key)
+        return VerifyResponse(is_valid=False, invalid_reason="mock_invalid_session_key")
 
     @override
     async def settle(

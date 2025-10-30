@@ -13,19 +13,22 @@
 # limitations under the License.
 """x402_a2a - x402 Payment Protocol Extension for A2A."""
 
+# NVM Types
+from .nvm import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, VerifyResponse, SettleResponse
+
 # Core x402 Protocol Types (from x402.types)
 from x402.types import (
-    PaymentRequirements,
-    x402PaymentRequiredResponse,
-    PaymentPayload,
-    SettleResponse,
+    # PaymentRequirements,
+    # x402PaymentRequiredResponse,
+    # PaymentPayload,
+    # SettleResponse,
     ExactPaymentPayload,
     EIP3009Authorization,
     TokenAmount,
     TokenAsset,
     EIP712Domain,
     SupportedNetworks,
-    VerifyResponse,
+    # VerifyResponse,
 )
 
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
@@ -62,7 +65,8 @@ from .core import (
     verify_payment,
     settle_payment,
     # State Management
-    x402Utils,
+    #x402Utils,
+    NvmUtils,
     create_payment_submission_message,
     extract_task_id,
     # Helper functions (new exception-based approach)
@@ -84,7 +88,8 @@ __version__ = "1.0.0"
 __all__ = [
     # Core x402 Protocol Types
     "PaymentRequirements",
-    "x402PaymentRequiredResponse",
+    # "x402PaymentRequiredResponse",
+    "NvmPaymentRequiredResponse",
     "PaymentPayload",
     "VerifyResponse",
     "SettleResponse",
@@ -124,7 +129,8 @@ __all__ = [
     "verify_payment",
     "settle_payment",
     # State Management
-    "x402Utils",
+    #"x402Utils",
+    "NvmUtils",
     "create_payment_submission_message",
     "extract_task_id",
     # Helper functions (new exception-based approach)
@@ -140,4 +146,7 @@ __all__ = [
     "x402BaseExecutor",
     "x402ServerExecutor",
     "x402ClientExecutor",
+    "SessionKeyPayload",
+    "VerifyResponse",
+    "SettleResponse",
 ]

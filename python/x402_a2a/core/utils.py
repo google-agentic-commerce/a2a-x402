@@ -21,7 +21,8 @@ from ..types import (
     Message,
     PaymentStatus,
     x402Metadata,
-    x402PaymentRequiredResponse,
+    # x402PaymentRequiredResponse,
+    NvmPaymentRequiredResponse,
     PaymentPayload,
     SettleResponse,
     TaskState,
@@ -71,8 +72,8 @@ def extract_task_id(message: Message) -> Optional[str]:
     return getattr(message, "task_id", None)
 
 
-class x402Utils:
-    """Core utilities for x402 protocol state management."""
+class NvmUtils:
+    """Core utilities for NVM protocol state management."""
 
     STATUS_KEY = x402Metadata.STATUS_KEY
     REQUIRED_KEY = x402Metadata.REQUIRED_KEY
@@ -110,7 +111,7 @@ class x402Utils:
 
     def get_payment_requirements_from_message(
         self, message: Message
-    ) -> Optional[x402PaymentRequiredResponse]:
+    ) -> Optional[NvmPaymentRequiredResponse]:
         """Extract payment requirements from message metadata."""
         if not message or not hasattr(message, "metadata") or not message.metadata:
             return None
@@ -118,14 +119,14 @@ class x402Utils:
         req_data = message.metadata.get(self.REQUIRED_KEY)
         if req_data:
             try:
-                return x402PaymentRequiredResponse.model_validate(req_data)
+                return NvmPaymentRequiredResponse.model_validate(req_data)
             except Exception:
                 return None
         return None
 
     def get_payment_requirements_from_task(
         self, task: Task
-    ) -> Optional[x402PaymentRequiredResponse]:
+    ) -> Optional[NvmPaymentRequiredResponse]:
         """Extract payment requirements from task's status message metadata."""
         if not task or not hasattr(task, "status") or not task.status:
             return None
@@ -136,7 +137,7 @@ class x402Utils:
 
     def get_payment_requirements(
         self, task: Task
-    ) -> Optional[x402PaymentRequiredResponse]:
+    ) -> Optional[NvmPaymentRequiredResponse]:
         """Extract payment requirements from task metadata (updated to use task status message)."""
         return self.get_payment_requirements_from_task(task)
 
@@ -170,7 +171,7 @@ class x402Utils:
         return self.get_payment_payload_from_task(task)
 
     def create_payment_required_task(
-        self, task: Task, payment_required: x402PaymentRequiredResponse
+        self, task: Task, payment_required: NvmPaymentRequiredResponse
     ) -> Task:
         """Set task to payment required state with proper metadata."""
         # Set task status to input-required as per A2A spec

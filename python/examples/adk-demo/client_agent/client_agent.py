@@ -35,7 +35,7 @@ from google.adk.tools.tool_context import ToolContext
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from .wallet import Wallet
-from x402_a2a.core.utils import x402Utils
+from x402_a2a.core.utils import NvmUtils
 from x402_a2a.types import PaymentStatus
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class ClientAgent:
         self.remote_agent_addresses = remote_agent_addresses
         self.agents_info_str = ""
         self._initialized = False
-        self.x402 = x402Utils()
+        self.nvm = NvmUtils()
 
     def create_agent(self) -> Agent:
         """Creates the ADK Agent instance."""
@@ -147,7 +147,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             original_task = Task.model_validate(purchase_task_data)
             task_id = original_task.id
 
-            requirements = self.x402.get_payment_requirements(original_task)
+            requirements = self.nvm.get_payment_requirements(original_task)
             if not requirements:
                 raise ValueError(
                     "Could not find payment requirements in the original task."
@@ -155,10 +155,10 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             # Sign the payment and prepare the payload for the merchant.
             signed_payload = self.wallet.sign_payment(requirements)
-            message_metadata[self.x402.PAYLOAD_KEY] = signed_payload.model_dump(
+            message_metadata[self.nvm.PAYLOAD_KEY] = signed_payload.model_dump(
                 by_alias=True
             )
-            message_metadata[self.x402.STATUS_KEY] = (
+            message_metadata[self.nvm.STATUS_KEY] = (
                 PaymentStatus.PAYMENT_SUBMITTED.value
             )
 
@@ -197,7 +197,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
         if response_task.status.state == TaskState.input_required:
             # The merchant requires payment. Store the task and ask the user for confirmation.
             state["purchase_task"] = response_task.model_dump(by_alias=True)
-            requirements = self.x402.get_payment_requirements(response_task)
+            requirements = self.nvm.get_payment_requirements(response_task)
 
             if not requirements:
                 raise ValueError("Server requested payment but sent no requirements.")
@@ -209,13 +209,11 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             # Extract details for the confirmation message.
             payment_option = requirements.accepts[0]
-            currency_amount = payment_option.max_amount_required
-            currency_name = payment_option.extra.get("name", "TOKEN")
-            product_name = payment_option.extra.get("product", {}).get(
-                "name", "the item"
-            )
+            amount = payment_option.max_amount
+            agent_id = payment_option.agent_id
+            plan_id = payment_option.plan_id
 
-            return f"The merchant is requesting payment for '{product_name}' for {currency_amount} {currency_name}. Do you want to approve this payment?"
+            return f"The merchant is requesting payment for agent {agent_id} with plan {plan_id} for {amount} credits. Do you want to approve this payment?"
 
         elif response_task.status.state in (TaskState.completed, TaskState.failed):
             # The task is finished. Report the outcome.
@@ -232,7 +230,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             # Fallback for tasks with no text artifacts (e.g., payment settlement)
             if (
-                self.x402.get_payment_status(response_task)
+                self.nvm.get_payment_status(response_task)
                 == PaymentStatus.PAYMENT_COMPLETED
             ):
                 return "Payment successful! Your purchase is complete."

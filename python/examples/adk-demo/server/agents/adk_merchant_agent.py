@@ -23,7 +23,7 @@ from x402_a2a.types import PaymentRequirements
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
 from x402_a2a.types import x402PaymentRequiredException
-from x402_a2a import x402Utils, get_extension_declaration
+from x402_a2a import NvmUtils, get_extension_declaration
 
 # This is the new, clean ADK Merchant Agent.
 # It now implements the BaseAgent interface.
@@ -39,7 +39,7 @@ class AdkMerchantAgent(BaseAgent):
         self, wallet_address: str = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
     ):
         self._wallet_address = wallet_address
-        self.x402 = x402Utils()
+        self.nvm = NvmUtils()
 
     def _get_product_price(self, product_name: str) -> str:
         """Generates a deterministic price for a product."""
@@ -58,26 +58,14 @@ class AdkMerchantAgent(BaseAgent):
         if not product_name:
             return {"error": "Product name cannot be empty."}
 
-        price = self._get_product_price(product_name)
+        # price = self._get_product_price(product_name)
         requirements = PaymentRequirements(
-            scheme="exact",
+            plan_id="123",
+            agent_id="456",
+            max_amount="10",
             network="base-sepolia",
-            asset="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-            pay_to=self._wallet_address,
-            max_amount_required=price,
-            description=f"Payment for: {product_name}",
-            resource=f"https://example.com/product/{product_name}",
-            mime_type="application/json",
-            max_timeout_seconds=1200,
-            extra={
-                "name": "USDC",
-                "version": "2",
-                "product": {
-                    "sku": f"{product_name}_sku",
-                    "name": product_name,
-                    "version": "1",
-                },
-            },
+            scheme="fixed",
+            extra=None
         )
 
         # Signal to the x402ServerAgentExecutor that payment is required.

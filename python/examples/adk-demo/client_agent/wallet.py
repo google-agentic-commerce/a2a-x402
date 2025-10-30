@@ -14,7 +14,7 @@
 from abc import ABC, abstractmethod
 import eth_account
 
-from x402_a2a.types import PaymentPayload, x402PaymentRequiredResponse
+from x402_a2a.types import PaymentPayload, NvmPaymentRequiredResponse
 from x402_a2a.core.wallet import process_payment_required
 
 
@@ -26,7 +26,7 @@ class Wallet(ABC):
     """
 
     @abstractmethod
-    def sign_payment(self, requirements: x402PaymentRequiredResponse) -> PaymentPayload:
+    def sign_payment(self, requirements: NvmPaymentRequiredResponse) -> PaymentPayload:
         """
         Signs a payment requirement and returns the signed payload.
         """
@@ -39,7 +39,7 @@ class MockLocalWallet(Wallet):
     FOR DEMONSTRATION PURPOSES ONLY. DO NOT USE IN PRODUCTION.
     """
 
-    def sign_payment(self, requirements: x402PaymentRequiredResponse) -> PaymentPayload:
+    def sign_payment(self, requirements: NvmPaymentRequiredResponse) -> PaymentPayload:
         """
         Signs a payment requirement using x402.exact EIP-3009 signing.
         """

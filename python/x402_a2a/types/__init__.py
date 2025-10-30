@@ -26,9 +26,9 @@ from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
 from x402.types import (
-    PaymentRequirements,
-    x402PaymentRequiredResponse,
-    PaymentPayload,
+    # PaymentRequirements,
+    # x402PaymentRequiredResponse,
+    # PaymentPayload,
     VerifyResponse,
     SettleResponse,
     ExactPaymentPayload,
@@ -38,6 +38,8 @@ from x402.types import (
     EIP712Domain,
     SupportedNetworks,
 )
+# Use custom PaymentRequirements from nvm module instead of x402.types
+from ..nvm import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, SessionKeyPayload, VerifyResponse, SettleResponse
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
 
 from .state import PaymentStatus, x402Metadata
@@ -74,6 +76,7 @@ __all__ = [
     "PaymentRequirements",
     "x402PaymentRequiredResponse",
     "PaymentPayload",
+    "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
     "ExactPaymentPayload",

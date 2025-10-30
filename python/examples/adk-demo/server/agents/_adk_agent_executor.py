@@ -35,7 +35,7 @@ from google.adk import Runner
 from google.adk.events import Event
 from google.genai import types
 
-from x402_a2a.core.utils import x402Utils
+from x402_a2a.core.utils import NvmUtils
 from x402_a2a.types import x402PaymentRequiredException
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class ADKAgentExecutor(AgentExecutor):
         self.runner = runner
         self._card = card
         self._running_sessions = {}
-        self.x402 = x402Utils()
+        self.nvm = NvmUtils()
 
     def _run_agent(
         self, session_id, new_message: types.Content
