@@ -26,6 +26,7 @@ from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
 from x402.types import (
+    CashuPaymentPayload,
     PaymentRequirements,
     x402PaymentRequiredResponse,
     PaymentPayload,
@@ -74,6 +75,7 @@ __all__ = [
     "PaymentRequirements",
     "x402PaymentRequiredResponse",
     "PaymentPayload",
+    "CashuPaymentPayload",
     "VerifyResponse",
     "SettleResponse",
     "ExactPaymentPayload",
