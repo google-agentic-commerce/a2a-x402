@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "A demo showcasing AP2 and x402 for human-in-the-loop agent payments."
 requires-python = ">=3.11"
 dependencies = [
-    "ap2", # Now referenced via tool.uv.sources
-    "x402-a2a", # Now referenced via tool.uv.sources
+    "ap2 @ git+https://github.com/google-agentic-commerce/AP2.git@main",
+    "x402-a2a",
     "starlette",
     "uvicorn",
     "pydantic",
@@ -23,6 +23,9 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["server", "client"]
 
@@ -34,7 +37,6 @@ members = ["client"]
 
 [tool.uv.sources]
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
-ap2 = { path = "../../../../AP2", editable = true }
 
 [tool.ruff]
 target-version = "py313"
