@@ -887,7 +887,7 @@ async def handle_payment_requirements(task: Task, account: Account):
     
     # Use x402Client for payment selection and signing
     from x402.clients.base import x402Client
-    client = x402Client(account=account, max_value=1000000)
+    client = x402Client(account=account, max_value=100)
     
     # Select payment requirement from accepts array
     selected_requirement = client.select_payment_requirements(payment_required.accepts)

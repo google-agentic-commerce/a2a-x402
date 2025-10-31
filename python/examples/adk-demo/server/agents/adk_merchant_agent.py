@@ -46,7 +46,7 @@ class AdkMerchantAgent(BaseAgent):
         price = (
             int(hashlib.sha256(product_name.lower().encode()).hexdigest(), 16)
             % 99900001
-            + 100000
+            + 5000
         )
         return str(price)
 

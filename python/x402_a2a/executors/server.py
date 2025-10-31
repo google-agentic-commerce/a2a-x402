@@ -60,9 +60,6 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         )
     """
 
-    # Class-level store to persist across requests for a single server instance.
-    _payment_requirements_store: Dict[str, List[PaymentRequirements]] = {}
-
     def __init__(
         self,
         delegate: AgentExecutor,
@@ -75,6 +72,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             config: x402 extension configuration
         """
         super().__init__(delegate, config)
+        self._payment_requirements_store: Dict[str, List[PaymentRequirements]] = {}
 
     @abstractmethod
     async def verify_payment(
