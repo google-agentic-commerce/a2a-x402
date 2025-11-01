@@ -362,7 +362,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     ):
         """Handle payment failure."""
         failure_response = SettleResponse(
-            success=False, network="base", error_reason=error_reason
+            success=False, network="eip155:8453", error_reason=error_reason
         )
         task = self.utils.record_payment_failure(task, error_code, failure_response)
 
