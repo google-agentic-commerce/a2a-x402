@@ -484,3 +484,4 @@ If a payment fails, the server MUST set the x402.payment.status to payment-faile
 * [**A2A Protocol Specification**](https://a2a-protocol.org/latest/specification)  
 * [**A2A Extensions Documentation**](https://github.com/a2aproject/A2A/blob/main/docs/topics/extensions.md)  
 * [**x402 Protocol Specification**](https://x402.gitbook.io/x402)
+* [**AP2 Specification**](https://github.com/google-agentic-commerce/AP2/blob/main/docs/specification.md)
