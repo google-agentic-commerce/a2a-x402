@@ -465,7 +465,7 @@ If a payment fails, the server MUST set the x402.payment.status to payment-faile
             "success": false,
             "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
             "network": "base",
-        "transaction": ""
+            "transaction": ""
         }]
       }
     }
