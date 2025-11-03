@@ -143,8 +143,6 @@ The Merchant Agent is a specialist agent that provides a monetized skill or serv
 
 This diagram illustrates the generic A2A message exchange. The location of the x402 objects depends on the flow (Standalone vs. Embedded).
 
-Code snippet
-
 ```mermaid
 sequenceDiagram
     participant Client Agent
