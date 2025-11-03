@@ -316,10 +316,10 @@ The Client Agent sends a new `Message` linked to the `Task` via its `taskId`. Th
         {
           "kind":"data",
           "data": {
-		 "ap2.mandates.PaymentMandate": {
+		    "ap2.mandates.PaymentMandate": {
               "payment_details": {
                 "cart_mandate": "<user-signed hash of cart_shoes_123>",
-		     "payment_request_id": "order_shoes_123",
+		        "payment_request_id": "order_shoes_123",
                 "payment_method": {
                   "supported_methods": "https://www.x402.org/",
                   "data": { // x402 Payment Payload
@@ -335,7 +335,7 @@ The Client Agent sends a new `Message` linked to the `Task` via its `taskId`. Th
               },
               "creation_time": "..."
             }
-	    }
+	      }
         }
       ],
       "metadata": {
