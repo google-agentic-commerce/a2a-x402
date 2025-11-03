@@ -151,7 +151,7 @@ sequenceDiagram
     Merchant Agent-->>Client Agent: 2. Respond with Task (state: 'input-required', **containing** x402PaymentRequiredResponse)
     Client Agent->>Client Agent: 3. Create signed PaymentPayload
     Client Agent->>Merchant Agent: 4. Fulfill request (Message **containing** PaymentPayload & taskId)
-    Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload and begins processing the task*.
+    Merchant Agent->>Merchant Agent: 5. Verifies and settles the PaymentPayload and begins processing the task.
     Merchant Agent-->>Client Agent: 6. Respond with updated Task (state: e.g., 'working', message: { metadata: x402.payment.receipts })
 
 ```
