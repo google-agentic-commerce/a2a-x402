@@ -252,7 +252,7 @@ The Merchant Agent creates a `Task`, sets its status to `input-required`, and in
             "timestamp": "..."
           }
         }
-      ],
+      ]
   }
 }
 ```
