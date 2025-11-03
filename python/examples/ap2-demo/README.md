@@ -11,7 +11,7 @@ The demo consists of three main components:
 
 ### 1. Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - [uv](https://github.com/astral-sh/uv) (for environment and package management)
 
 ### 2. Installation
