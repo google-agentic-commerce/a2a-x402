@@ -23,7 +23,7 @@ def create_payment_requirements(
     price: Price,
     pay_to_address: str,
     resource: str,
-    network: str = "base",
+    network: str = "eip155:8453",
     description: str = "",
     mime_type: str = "application/json",
     scheme: str = "exact",
@@ -37,10 +37,13 @@ def create_payment_requirements(
         price: Payment price. Can be:
             - Money: USD amount as string/int (e.g., "$3.10", 0.10, "0.001") - defaults to USDC
             - TokenAmount: Custom token amount with asset information
-        pay_to_address: Ethereum address to receive the payment
+        pay_to_address: Address to receive the payment (format depends on network)
         resource: Resource identifier (e.g., "/generate-image")
-        network: Blockchain network (default: "base")
-        description: Human-readable description
+        network: Blockchain network in CAIP-2 format (default: "eip155:8453" for Base)
+            Examples:
+            - EVM chains: "eip155:1" (Ethereum), "eip155:8453" (Base), "eip155:137" (Polygon)
+            - Bitcoin: "bip122:000000000019d6689c085ae165831e93" (mainnet)
+            - Solana: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" (mainnet)        description: Human-readable description
         mime_type: Expected response content type
         scheme: Payment scheme (default: "exact")
         max_timeout_seconds: Payment validity timeout

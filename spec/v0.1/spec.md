@@ -118,7 +118,7 @@ When a Client Agent requests a service, the Merchant Agent determines that payme
             "x402Version": 1,
             "accepts": [{
               "scheme": "exact",
-              "network": "base",
+              "network": "eip155:8453",
               "resource": "https://api.example.com/generate-image",
               "description": "Generate an image",
               "mimeType": "application/json",
@@ -202,7 +202,7 @@ The Agent **MUST** include ALL payment receipts created in the lifetime of a Tas
           "x402.payment.receipts": [{
             "success": true,
             "transaction": "0xabc123...",
-            "network": "base",
+            "network": "eip155:8453",
             "payer": "0xpayerAddress"
           }]
         }
@@ -338,7 +338,7 @@ The management of Task states at payment failure is at the discretion of the Mer
         "x402.payment.receipts": [{
             "success": false,
             "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
-            "network": "base",
+            "network": "eip155:8453",
         "transaction": ""
         }]
       }

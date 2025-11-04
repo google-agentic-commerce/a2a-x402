@@ -61,7 +61,7 @@ class AdkMerchantAgent(BaseAgent):
         price = self._get_product_price(product_name)
         requirements = PaymentRequirements(
             scheme="exact",
-            network="base-sepolia",
+            network="eip155:84532",  # Base Sepolia testnet
             asset="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
             pay_to=self._wallet_address,
             max_amount_required=price,
