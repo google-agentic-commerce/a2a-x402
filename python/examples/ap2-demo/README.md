@@ -54,9 +54,9 @@ uv run adk web
 
 **Terminal 3: Server Agent**
 
-From the project root directory (`a2a-x402`), run:
+From the `python/examples/ap2-demo` directory, run:
 ```bash
-uv --directory=python/examples/ap2-demo run server
+uv run server
 ```
 
 Once the client agent is running, you can connect to it from the ADK Web UI to begin the purchase flow.
