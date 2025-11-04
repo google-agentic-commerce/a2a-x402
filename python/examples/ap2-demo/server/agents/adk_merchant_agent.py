@@ -147,7 +147,7 @@ class AdkMerchantAgent(BaseAgent):
             payload_to_sign = cart_contents.model_dump_json()
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    "http://localhost:5001/sign", json={"payload": payload_to_sign}
+                    f"{os.getenv('LOCAL_WALLET_URL', 'http://localhost:5001')}/sign", json={"payload": payload_to_sign}
                 )
                 response.raise_for_status()
                 signature_data = response.json()

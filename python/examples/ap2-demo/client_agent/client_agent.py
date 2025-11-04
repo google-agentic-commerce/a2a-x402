@@ -153,7 +153,7 @@ class ClientAgent:
         try:
             # The wallet's /sign endpoint expects the raw EIP-712 typed data object
             response = await self.httpx_client.post(
-                f"{os.getenv('MOCK_WALLET_URL', 'http://localhost:5001')}/sign",
+                f"{os.getenv('LOCAL_WALLET_URL', 'http://localhost:5001')}/sign",
                 json=request_to_sign
             )
             logger.info(f"Received response from wallet: {response.status_code}")
@@ -360,7 +360,7 @@ class ClientAgent:
             payload_to_sign = json.dumps(mandate_to_sign)
 
             response = await self.httpx_client.post(
-                "http://localhost:5001/sign", json={"payload": payload_to_sign}
+                f"{os.getenv('LOCAL_WALLET_URL', 'http://localhost:5001')}/sign", json={"payload": payload_to_sign}
             )
             logger.info(f"Received response from wallet: {response.status_code}")
             response.raise_for_status()
@@ -510,7 +510,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
         # Fetch the wallet address first
         try:
-            response = await self.httpx_client.get("http://localhost:5001/address")
+            response = await self.httpx_client.get(f"{os.getenv('LOCAL_WALLET_URL', 'http://localhost:5001')}/address")
             response.raise_for_status()
             self._wallet_address = response.json().get("address")
             logger.info(f"Successfully fetched wallet address: {self._wallet_address}")
