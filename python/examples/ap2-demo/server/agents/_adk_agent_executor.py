@@ -208,16 +208,6 @@ class ADKAgentExecutor(AgentExecutor):
                             {"status": "Context saved, no artifact returned."},
                         )
 
-                    # --- Enhanced Logging ---
-                    logger.info(
-                        "Tool '%s' executed. Result type: %s",
-                        tool_name,
-                        type(tool_result),
-                    )
-                    if isinstance(tool_result, dict):
-                        logger.info(f"Tool result keys: {list(tool_result.keys())}")
-                    # --- End Enhanced Logging ---
-
                     # The tool result is always wrapped in a FunctionResponse and sent back to the agent.
                     # The event loop will inspect this response to see if it's a final artifact.
                     tool_outputs.append(
@@ -300,7 +290,6 @@ class ADKAgentExecutor(AgentExecutor):
             user_message = types.UserContent(
                 parts=[types.Part(text="Payment verified. Please proceed.")]
             )
-            # --- CRITICAL ---
             # We must re-fetch the session here to ensure the state changes
             # from the x402 executor are reflected before the agent's
             # `before_agent_callback` is invoked.

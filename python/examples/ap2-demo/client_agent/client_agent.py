@@ -305,7 +305,7 @@ class ClientAgent:
                 value=value,
                 valid_after=valid_after,
                 valid_before=valid_before,
-                nonce="0x" + os.urandom(32).hex(),  # Pass nonce as a hex string
+                nonce="0x" + os.urandom(32).hex(),
                 chain_id=chain_id,
                 contract_address=selected_requirement["asset"],
                 token_name=token_name,
@@ -434,7 +434,7 @@ class ClientAgent:
             payload_to_sign = json.dumps(mandate_to_sign)
 
             response = await self.httpx_client.post(
-                "http://localhost:5001/sign", json={"payload": payload_to_sign}
+                f"{os.getenv('LOCAL_WALLET_URL', 'http://localhost:5001')}/sign", json={"payload": payload_to_sign}
             )
             logger.info(f"Received response from wallet: {response.status_code}")
             response.raise_for_status()

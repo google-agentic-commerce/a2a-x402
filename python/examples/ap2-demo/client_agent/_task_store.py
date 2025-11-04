@@ -70,17 +70,10 @@ class TaskStore:
             self._update_task(current_task)
             return current_task
         elif isinstance(task, TaskArtifactUpdateEvent):
-            # This is where the streaming updates are handled.
-            # We'll print the content of any text parts to the console.
-            for part in task.artifact.parts:
-                if part.root and hasattr(part.root, "text"):
-                    logger.debug(part.root.text)
-
             current_task = self._add_or_get_task(task)
             self._process_artifact_event(current_task, task)
             self._update_task(current_task)
             return current_task
-        # Otherwise this is a Task, either new or updated
         elif not any(filter(lambda x: x and x.id == task.id, self._tasks)):
             self._attach_message_to_task(task.status.message, task.id)
             self._add_task(task)
