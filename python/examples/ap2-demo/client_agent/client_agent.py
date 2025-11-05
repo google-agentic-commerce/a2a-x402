@@ -38,6 +38,7 @@ from ap2.types.payment_request import PaymentResponse
 from web3 import Web3
 import os
 import datetime
+from dotenv import load_dotenv
 
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
@@ -46,6 +47,8 @@ from x402_a2a.types import PaymentStatus
 from x402_a2a.core.wallet import get_transfer_with_auth_typed_data
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 # ABI for the functions we need from the USDC contract (name, version, nonces)
 USDC_ABI = json.loads(

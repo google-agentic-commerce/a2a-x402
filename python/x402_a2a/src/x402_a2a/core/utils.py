@@ -16,6 +16,7 @@
 import logging
 import uuid
 from typing import Optional
+from a2a.types import TextPart, Part, Role
 from ..types import (
     Task,
     Message,
@@ -27,7 +28,6 @@ from ..types import (
     TaskState,
     TaskStatus,
 )
-from a2a.types import TextPart
 
 
 def _parse_payment_payload(payload_data: dict) -> PaymentPayload:
@@ -53,10 +53,10 @@ def create_payment_submission_message(
     """
     msg_id = message_id if message_id is not None else str(uuid.uuid4())
     return Message(
-        messageId=msg_id,  # Use provided ID or generate UUID
+        message_id=msg_id,  # Use provided ID or generate UUID
         task_id=task_id,  # Spec mandates this correlation
-        role="user",
-        parts=[TextPart(kind="text", text=text)],
+        role=Role.user,
+        parts=[Part(root=TextPart(kind="text", text=text))],
         metadata={
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
             x402Metadata.PAYLOAD_KEY: payment_payload.model_dump(by_alias=True),
@@ -181,14 +181,15 @@ class x402Utils:
 
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
-            from a2a.types import TextPart
-
             task.status.message = Message(
-                messageId=f"{task.id}-status",
-                role="agent",
+                message_id=f"{task.id}-status",
+                role=Role.agent,
                 parts=[
-                    TextPart(kind="text", text="Payment is required for this service.")
+                    Part(
+                        root=TextPart(
+                            kind="text", text="Payment is required for this service."
+                        )
+                    )
                 ],
                 metadata={},
             )
@@ -215,13 +216,12 @@ class x402Utils:
         """Record payment verification in task metadata."""
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
-            from a2a.types import TextPart
-
             task.status.message = Message(
-                messageId=f"{task.id}-status",
-                role="agent",
-                parts=[TextPart(kind="text", text="Payment verification recorded.")],
+                message_id=f"{task.id}-status",
+                role=Role.agent,
+                parts=[
+                    Part(root=TextPart(kind="text", text="Payment verification recorded."))
+                ],
                 metadata={},
             )
 
@@ -243,13 +243,16 @@ class x402Utils:
         """Record successful payment with settlement response."""
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
-            from a2a.types import TextPart
-
             task.status.message = Message(
-                messageId=f"{task.id}-status",
-                role="agent",
-                parts=[TextPart(kind="text", text="Payment completed successfully.")],
+                message_id=f"{task.id}-status",
+                role=Role.agent,
+                parts=[
+                    Part(
+                        root=TextPart(
+                            kind="text", text="Payment completed successfully."
+                        )
+                    )
+                ],
                 metadata={},
             )
 
@@ -280,13 +283,10 @@ class x402Utils:
         """Record payment failure with error details."""
         # Ensure task has a status message for metadata
         if not hasattr(task.status, "message") or not task.status.message:
-            from ..types import Message
-            from a2a.types import TextPart
-
             task.status.message = Message(
-                messageId=f"{task.id}-status",
-                role="agent",
-                parts=[TextPart(kind="text", text="Payment failed.")],
+                message_id=f"{task.id}-status",
+                role=Role.agent,
+                parts=[Part(root=TextPart(kind="text", text="Payment failed."))],
                 metadata={},
             )
 

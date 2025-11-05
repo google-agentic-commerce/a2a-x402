@@ -17,7 +17,7 @@ import datetime
 import json
 import logging
 import os
-from typing import Optional
+from typing import Optional, cast
 from eth_account import Account
 from eth_account.signers.local import LocalAccount
 from eth_account.messages import encode_typed_data
@@ -85,13 +85,13 @@ ASSET_ABI = json.loads(
 
 def process_payment_required(
     payment_required: x402PaymentRequiredResponse,
-    account: Account,
+    account: LocalAccount,
     max_value: Optional[int] = None,
     valid_after: Optional[int] = None,
     valid_before: Optional[int] = None,
 ) -> PaymentPayload:
     """Process full payment required response using x402Client logic."""
-    client = x402Client(account=account, max_value=max_value)
+    client = x402Client(account=cast(Account, account), max_value=max_value)
     selected_requirement = client.select_payment_requirements(payment_required.accepts)
 
     return process_payment(
@@ -162,7 +162,9 @@ def process_payment(
 
     rpc_url = os.getenv("RPC_URL", "https://sepolia.base.org")
     w3 = Web3(Web3.HTTPProvider(rpc_url))
-    asset_contract = w3.eth.contract(address=requirements.asset, abi=ASSET_ABI)
+    asset_contract = w3.eth.contract(
+        address=Web3.to_checksum_address(requirements.asset), abi=ASSET_ABI
+    )
 
     # --- 1. Get the current nonce from the contract ---
     nonce_uint = asset_contract.functions.nonces(account.address).call()
@@ -171,8 +173,8 @@ def process_payment(
     # --- 2. Generate the authorization data ONCE ---
     auth_data = {
         "from_": account.address,
-        "to": requirements.to,
-        "value": int(requirements.value),
+        "to": requirements.pay_to,
+        "value": int(requirements.max_amount_required),
         "valid_after": valid_after if valid_after is not None else 0,
         "valid_before": valid_before
         if valid_before is not None
@@ -219,14 +221,15 @@ def process_payment(
     signed_message = account.sign_message(signable_message)
 
     # --- 4. Construct the final payload using the SAME authorization data ---
-    authorization = EIP3009Authorization(
-        from_=auth_data["from_"],
-        to=auth_data["to"],
-        value=str(auth_data["value"]),
-        valid_after=str(auth_data["valid_after"]),
-        valid_before=str(auth_data["valid_before"]),
-        nonce=f"0x{auth_data['nonce'].hex()}",
-    )
+    authorization_payload = {
+        "from": auth_data["from_"],
+        "to": auth_data["to"],
+        "value": str(auth_data["value"]),
+        "valid_after": str(auth_data["valid_after"]),
+        "valid_before": str(auth_data["valid_before"]),
+        "nonce": f"0x{auth_data['nonce'].hex()}",
+    }
+    authorization = EIP3009Authorization(**authorization_payload)
 
     # The signature is a single bytes object, but some systems expect it as a hex string
     # with r, s, and v components concatenated.

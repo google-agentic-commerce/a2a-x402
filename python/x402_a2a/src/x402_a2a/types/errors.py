@@ -172,7 +172,7 @@ class x402ErrorCode:
 
 def map_error_to_code(error: Exception) -> str:
     """Maps implementation errors to spec error codes."""
-    error_mapping = {
+    error_mapping: dict[type[Exception], str] = {
         ValidationError: x402ErrorCode.INVALID_SIGNATURE,
         PaymentError: x402ErrorCode.SETTLEMENT_FAILED,
         # Add more mappings as needed
