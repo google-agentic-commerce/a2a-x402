@@ -220,7 +220,11 @@ class x402Utils:
                 message_id=f"{task.id}-status",
                 role=Role.agent,
                 parts=[
-                    Part(root=TextPart(kind="text", text="Payment verification recorded."))
+                    Part(
+                        root=TextPart(
+                            kind="text", text="Payment verification recorded."
+                        )
+                    )
                 ],
                 metadata={},
             )

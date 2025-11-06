@@ -141,11 +141,12 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             f"✅ Received payment payload. Beginning verification for task: {task.id}"
         )
 
-        payment_payload = self.utils.get_payment_payload(
-            task
-        ) or self.utils.get_payment_payload_from_message(
-            context.message
-        ) if context.message else None
+        payment_payload = (
+            self.utils.get_payment_payload(task)
+            or self.utils.get_payment_payload_from_message(context.message)
+            if context.message
+            else None
+        )
         if not payment_payload:
             logger.warning(
                 "Payment payload missing from both task and message metadata."
@@ -217,10 +218,9 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         task.metadata["x402_payment_verified"] = True
         logger.info("Set x402_payment_verified=True in task.metadata")
 
-        if (
-            task.status.message is not None
-            and (not hasattr(task.status.message, "metadata")
-            or not task.status.message.metadata)
+        if task.status.message is not None and (
+            not hasattr(task.status.message, "metadata")
+            or not task.status.message.metadata
         ):
             task.status.message.metadata = {}
         try:
@@ -310,11 +310,12 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             )
             return None
 
-        payment_payload = self.utils.get_payment_payload(
-            task
-        ) or self.utils.get_payment_payload_from_message(
-            context.message
-        ) if context.message else None
+        payment_payload = (
+            self.utils.get_payment_payload(task)
+            or self.utils.get_payment_payload_from_message(context.message)
+            if context.message
+            else None
+        )
         if not payment_payload:
             logger.warning("Could not extract payment payload from task or message.")
             return None
