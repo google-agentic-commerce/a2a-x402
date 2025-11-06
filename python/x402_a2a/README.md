@@ -1065,7 +1065,7 @@ Use executors for automatic payment handling with exceptions:
 
 ```python
 # Server-side middleware
-from x402_a2a.executors import x402ServerExecutor, x402ClientExecutor
+from x402_a2a.executors import x402ServerExecutor
 from x402_a2a import (
     x402ExtensionConfig,
     X402_EXTENSION_URI,
@@ -1090,12 +1090,6 @@ class MyAgent:
                 resource="/premium-feature"
             )
         # Regular logic continues...
-
-client_executor = x402ClientExecutor(
-    delegate=client_executor,
-    config=config,
-    account=Account.from_key(private_key)
-)
 ```
 
 ## 11. Error Handling
