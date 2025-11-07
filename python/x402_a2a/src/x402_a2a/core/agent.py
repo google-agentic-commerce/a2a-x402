@@ -14,9 +14,9 @@
 """Agent utilities for creating x402-enabled agent cards."""
 
 from typing import List, Optional
-from a2a.types import AgentCard, AgentCapabilities
+from a2a.types import AgentCard, AgentCapabilities, AgentExtension
 
-from ..types import x402ExtensionConfig, get_extension_declaration
+from ..types import x402ExtensionConfig, X402_EXTENSION_URI
 
 
 def create_x402_agent_card(
@@ -60,25 +60,24 @@ def create_x402_agent_card(
 
     # Create base capabilities
     capabilities = AgentCapabilities(
-        streaming=streaming, extensions=[get_extension_declaration()]
+        streaming=streaming,
+        extensions=[
+            AgentExtension(
+                uri=X402_EXTENSION_URI,
+                description="Supports payments using the x402 protocol.",
+                required=True,
+            )
+        ],
     )
 
     # Create the agent card data
-    card_data = {
-        "name": name,
-        "description": description,
-        "url": url,
-        "version": version,
-        "defaultInputModes": default_input_modes,
-        "defaultOutputModes": default_output_modes,
-        "capabilities": capabilities,
-        "skills": skills,
-    }
-
-    # Add optional fields if provided
-    if instructions:
-        card_data["instructions"] = instructions
-    if model:
-        card_data["model"] = model
-
-    return AgentCard(**card_data)
+    return AgentCard(
+        name=name,
+        description=description,
+        url=url,
+        version=version,
+        default_input_modes=default_input_modes,
+        default_output_modes=default_output_modes,
+        capabilities=capabilities,
+        skills=skills,
+    )

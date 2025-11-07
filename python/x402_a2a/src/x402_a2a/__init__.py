@@ -77,67 +77,38 @@ from .core import (
 )
 
 # Optional Middleware
-from .executors import x402BaseExecutor, x402ServerExecutor, x402ClientExecutor
-
-__version__ = "1.0.0"
+from .executors import x402BaseExecutor, x402ServerExecutor
 
 __all__ = [
-    # Core x402 Protocol Types
-    "PaymentRequirements",
-    "x402PaymentRequiredResponse",
-    "PaymentPayload",
-    "VerifyResponse",
-    "SettleResponse",
-    "ExactPaymentPayload",
-    "EIP3009Authorization",
-    "TokenAmount",
-    "TokenAsset",
-    "EIP712Domain",
-    "SupportedNetworks",
-    "VerifyResponse",
-    # Facilitator
-    "FacilitatorConfig",
-    "FacilitatorClient",
-    # Extension Constants
     "X402_EXTENSION_URI",
-    # A2A-Specific Types
-    "PaymentStatus",
-    "x402Metadata",
-    # Configuration
-    "x402ExtensionConfig",
-    # Error Types
-    "x402Error",
-    "MessageError",
-    "ValidationError",
-    "PaymentError",
-    "StateError",
-    "x402PaymentRequiredException",
-    "x402ErrorCode",
-    # Extension utilities
-    "get_extension_declaration",
-    "check_extension_activation",
-    "add_extension_activation_header",
-    # Core Functions
     "create_payment_requirements",
+    "settle_payment",
     "process_payment_required",
     "process_payment",
     "verify_payment",
-    "settle_payment",
-    # State Management
     "x402Utils",
-    "create_payment_submission_message",
-    "extract_task_id",
-    # Helper functions (new exception-based approach)
+    "PaymentStatus",
+    "x402MessageType",
+    "x402Metadata",
+    "x402ExtensionConfig",
+    "x402PaymentRequiredException",
     "require_payment",
     "require_payment_choice",
     "paid_service",
     "smart_paid_service",
     "create_tiered_payment_options",
-    "check_payment_context",
-    # Agent utilities
-    "create_x402_agent_card",
-    # Optional Middleware
+    "x402ErrorCode",
+    "x402Error",
+    "MessageError",
+    "ValidationError",
+    "PaymentError",
+    "StateError",
+    "get_extension_declaration",
+    "check_extension_activation",
+    "add_extension_activation_header",
+    "create_payment_submission_message",
+    "extract_task_id",
+    "map_error_to_code",
     "x402BaseExecutor",
     "x402ServerExecutor",
-    "x402ClientExecutor",
 ]

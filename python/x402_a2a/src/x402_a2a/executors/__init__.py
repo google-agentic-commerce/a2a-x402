@@ -15,6 +15,5 @@
 
 from .base import x402BaseExecutor
 from .server import x402ServerExecutor
-from .client import x402ClientExecutor
 
-__all__ = ["x402BaseExecutor", "x402ServerExecutor", "x402ClientExecutor"]
+__all__ = ["x402BaseExecutor", "x402ServerExecutor"]

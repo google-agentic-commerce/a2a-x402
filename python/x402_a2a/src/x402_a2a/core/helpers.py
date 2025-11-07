@@ -191,6 +191,7 @@ def create_tiered_payment_options(
         description = tier.get("description", f"Service tier {suffix}")
 
         # Calculate tier price
+        tier_price: Union[str, int, float, TokenAmount]
         if isinstance(base_price, str) and base_price.startswith("$"):
             base_amount = float(base_price[1:])
             tier_price = f"${base_amount * multiplier:.2f}"
@@ -203,7 +204,7 @@ def create_tiered_payment_options(
         tier_resource = f"{resource}/{suffix}" if suffix else resource
 
         option = create_payment_requirements(
-            price=tier_price,
+            price=str(tier_price),
             pay_to_address=pay_to_address,
             resource=tier_resource,
             network=network,
