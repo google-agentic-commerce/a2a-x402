@@ -142,8 +142,6 @@ class ClientAgent:
         Parses a cart mandate JSON string, saves it to the session state,
         and informs the user about the available payment methods.
         """
-        logger.info("ENTERING: save_cart_and_inform_user")
-        logger.debug(f"Received cart_mandate_str: {cart_mandate_str}")
 
         try:
             cart_mandate = json.loads(cart_mandate_str)
@@ -158,7 +156,6 @@ class ClientAgent:
             "ap2.mandates.CartMandate", unwrapped_mandate
         )
         tool_context.state["cart_mandate"] = cart_data
-        logger.info("Successfully saved cart_mandate to session state.")
 
         # Extract payment methods and total price to present to the user
         payment_methods = []
@@ -183,7 +180,6 @@ class ClientAgent:
             )
             total_amount = total_details.get("value")
             total_currency = total_details.get("currency")
-            logger.info("Successfully parsed payment details from cart.")
 
         except Exception as e:
             logger.error(f"Error parsing payment details from cart mandate: {e}")
@@ -203,8 +199,7 @@ class ClientAgent:
             f"\n - {methods_str}{price_str}\n\n"
             "You can now tell me to 'pay for the cart'."
         )
-        logger.info(f"Returning user message: {user_message}")
-        logger.info("EXITING: save_cart_and_inform_user")
+
         return user_message
 
 
@@ -220,7 +215,6 @@ class ClientAgent:
             )
             response.raise_for_status()
             self._wallet_address = response.json().get("address")
-            logger.info(f"Successfully fetched wallet address: {self._wallet_address}")
         except httpx.RequestError as e:
             logger.error(f"Could not connect to mock wallet to get address: {e}")
             # Handle the error appropriately, maybe by preventing initialization
