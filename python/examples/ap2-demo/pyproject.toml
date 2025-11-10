@@ -33,7 +33,7 @@ packages = ["server", "client"]
 server = "server.__main__:main"
 
 [tool.uv.workspace]
-members = ["client"]
+members = []
 
 [tool.uv.sources]
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
