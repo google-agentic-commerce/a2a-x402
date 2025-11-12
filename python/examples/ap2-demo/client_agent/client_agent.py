@@ -14,7 +14,7 @@
 import json
 import logging
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from a2a.types import (
@@ -114,7 +114,7 @@ class ClientAgent:
 
     def create_agent(self) -> Agent:
         """Creates the ADK Agent instance."""
-        all_tools = [
+        all_tools: list[Any] = [
             self.create_intent_mandate,
             self.sign_intent_mandate,
             self.save_cart_and_inform_user,
@@ -385,7 +385,7 @@ class ClientAgent:
                 value=value,
                 valid_after=valid_after,
                 valid_before=valid_before,
-                nonce="0x" + os.urandom(32).hex(),
+                nonce="0x" + os.urandom(32).hex(),  # type: ignore[arg-type]
                 chain_id=chain_id,
                 contract_address=selected_requirement["asset"],
                 token_name=token_name,

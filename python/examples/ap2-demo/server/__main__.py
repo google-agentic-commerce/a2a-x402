@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 
 import click
@@ -26,16 +27,26 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 
+async def _create_app(host: str, port: int) -> Starlette:
+    base_url = f"http://{host}:{port}"
+    base_path = "/agents"
+    routes = await create_agent_routes(base_url=base_url, base_path=base_path)
+    return Starlette(routes=routes)
+
+
 @click.command()
 @click.option("--host", "host", default="localhost")
 @click.option("--port", "port", default=10000)
 def main(host: str, port: int):
-    base_url = f"http://{host}:{port}"
-    base_path = "/agents"
-    routes = create_agent_routes(base_url=base_url, base_path=base_path)
+    """Runs the agent server."""
 
-    app = Starlette(routes=routes)
-    uvicorn.run(app, host=host, port=port)
+    async def run_server():
+        app = await _create_app(host, port)
+        config = uvicorn.Config(app=app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    asyncio.run(run_server())
 
 
 if __name__ == "__main__":

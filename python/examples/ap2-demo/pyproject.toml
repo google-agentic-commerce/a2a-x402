@@ -44,4 +44,12 @@ target-version = "py313"
 [project.optional-dependencies]
 lint = [
     "ruff>=0.13.1",
+    "mypy>=1.18.0",
 ]
+
+[tool.mypy]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+ignore_missing_imports = true

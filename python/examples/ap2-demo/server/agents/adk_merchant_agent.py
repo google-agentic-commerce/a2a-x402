@@ -282,13 +282,38 @@ class AdkMerchantAgent(BaseAgent):
         )
 
     @override
-    def create_agent_card(self, url: str) -> AgentCard:
+    async def create_agent_card(self, url: str) -> AgentCard:
         """Creates the AgentCard for this agent."""
-        skills = [
+        from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
+
+        capabilities = AgentCapabilities(
+            streaming=False,
+            extensions=[
+                get_extension_declaration(
+                    description="Supports payments using the x402 protocol.",
+                    required=True,
+                )
+            ],
+        )
+        builder = AgentCardBuilder(
+            agent=self.create_agent(),
+            rpc_url=url,
+            capabilities=capabilities,
+            agent_version="5.0.0",
+        )
+        card = await builder.build()
+
+        # Override generated values with more specific ones
+        card.name = "x402 Merchant Agent"
+        card.description = (
+            "This agent sells items by creating a signed AP2 Cart Mandate."
+        )
+        card.skills = [
             AgentSkill(
                 id="get_product_info",
                 name="Get Product Details and Create Cart",
-                description="Provides product details and creates a cart mandate for any given product.",
+                description="Provides product details and creates a cart mandate for"
+                " any given product.",
                 tags=["cart", "product", "x402", "merchant"],
                 examples=[
                     "How much for a new laptop?",
@@ -297,21 +322,7 @@ class AdkMerchantAgent(BaseAgent):
                 ],
             )
         ]
-        return AgentCard(
-            name="x402 Merchant Agent",
-            description="This agent sells items by creating a signed AP2 Cart Mandate.",
-            url=url,
-            version="5.0.0",
-            defaultInputModes=["text", "text/plain"],
-            defaultOutputModes=["text", "text/plain"],
-            capabilities=AgentCapabilities(
-                streaming=False,
-                extensions=[
-                    get_extension_declaration(
-                        description="Supports payments using the x402 protocol.",
-                        required=True,
-                    )
-                ],
-            ),
-            skills=skills,
-        )
+        card.default_input_modes = ["text", "text/plain"]
+        card.default_output_modes = ["text", "text/plain"]
+
+        return card

@@ -45,7 +45,7 @@ AGENTS: Dict[str, BaseAgent] = {
 }
 
 
-def create_agent_routes(base_url: str, base_path: str) -> List[BaseRoute]:
+async def create_agent_routes(base_url: str, base_path: str) -> List[BaseRoute]:
     """
     Creates and configures the routes for all registered agents.
     """
@@ -63,7 +63,7 @@ def create_agent_routes(base_url: str, base_path: str) -> List[BaseRoute]:
             _create_routes(
                 path,  # Pass the agent's path for wrapper selection
                 full_path,
-                agent_factory.create_agent_card(url),
+                await agent_factory.create_agent_card(url),
                 agent_factory.create_agent(),
                 InMemoryArtifactService(),
                 InMemorySessionService(),
