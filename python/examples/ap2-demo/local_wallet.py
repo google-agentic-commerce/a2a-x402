@@ -18,7 +18,6 @@ import json
 from flask import Flask, request, jsonify
 from eth_account.messages import encode_defunct, encode_typed_data
 from eth_account import Account
-from eth_account.signers.local import LocalAccount
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -37,7 +36,7 @@ if not __private_key:
         "CLIENT_PRIVATE_KEY environment variable not set. Make sure you have a .env file with this variable set."
     )
 
-account: LocalAccount = Account.from_key(__private_key)
+account = Account.from_key(__private_key)
 
 
 @app.route("/address", methods=["GET"])

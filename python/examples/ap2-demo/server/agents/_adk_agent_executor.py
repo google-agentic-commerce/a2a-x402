@@ -38,6 +38,10 @@ from google.genai import types
 
 from x402_a2a.core.utils import x402Utils
 from x402_a2a.types import x402PaymentRequiredException
+from google.adk.a2a.converters.part_converter import (
+    convert_a2a_part_to_genai_part,
+    convert_genai_part_to_a2a_part,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -49,7 +53,7 @@ class ADKAgentExecutor(AgentExecutor):
     def __init__(self, runner: Runner, card: AgentCard):
         self.runner = runner
         self._card = card
-        self._running_sessions = {}
+        self._running_sessions: Dict[str, Any] = {}
         self.x402 = x402Utils()
 
     def _run_agent(
@@ -325,70 +329,17 @@ class ADKAgentExecutor(AgentExecutor):
 
 def convert_a2a_parts_to_genai(parts: list[Part]) -> list[types.Part]:
     """Convert a list of A2A Part types into a list of Google Gen AI Part types."""
-    return [convert_a2a_part_to_genai(part) for part in parts]
-
-
-def convert_a2a_part_to_genai(part: Part) -> types.Part:
-    """Convert a single A2A Part type into a Google Gen AI Part type."""
-    part = part.root
-    if isinstance(part, TextPart):
-        return types.Part(text=part.text)
-    if isinstance(part, DataPart):
-        json_string = json.dumps(part.data)
-        return types.Part(
-            text=f"Received structured data:\n```json\n{json_string}\n```"
-        )
-    if isinstance(part, FilePart):
-        if isinstance(part.file, FileWithUri):
-            return types.Part(
-                file_data=types.FileData(
-                    file_uri=part.file.uri, mime_type=part.file.mimeType
-                )
-            )
-        if isinstance(part.file, FileWithBytes):
-            return types.Part(
-                inline_data=types.Blob(
-                    data=part.file.bytes, mime_type=part.file.mimeType
-                )
-            )
-        raise ValueError(f"Unsupported file type: {type(part.file)}")
-    raise ValueError(f"Unsupported part type: {type(part)}")
+    return [
+        genai_part
+        for part in parts
+        if (genai_part := convert_a2a_part_to_genai_part(part)) is not None
+    ]
 
 
 def convert_genai_parts_to_a2a(parts: list[types.Part]) -> list[Part]:
     """Convert a list of Google Gen AI Part types into a list of A2A Part types."""
     return [
-        convert_genai_part_to_a2a(part)
+        a2a_part
         for part in parts
-        if (part.text or part.file_data or part.inline_data or part.function_response)
+        if (a2a_part := convert_genai_part_to_a2a_part(part)) is not None
     ]
-
-
-def convert_genai_part_to_a2a(part: types.Part) -> Part:
-    """Convert a single Google Gen AI Part type into an A2A Part type."""
-    if part.text:
-        return Part(root=TextPart(text=part.text))
-    if part.file_data:
-        return Part(
-            root=FilePart(
-                file=FileWithUri(
-                    uri=part.file_data.file_uri,
-                    mimeType=part.file_data.mime_type,
-                )
-            )
-        )
-    if part.inline_data:
-        return Part(
-            root=FilePart(
-                file=FileWithBytes(
-                    bytes=part.inline_data.data,
-                    mimeType=part.inline_data.mime_type,
-                )
-            )
-        )
-    if part.function_response:
-        if "artifact" in part.function_response.response:
-            logger.debug("found a generated artifact ")
-            return Part(root=DataPart(data=part.function_response.response["artifact"]))
-        return Part(root=DataPart(data=part.function_response.response))
-    raise ValueError(f"Unsupported part type: {part}")
