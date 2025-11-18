@@ -127,12 +127,12 @@ class AdkMerchantAgent(BaseAgent):
                 "display_items": [
                     {
                         "label": product_name,
-                        "amount": {"currency": "USD", "value": price_in_usd},
+                        "amount": {"currency": "USDC", "value": price_in_usd},
                     }
                 ],
                 "total": {
                     "label": "Total",
-                    "amount": {"currency": "USD", "value": price_in_usd},
+                    "amount": {"currency": "USDC", "value": price_in_usd},
                 },
             },
         )
@@ -251,7 +251,7 @@ class AdkMerchantAgent(BaseAgent):
                     payment_mandate_id=mandate_id,
                     payment_id=payment_id,
                     amount=PaymentCurrencyAmount(
-                        currency="USD", value=price_in_usd
+                        currency="USDC", value=price_in_usd
                     ),
                     payment_status=Success(
                         merchant_confirmation_id=f"merch_{uuid.uuid4()}"
