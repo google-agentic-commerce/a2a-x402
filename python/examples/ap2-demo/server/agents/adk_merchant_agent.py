@@ -24,6 +24,12 @@ from typing import Any, override
 import httpx
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from ap2.types.mandate import CartContents, CartMandate, CART_MANDATE_DATA_KEY
+from ap2.types.payment_receipt import (
+    PAYMENT_RECEIPT_DATA_KEY,
+    PaymentCurrencyAmount,
+    PaymentReceipt,
+    Success,
+)
 from ap2.types.payment_request import PaymentRequest
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
@@ -234,9 +240,45 @@ class AdkMerchantAgent(BaseAgent):
 
             if settle_response.success:
                 logger.info("Payment settled successfully!")
+                mandate_id = payment_mandate.get(
+                    "payment_mandate_contents", {}
+                ).get("id")
+                payment_id = f"payment_{uuid.uuid4()}"
+                price_in_usd = (
+                    f"{int(auth_dict.get("value")) / 1000000:.2f}"
+                )
+                payment_receipt = PaymentReceipt(
+                    payment_mandate_id=mandate_id,
+                    payment_id=payment_id,
+                    amount=PaymentCurrencyAmount(
+                        currency="USD", value=price_in_usd
+                    ),
+                    payment_status=Success(
+                        merchant_confirmation_id=f"merch_{uuid.uuid4()}"
+                    ),
+                )
+
+                payment_receipt_data = {
+                    PAYMENT_RECEIPT_DATA_KEY: payment_receipt.model_dump(
+                        by_alias=True
+                    )
+                }
+
                 return {
-                    "status": "SUCCESS",
-                    "message": "Payment verified and settled.",
+                    "artifact": {
+                        "artifactId": f"payment-receipt-{uuid.uuid4()}",
+                        "name": "AP2 PaymentReceipt",
+                        "parts": [
+                            {
+                                "kind": "data",
+                                "data": payment_receipt_data,
+                            }
+                        ],
+                        "extensions": [
+                            "https://github.com/google-agentic-commerce/ap2/tree/v0.1",
+                            "https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2",
+                        ],
+                    },
                 }
             else:
                 error_msg = f"Payment settlement failed: {settle_response.error_reason}"
