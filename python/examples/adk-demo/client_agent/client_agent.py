@@ -34,9 +34,9 @@ from google.adk.tools.tool_context import ToolContext
 
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
-from .wallet import Wallet
 from x402_a2a.core.utils import NvmUtils
 from x402_a2a.types import PaymentStatus
+from payments_py.payments import Payments
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +51,13 @@ class ClientAgent:
         self,
         remote_agent_addresses: list[str],
         http_client: httpx.AsyncClient,
-        wallet: Wallet,
+        payments: Payments,
         task_callback: TaskUpdateCallback | None = None,
     ):
         """Initializes the ClientAgent."""
         self.task_callback = task_callback
         self.httpx_client = http_client
-        self.wallet = wallet
+        self.payments = payments
         self.remote_agent_connections: dict[str, RemoteAgentConnections] = {}
         self.cards: dict[str, AgentCard] = {}
         self.remote_agent_addresses = remote_agent_addresses
@@ -87,9 +87,14 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
 1.  **Discover**: Always start by using `list_remote_agents` to see which agents are available.
 2.  **Delegate**: Send the user's request to the most appropriate agent using `send_message`. For example, if the user wants to buy something, send the request to a merchant agent.
-3.  **Confirm Payment**: If the merchant requires a payment, the system will return a confirmation message. You MUST present this message to the user.
+3.  **Confirm Payment**: If the merchant requires a payment, the system will return a confirmation message. You MUST present this EXACT message to the user WITHOUT modification. This includes important details like credit amounts, balance information, plan IDs, and agent IDs.
 4.  **Sign and Send**: If the user confirms they want to pay (e.g., by saying "yes"), you MUST call `send_message` again, targeting the *same agent*, with the exact message: "sign_and_send_payment". The system will handle the signing and sending of the payload.
-5.  **Report Outcome**: Clearly report the final success or failure message to the user.
+5.  **Report Outcome**: Present the final success or failure message to the user EXACTLY as received, including any balance information. Do NOT summarize or omit any details, especially credit balance updates.
+
+**CRITICAL RULES:**
+- ALWAYS include balance information when provided in tool responses
+- NEVER omit plan IDs, agent IDs, or credit amounts from payment confirmations
+- Present messages exactly as returned by the tools - do not rewrite or simplify them
 
 **System Context:**
 
@@ -147,20 +152,66 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             original_task = Task.model_validate(purchase_task_data)
             task_id = original_task.id
 
-            requirements = self.nvm.get_payment_requirements(original_task)
-            if not requirements:
+            payment_required_response = self.nvm.get_payment_requirements(original_task)
+            if not payment_required_response:
                 raise ValueError(
                     "Could not find payment requirements in the original task."
                 )
 
-            # Sign the payment and prepare the payload for the merchant.
-            signed_payload = self.wallet.sign_payment(requirements)
-            message_metadata[self.nvm.PAYLOAD_KEY] = signed_payload.model_dump(
-                by_alias=True
-            )
-            message_metadata[self.nvm.STATUS_KEY] = (
-                PaymentStatus.PAYMENT_SUBMITTED.value
-            )
+            # Extract the first PaymentRequirements from the accepts list
+            if not payment_required_response.accepts or len(payment_required_response.accepts) == 0:
+                raise ValueError("No payment options provided by the server.")
+            
+            requirements = payment_required_response.accepts[0]
+            logger.info(f"Selected payment requirement: plan_id={requirements.plan_id}, agent_id={requirements.agent_id}, max_amount={requirements.max_amount}")
+
+            # Get X402 access token from Nevermined for the agent and plan
+            try:
+                # Get the subscriber address from the payments instance
+                subscriber_address = self.payments.get_account_address()
+                
+                if not subscriber_address:
+                    raise ValueError("Could not get subscriber address from NVM API key")
+                
+                # Request X402 access token from Nevermined API
+                token_result = self.payments.agents.get_x402_access_token(
+                    plan_id=requirements.plan_id,
+                    agent_id=requirements.agent_id
+                )
+                x402_access_token = token_result["accessToken"]
+                
+                # Create the payment payload with the X402 access token
+                from x402_a2a.nvm import SessionKeyPayload, PaymentPayload
+                
+                payment_payload = PaymentPayload(
+                    nvm_version=1,
+                    scheme=requirements.scheme,
+                    network=requirements.network,
+                    payload=SessionKeyPayload(session_key=x402_access_token)
+                )
+                
+                # Add subscriber address to requirements for verification/settlement
+                if not requirements.extra:
+                    requirements.extra = {}
+                requirements.extra["subscriber_address"] = subscriber_address
+                
+                # Update the metadata with the payment payload
+                message_metadata[self.nvm.PAYLOAD_KEY] = payment_payload.model_dump(
+                    by_alias=True
+                )
+                message_metadata[self.nvm.STATUS_KEY] = (
+                    PaymentStatus.PAYMENT_SUBMITTED.value
+                )
+                message_metadata["payment_requirements"] = requirements.model_dump(
+                    by_alias=True
+                )
+                
+                logger.info(f"✅ Generated X402 access token for plan {requirements.plan_id}")
+                logger.info(f"Subscriber address: {subscriber_address}")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to generate X402 access token: {e}", exc_info=True)
+                raise ValueError(f"Failed to generate X402 access token: {str(e)}")
 
             # The message text to the merchant is a simple confirmation.
             message = "send_signed_payment_payload"
@@ -213,10 +264,28 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             agent_id = payment_option.agent_id
             plan_id = payment_option.plan_id
 
-            return f"The merchant is requesting payment for agent {agent_id} with plan {plan_id} for {amount} credits. Do you want to approve this payment?"
+            # Get current balance for the plan
+            try:
+                subscriber_address = self.payments.get_account_address()
+                balance_info = self.payments.plans.get_plan_balance(
+                    plan_id=plan_id,
+                    account_address=subscriber_address
+                )
+                # balance_info is a PlanBalance Pydantic model, not a dict
+                current_balance = balance_info.balance
+                balance_msg = f"Your current balance: {current_balance} credits."
+            except Exception as e:
+                logger.warning(f"Could not fetch plan balance: {e}")
+                balance_msg = "Balance information unavailable."
+
+            return f"The merchant is requesting payment for agent {agent_id} with plan {plan_id} for {amount} credits.\n{balance_msg}\nDo you want to approve this payment?"
 
         elif response_task.status.state in (TaskState.completed, TaskState.failed):
             # The task is finished. Report the outcome.
+            logger.info(f"Task completed. Task state: {response_task.status.state}")
+            logger.info(f"Task metadata: {response_task.metadata if hasattr(response_task, 'metadata') else 'No metadata'}")
+            logger.info(f"Task status message metadata: {response_task.status.message.metadata if hasattr(response_task.status, 'message') and hasattr(response_task.status.message, 'metadata') else 'No status message metadata'}")
+            
             final_text = []
             if response_task.artifacts:
                 for artifact in response_task.artifacts:
@@ -225,15 +294,68 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                         if isinstance(part_root, TextPart):
                             final_text.append(part_root.text)
 
+            # Check if this was a payment completion
+            # The payment status might be in status.message.metadata OR we can infer it from task metadata
+            payment_status = self.nvm.get_payment_status(response_task)
+            
+            # Also check if this is a payment completion based on our stored state
+            # If we have a purchase_task stored, and the task has x402_payment_verified, it's completed
+            is_payment_flow = state.get("purchase_task") is not None
+            has_payment_verified = (
+                hasattr(response_task, 'metadata') and 
+                response_task.metadata and 
+                response_task.metadata.get('x402_payment_verified') == True
+            )
+            
+            payment_completed = (
+                payment_status == PaymentStatus.PAYMENT_COMPLETED or 
+                (is_payment_flow and has_payment_verified and response_task.status.state == TaskState.completed)
+            )
+            
+            logger.info(f"Payment status from task: {payment_status}")
+            logger.info(f"Is payment flow: {is_payment_flow}, Has verified: {has_payment_verified}")
+            logger.info(f"Payment completed status: {payment_completed}")
+
+            # Add balance information if payment was completed
+            balance_info = ""
+            if payment_completed:
+                logger.info("Fetching updated balance after payment completion...")
+                try:
+                    # Get the plan_id from the stored purchase task
+                    purchase_task_data = state.get("purchase_task")
+                    logger.info(f"Purchase task data exists: {purchase_task_data is not None}")
+                    if purchase_task_data:
+                        original_task = Task.model_validate(purchase_task_data)
+                        payment_required_response = self.nvm.get_payment_requirements(original_task)
+                        if payment_required_response and payment_required_response.accepts:
+                            plan_id = payment_required_response.accepts[0].plan_id
+                            subscriber_address = self.payments.get_account_address()
+                            
+                            logger.info(f"Fetching balance for plan {plan_id}, address {subscriber_address}")
+                            balance_data = self.payments.plans.get_plan_balance(
+                                plan_id=plan_id,
+                                account_address=subscriber_address
+                            )
+                            # balance_data is a PlanBalance Pydantic model, not a dict
+                            updated_balance = balance_data.balance
+                            balance_info = f"\nYour updated balance: {updated_balance} credits."
+                            logger.info(f"Successfully fetched balance: {updated_balance} credits")
+                except Exception as e:
+                    logger.warning(f"Could not fetch updated balance: {e}", exc_info=True)
+
             if final_text:
-                return " ".join(final_text)
+                result = " ".join(final_text)
+                logger.info(f"Final text exists. Payment completed: {payment_completed}, Balance info: '{balance_info}'")
+                if payment_completed and balance_info:
+                    result += balance_info
+                    logger.info(f"Appending balance info to result. Final result: {result}")
+                else:
+                    logger.info(f"NOT appending balance. Completed={payment_completed}, has_balance={bool(balance_info)}")
+                return result
 
             # Fallback for tasks with no text artifacts (e.g., payment settlement)
-            if (
-                self.nvm.get_payment_status(response_task)
-                == PaymentStatus.PAYMENT_COMPLETED
-            ):
-                return "Payment successful! Your purchase is complete."
+            if payment_completed:
+                return f"Payment successful! Your purchase is complete.{balance_info}"
 
             return f"Task with {agent_name} is {response_task.status.state.value}."
 

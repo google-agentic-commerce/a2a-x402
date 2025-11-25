@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import hashlib
+import os
 from typing import override
 
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill
@@ -58,13 +59,31 @@ class AdkMerchantAgent(BaseAgent):
         if not product_name:
             return {"error": "Product name cannot be empty."}
 
-        # price = self._get_product_price(product_name)
+        # Get plan and agent IDs from environment variables
+        plan_id = os.getenv("NVM_PLAN_ID")
+        agent_id = os.getenv("NVM_AGENT_ID")
+        
+        if not plan_id:
+            raise ValueError(
+                "NVM_PLAN_ID environment variable is required. "
+                "Set this to your Nevermined payment plan ID."
+            )
+        if not agent_id:
+            raise ValueError(
+                "NVM_AGENT_ID environment variable is required. "
+                "Set this to your Nevermined agent ID."
+            )
+        
+        # Get optional configuration from environment
+        max_amount = os.getenv("NVM_PAYMENT_AMOUNT", "2")
+        network = os.getenv("NVM_NETWORK", "base-sepolia")
+        
         requirements = PaymentRequirements(
-            plan_id="123",
-            agent_id="456",
-            max_amount="10",
-            network="base-sepolia",
-            scheme="fixed",
+            plan_id=plan_id,
+            agent_id=agent_id,
+            max_amount=max_amount,
+            network=network,
+            scheme="contract",
             extra=None
         )
 

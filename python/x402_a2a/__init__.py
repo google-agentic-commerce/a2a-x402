@@ -14,7 +14,7 @@
 """x402_a2a - x402 Payment Protocol Extension for A2A."""
 
 # NVM Types
-from .nvm import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, VerifyResponse, SettleResponse
+from .nvm import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, VerifyResponse, SettleResponse, NeverminedFacilitator
 
 # Core x402 Protocol Types (from x402.types)
 from x402.types import (
@@ -103,6 +103,7 @@ __all__ = [
     # Facilitator
     "FacilitatorConfig",
     "FacilitatorClient",
+    "NeverminedFacilitator",
     # Extension Constants
     "X402_EXTENSION_URI",
     # A2A-Specific Types

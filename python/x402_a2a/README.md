@@ -369,6 +369,46 @@ class FacilitatorOperations:
         return await settle_payment(payment_payload, payment_requirements)
 ```
 
+### 3.5. Nevermined Facilitator Implementation
+*Production-ready facilitator for the Nevermined network*
+
+The `NeverminedFacilitator` is a concrete implementation that uses the Nevermined network for real blockchain transactions:
+
+```python
+from x402_a2a.nvm import NeverminedFacilitator
+
+# Initialize facilitator
+facilitator = NeverminedFacilitator(
+    nvm_api_key="nvm:your-jwt-token",
+    environment="testing"  # or "staging", "production"
+)
+
+# Verify permissions (checks balance without burning)
+verify_response = await facilitator.verify(payment_payload, requirements)
+if verify_response.is_valid:
+    # Execute business logic
+    result = await execute_service()
+    
+    # Settle payment (burns credits on-chain)
+    settle_response = await facilitator.settle(payment_payload, requirements)
+    if settle_response.success:
+        print(f"Transaction: {settle_response.transaction}")
+```
+
+**Features:**
+- ✅ Real blockchain verification and settlement
+- ✅ X402 access token support for delegated permissions
+- ✅ Automatic credit ordering if balance insufficient
+- ✅ Returns verifiable transaction hashes
+- ✅ Supports multiple networks (base-sepolia, arbitrum-sepolia, etc.)
+
+**Requirements:**
+- Nevermined API key from https://nevermined.io/dashboard
+- Payment plan and agent registered on Nevermined
+- Sufficient credits in the plan
+
+See the [Nevermined integration example](../examples/adk-demo/) for complete usage.
+
 ## 4. Core Protocol Implementation
 
 The `/core` module provides implementation-agnostic functions for the protocol operations:
