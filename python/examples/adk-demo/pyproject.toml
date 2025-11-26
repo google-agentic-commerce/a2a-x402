@@ -14,7 +14,7 @@ dependencies = [
     "web3>=7.10.0",
     "cdp-sdk>=1.20.0",
     "x402-a2a",
-    "payments-py",
+    "payments-py>=0.10.0",
 ]
 
 [build-system]
@@ -35,7 +35,6 @@ members = ["client"]
 
 [tool.uv.sources]
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
-payments-py = { path = "../../../../payments-py", editable = true }
 
 [tool.ruff]
 target-version = "py313"
