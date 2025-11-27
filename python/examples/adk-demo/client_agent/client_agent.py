@@ -174,14 +174,14 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                     raise ValueError("Could not get subscriber address from NVM API key")
                 
                 # Request X402 access token from Nevermined API
-                token_result = self.payments.agents.get_x402_access_token(
+                token_result = self.payments.x402.get_x402_access_token(
                     plan_id=requirements.plan_id,
                     agent_id=requirements.agent_id
                 )
                 x402_access_token = token_result["accessToken"]
                 
                 # Create the payment payload with the X402 access token
-                from x402_a2a.nvm import SessionKeyPayload, PaymentPayload
+                from payments_py.x402 import SessionKeyPayload, PaymentPayload
                 
                 payment_payload = PaymentPayload(
                     nvm_version=1,

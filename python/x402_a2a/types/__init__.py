@@ -39,7 +39,7 @@ from x402.types import (
     SupportedNetworks,
 )
 # Use custom PaymentRequirements from nvm module instead of x402.types
-from ..nvm import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, SessionKeyPayload, VerifyResponse, SettleResponse
+from payments_py.x402 import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, SessionKeyPayload, VerifyResponse, SettleResponse
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
 
 from .state import PaymentStatus, x402Metadata

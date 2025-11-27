@@ -1871,7 +1871,7 @@ wheels = [
 [[package]]
 name = "payments-py"
 version = "0.10.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../../../../payments-py" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "aiohttp" },
@@ -1887,9 +1887,22 @@ dependencies = [
     { name = "requests" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/ef/e48c4d46afeb1095285176ed68e0a67b3db16169f835fabf0cf482e68285/payments_py-0.10.0.tar.gz", hash = "sha256:d05a5981c2c601bb4e6dd42c7a3f016dded019de9d2679a7664f88fb28a75a88", size = 53973, upload-time = "2025-11-26T16:11:41.809Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/9c/22d8eb4dea2fc1810bf9af5a6b63d2783c215fd77e420c9f36dc999c405a/payments_py-0.10.0-py3-none-any.whl", hash = "sha256:9eb4d2f20b0ae2c65f10c988af196a405f1c03f7f1e63a9948c2b040d65828b1", size = 67371, upload-time = "2025-11-26T16:11:40.352Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "a2a-sdk", specifier = ">=0.3.0,<0.4.0" },
+    { name = "aiohttp", specifier = ">=3.10.8,<4.0.0" },
+    { name = "black", specifier = ">=25.1.0,<26.0.0" },
+    { name = "helicone-helpers", specifier = ">=1.1.1,<2.0.0" },
+    { name = "lazydocs", specifier = ">=0.4.8,<0.5.0" },
+    { name = "mkdocs", specifier = ">=1.5.3,<2.0.0" },
+    { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.9.2,<3.0.0" },
+    { name = "pydantic", specifier = ">=2.8.2,<3.0.0" },
+    { name = "pyjwt", specifier = ">=2.9.0,<3.0.0" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0,<2.0.0" },
+    { name = "python-socketio", specifier = "==5.14.3" },
+    { name = "requests", specifier = ">=2.31.0,<3.0.0" },
+    { name = "websocket-client", specifier = ">=1.8.0,<2.0.0" },
 ]
 
 [[package]]
@@ -3027,6 +3040,7 @@ dependencies = [
     { name = "a2a-sdk" },
     { name = "eth-account" },
     { name = "httpx" },
+    { name = "payments-py" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -3038,6 +3052,7 @@ requires-dist = [
     { name = "a2a-sdk" },
     { name = "eth-account", specifier = ">=0.13.7" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "payments-py", editable = "../../../../payments-py" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", specifier = ">=1.1.0" },

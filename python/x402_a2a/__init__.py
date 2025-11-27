@@ -13,8 +13,18 @@
 # limitations under the License.
 """x402_a2a - x402 Payment Protocol Extension for A2A."""
 
-# NVM Types
-from .nvm import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, VerifyResponse, SettleResponse, NeverminedFacilitator
+# Nevermined X402 Types (from payments-py x402 module)
+from payments_py.x402 import (
+    PaymentRequirements,
+    NvmPaymentRequiredResponse,
+    PaymentPayload,
+    SessionKeyPayload,
+    VerifyResponse,
+    SettleResponse,
+    NeverminedFacilitator,
+    SupportedNetworks as NvmSupportedNetworks,
+    SupportedSchemes as NvmSupportedSchemes,
+)
 
 # Core x402 Protocol Types (from x402.types)
 from x402.types import (

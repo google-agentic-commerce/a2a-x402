@@ -44,7 +44,7 @@ class x402MerchantExecutor(x402ServerExecutor):
         super().__init__(delegate, x402ExtensionConfig())
 
         print("--- Initializing Nevermined Facilitator ---")
-        from x402_a2a.nvm import NeverminedFacilitator
+        from payments_py.x402 import NeverminedFacilitator
         
         # Server uses merchant/service provider API key
         nvm_api_key = os.getenv("NVM_API_KEY_SERVER")
@@ -75,7 +75,7 @@ class x402MerchantExecutor(x402ServerExecutor):
         if context.message and hasattr(context.message, "metadata") and context.message.metadata:
             requirements_dict = context.message.metadata.get("payment_requirements")
             if requirements_dict:
-                from x402_a2a.nvm import PaymentRequirements
+                from payments_py.x402 import PaymentRequirements
                 return PaymentRequirements.model_validate(requirements_dict)
         
         # Fall back to the default behavior (stored requirements)

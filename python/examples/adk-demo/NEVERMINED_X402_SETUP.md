@@ -157,7 +157,7 @@ sequenceDiagram
 ### Step 2: Payment Authorization
 
 1. User confirms payment
-2. Client agent calls `payments.agents.get_x402_access_token(plan_id, agent_id)`
+2. Client agent calls `payments.x402.get_x402_access_token(plan_id, agent_id)`
 3. Nevermined API generates X402 access token with session keys
 4. Client agent sends token + requirements to server agent
 
@@ -193,7 +193,7 @@ sequenceDiagram
 Located in: `x402_a2a/nvm/facilitator.py`
 
 ```python
-from x402_a2a.nvm import NeverminedFacilitator
+from payments_py.x402 import NeverminedFacilitator
 
 class NeverminedFacilitator(FacilitatorClient):
     def __init__(

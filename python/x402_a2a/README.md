@@ -375,7 +375,7 @@ class FacilitatorOperations:
 The `NeverminedFacilitator` is a concrete implementation that uses the Nevermined network for real blockchain transactions:
 
 ```python
-from x402_a2a.nvm import NeverminedFacilitator
+from payments_py.x402 import NeverminedFacilitator
 
 # Initialize facilitator
 facilitator = NeverminedFacilitator(

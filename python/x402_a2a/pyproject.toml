@@ -13,6 +13,7 @@ keywords = ["a2a", "x402", "payments", "ethereum", "coinbase", "google"]
 dependencies = [
     "a2a-sdk",  # For A2A protocol integration
     "x402>=0.2.0",  # For x402 payment protocol
+    "payments-py",  # Local editable install via [tool.uv.sources]
     "eth-account>=0.13.7",  # For Ethereum account management
     "httpx>=0.28.1",  # For async HTTP client
     "pydantic>=2.0.0",  # For data validation
@@ -39,7 +40,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 # Tell setuptools that the x402_a2a package is in the current directory
-packages = ["x402_a2a", "x402_a2a.core", "x402_a2a.executors", "x402_a2a.types", "x402_a2a.nvm"]
+packages = ["x402_a2a", "x402_a2a.core", "x402_a2a.executors", "x402_a2a.types"]
 package-dir = {"x402_a2a" = "."}
 
 [tool.setuptools.package-data]
@@ -61,3 +62,6 @@ markers = [
 
 [tool.ruff]
 target-version = "py311"
+
+[tool.uv.sources]
+payments-py = { path = "../../../payments-py", editable = true }
