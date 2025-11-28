@@ -13,7 +13,7 @@ keywords = ["a2a", "x402", "payments", "ethereum", "coinbase", "google"]
 dependencies = [
     "a2a-sdk",  # For A2A protocol integration
     "x402>=0.2.0",  # For x402 payment protocol
-    "payments-py",  # Local editable install via [tool.uv.sources]
+    "payments-py>=0.1.0",  # Nevermined payments SDK with x402 module
     "eth-account>=0.13.7",  # For Ethereum account management
     "httpx>=0.28.1",  # For async HTTP client
     "pydantic>=2.0.0",  # For data validation
@@ -63,5 +63,8 @@ markers = [
 [tool.ruff]
 target-version = "py311"
 
+# Development: Use local editable payments-py for development
+# Production: Will use published payments-py from PyPI
 [tool.uv.sources]
-payments-py = { path = "../../../payments-py", editable = true }
+# Uncomment for local development:
+# payments-py = { path = "../../../payments-py", editable = true }

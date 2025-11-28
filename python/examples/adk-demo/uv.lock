@@ -38,6 +38,7 @@ dependencies = [
     { name = "eth-account" },
     { name = "google-adk" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "payments-py" },
     { name = "uvicorn" },
     { name = "web3" },
@@ -58,10 +59,11 @@ requires-dist = [
     { name = "eth-account", specifier = ">=0.13.7" },
     { name = "google-adk", specifier = ">=0.5.0" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "payments-py", specifier = ">=0.10.0" },
+    { name = "jsonschema", specifier = ">=4.0.0" },
+    { name = "payments-py", editable = "../../../../payments-py" },
     { name = "uvicorn", specifier = ">=0.34.2" },
     { name = "web3", specifier = ">=7.10.0" },
-    { name = "x402", specifier = ">=0.1.4" },
+    { name = "x402", git = "https://github.com/coinbase/x402.git?subdirectory=python%2Fx402&branch=v2-development" },
     { name = "x402-a2a", editable = "../../x402_a2a" },
 ]
 
@@ -1877,6 +1879,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "black" },
     { name = "helicone-helpers" },
+    { name = "jsonschema" },
     { name = "lazydocs" },
     { name = "mkdocs" },
     { name = "mkdocs-awesome-pages-plugin" },
@@ -1894,6 +1897,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.10.8,<4.0.0" },
     { name = "black", specifier = ">=25.1.0,<26.0.0" },
     { name = "helicone-helpers", specifier = ">=1.1.1,<2.0.0" },
+    { name = "jsonschema", specifier = ">=4.25.1,<5.0.0" },
     { name = "lazydocs", specifier = ">=0.4.8,<0.5.0" },
     { name = "mkdocs", specifier = ">=1.5.3,<2.0.0" },
     { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.9.2,<3.0.0" },
@@ -3015,7 +3019,7 @@ wheels = [
 [[package]]
 name = "x402"
 version = "0.2.1"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/coinbase/x402.git?subdirectory=python%2Fx402&branch=v2-development#97ac4a49bafb60bca194d3872b43162bc6e65e7f" }
 dependencies = [
     { name = "eth-account" },
     { name = "eth-typing" },
@@ -3026,10 +3030,6 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "web3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/73/7fa0d024dcde7d0af1bc0f627b2d4fc58ba2badaf6d66bba3174e839999e/x402-0.2.1.tar.gz", hash = "sha256:c8358692c8099057f944c1dccaa75b1bcb56dbeb335168a769e09f58d2b6156c", size = 1966814, upload-time = "2025-08-19T17:24:43.954Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/c1/f56f7a5a774dbe07c258a60231e57659464166f452516ba36ab0d6d9b117/x402-0.2.1-py3-none-any.whl", hash = "sha256:3ed24972642701e47c91b27fabc2a0bfd83244e2b8a156706736b757c72262c0", size = 1839708, upload-time = "2025-08-19T17:24:42.699Z" },
 ]
 
 [[package]]
@@ -3052,7 +3052,7 @@ requires-dist = [
     { name = "a2a-sdk" },
     { name = "eth-account", specifier = ">=0.13.7" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "payments-py", editable = "../../../../payments-py" },
+    { name = "payments-py", specifier = ">=0.1.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", specifier = ">=1.1.0" },

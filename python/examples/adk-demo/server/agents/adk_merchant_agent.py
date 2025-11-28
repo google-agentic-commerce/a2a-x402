@@ -19,12 +19,19 @@ from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
-from x402_a2a.types import PaymentRequirements
+from x402_a2a.types import (
+    PaymentRequirements,
+    PaymentRequiredResponseV2,
+    ResourceInfo,
+    declare_nevermined_extension,
+    NEVERMINED,
+)
 
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
 from x402_a2a.types import x402PaymentRequiredException
-from x402_a2a import NvmUtils, get_extension_declaration
+from payments_py.x402 import X402A2AUtils
+from x402_a2a import get_extension_declaration
 
 # This is the new, clean ADK Merchant Agent.
 # It now implements the BaseAgent interface.
@@ -40,7 +47,7 @@ class AdkMerchantAgent(BaseAgent):
         self, wallet_address: str = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
     ):
         self._wallet_address = wallet_address
-        self.nvm = NvmUtils()
+        self.nvm = X402A2AUtils()
 
     def _get_product_price(self, product_name: str) -> str:
         """Generates a deterministic price for a product."""
@@ -55,6 +62,8 @@ class AdkMerchantAgent(BaseAgent):
         """
         This is the agent's tool. Instead of returning payment details, it raises
         an exception to signal to the x402 wrapper that payment is needed.
+        
+        Now uses x402 v2 extension format with declare_nevermined_extension().
         """
         if not product_name:
             return {"error": "Product name cannot be empty."}
@@ -77,8 +86,30 @@ class AdkMerchantAgent(BaseAgent):
         # Get optional configuration from environment
         max_amount = os.getenv("NVM_PAYMENT_AMOUNT", "2")
         network = os.getenv("NVM_NETWORK", "base-sepolia")
+        environment = os.getenv("NVM_ENVIRONMENT", "sandbox")
         
-        requirements = PaymentRequirements(
+        # Create Nevermined v2 extension
+        extension = declare_nevermined_extension(
+            plan_id=plan_id,
+            agent_id=agent_id,
+            max_amount=max_amount,
+            network=network,
+            scheme="contract",
+            environment=environment
+        )
+        
+        print(f"\n🔵 [SERVER] Creating v2 payment requirements with Nevermined extension:")
+        print(f"   🆕 Extension: {NEVERMINED}")
+        print(f"   Plan ID: {plan_id}")
+        print(f"   Agent ID: {agent_id}")
+        print(f"   Max Amount: {max_amount} credits")
+        print(f"   Network: {network}")
+        print(f"   Environment: {environment}")
+        print(f"   Info keys: {list(extension['info'].keys())}")
+        print(f"   Schema: {extension['schema']['$schema']}")
+        
+        # Also create v1 PaymentRequirements for backward compatibility in accepts array
+        v1_requirements = PaymentRequirements(
             plan_id=plan_id,
             agent_id=agent_id,
             max_amount=max_amount,
@@ -86,10 +117,26 @@ class AdkMerchantAgent(BaseAgent):
             scheme="contract",
             extra=None
         )
+        
+        # Create v2 payment required response
+        payment_required_v2 = PaymentRequiredResponseV2(
+            x402_version=2,
+            resource=ResourceInfo(
+                url=f"/product/{product_name}",
+                description=f"Purchase {product_name}"
+            ),
+            accepts=[v1_requirements],  # Include v1 for backward compat
+            extensions={
+                NEVERMINED: extension
+            }
+        )
 
         # Signal to the x402ServerAgentExecutor that payment is required.
         # The wrapper will catch this and handle the A2A flow.
-        raise x402PaymentRequiredException(product_name, requirements)
+        raise x402PaymentRequiredException(
+            product_name,
+            payment_required_v2=payment_required_v2
+        )
 
     def before_agent_callback(self, callback_context: CallbackContext):
         """

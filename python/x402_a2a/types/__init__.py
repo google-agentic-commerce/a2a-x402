@@ -38,8 +38,36 @@ from x402.types import (
     EIP712Domain,
     SupportedNetworks,
 )
-# Use custom PaymentRequirements from nvm module instead of x402.types
-from payments_py.x402 import PaymentRequirements, NvmPaymentRequiredResponse, PaymentPayload, SessionKeyPayload, VerifyResponse, SettleResponse
+# V1 types - Use custom PaymentRequirements from nvm module instead of x402.types
+from payments_py.x402 import (
+    PaymentRequirements,
+    NvmPaymentRequiredResponse,
+    PaymentPayload,
+    SessionKeyPayload,
+    VerifyResponse,
+    SettleResponse,
+)
+
+# V2 types - Extended types with extensions field
+from payments_py.x402.types_v2 import (
+    PaymentRequiredResponseV2,
+    PaymentPayloadV2,
+    Extension,
+    ResourceInfo,
+    Extensions,
+)
+
+# V2 extension helpers
+from payments_py.x402.extensions.nevermined import (
+    NEVERMINED,
+    NeverminedInfo,
+    NeverminedExtension,
+    declare_nevermined_extension,
+    extract_nevermined_info,
+    validate_nevermined_extension,
+    ValidationResult,
+)
+
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
 
 from .state import PaymentStatus, x402Metadata

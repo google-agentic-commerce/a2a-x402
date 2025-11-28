@@ -34,8 +34,9 @@ from google.adk.tools.tool_context import ToolContext
 
 # Local imports
 from ._remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
-from x402_a2a.core.utils import NvmUtils
-from x402_a2a.types import PaymentStatus
+from payments_py.x402 import X402A2AUtils, X402PaymentStatus, SessionKeyPayload, PaymentPayload
+from payments_py.x402.types_v2 import PaymentPayloadV2
+from x402_a2a.types import PaymentRequirements
 from payments_py.payments import Payments
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class ClientAgent:
         self.remote_agent_addresses = remote_agent_addresses
         self.agents_info_str = ""
         self._initialized = False
-        self.nvm = NvmUtils()
+        self.nvm = X402A2AUtils()
 
     def create_agent(self) -> Agent:
         """Creates the ADK Agent instance."""
@@ -162,7 +163,12 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             if not payment_required_response.accepts or len(payment_required_response.accepts) == 0:
                 raise ValueError("No payment options provided by the server.")
             
+            # Parse requirements as PaymentRequirements object (handle dict or object)
             requirements = payment_required_response.accepts[0]
+            if isinstance(requirements, dict):
+                # Parse dict into PaymentRequirements model for type safety
+                requirements = PaymentRequirements.model_validate(requirements)
+            
             logger.info(f"Selected payment requirement: plan_id={requirements.plan_id}, agent_id={requirements.agent_id}, max_amount={requirements.max_amount}")
 
             # Get X402 access token from Nevermined for the agent and plan
@@ -180,31 +186,48 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 )
                 x402_access_token = token_result["accessToken"]
                 
-                # Create the payment payload with the X402 access token
-                from payments_py.x402 import SessionKeyPayload, PaymentPayload
-                
-                payment_payload = PaymentPayload(
-                    nvm_version=1,
-                    scheme=requirements.scheme,
-                    network=requirements.network,
-                    payload=SessionKeyPayload(session_key=x402_access_token)
+                # Detect if server sent v2 response with extensions
+                is_v2 = (
+                    hasattr(payment_required_response, 'x402_version') and 
+                    payment_required_response.x402_version == 2 and
+                    hasattr(payment_required_response, 'extensions') and
+                    payment_required_response.extensions
                 )
+                
+                if is_v2:
+                    # V2: Create PaymentPayloadV2 with extensions
+                    logger.info(f"🆕 Creating V2 payment payload with extensions: {list(payment_required_response.extensions.keys())}")
+                    
+                    payment_payload = PaymentPayloadV2(
+                        x402_version=2,
+                        scheme=requirements.scheme,
+                        network=requirements.network,
+                        payload=SessionKeyPayload(session_key=x402_access_token),
+                        extensions=payment_required_response.extensions  # Copy extensions from server
+                    )
+                else:
+                    # V1: Create standard PaymentPayload
+                    logger.info("Creating V1 payment payload (no extensions)")
+                    
+                    payment_payload = PaymentPayload(
+                        nvm_version=1,
+                        scheme=requirements.scheme,
+                        network=requirements.network,
+                        payload=SessionKeyPayload(session_key=x402_access_token)
+                    )
                 
                 # Add subscriber address to requirements for verification/settlement
                 if not requirements.extra:
                     requirements.extra = {}
                 requirements.extra["subscriber_address"] = subscriber_address
+                requirements_data = requirements.model_dump(by_alias=True)
                 
                 # Update the metadata with the payment payload
                 message_metadata[self.nvm.PAYLOAD_KEY] = payment_payload.model_dump(
                     by_alias=True
                 )
-                message_metadata[self.nvm.STATUS_KEY] = (
-                    PaymentStatus.PAYMENT_SUBMITTED.value
-                )
-                message_metadata["payment_requirements"] = requirements.model_dump(
-                    by_alias=True
-                )
+                message_metadata[self.nvm.STATUS_KEY] = X402PaymentStatus.PAYMENT_SUBMITTED
+                message_metadata["payment_requirements"] = requirements_data
                 
                 logger.info(f"✅ Generated X402 access token for plan {requirements.plan_id}")
                 logger.info(f"Subscriber address: {subscriber_address}")
@@ -260,6 +283,10 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             # Extract details for the confirmation message.
             payment_option = requirements.accepts[0]
+            if isinstance(payment_option, dict):
+                # Parse dict into PaymentRequirements model
+                payment_option = PaymentRequirements.model_validate(payment_option)
+            
             amount = payment_option.max_amount
             agent_id = payment_option.agent_id
             plan_id = payment_option.plan_id
@@ -308,7 +335,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             )
             
             payment_completed = (
-                payment_status == PaymentStatus.PAYMENT_COMPLETED or 
+                payment_status == X402PaymentStatus.PAYMENT_COMPLETED or 
                 (is_payment_flow and has_payment_verified and response_task.status.state == TaskState.completed)
             )
             
@@ -316,8 +343,9 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             logger.info(f"Is payment flow: {is_payment_flow}, Has verified: {has_payment_verified}")
             logger.info(f"Payment completed status: {payment_completed}")
 
-            # Add balance information if payment was completed
+            # Add balance information and transaction info if payment was completed
             balance_info = ""
+            transaction_info = ""
             if payment_completed:
                 logger.info("Fetching updated balance after payment completion...")
                 try:
@@ -328,7 +356,12 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                         original_task = Task.model_validate(purchase_task_data)
                         payment_required_response = self.nvm.get_payment_requirements(original_task)
                         if payment_required_response and payment_required_response.accepts:
-                            plan_id = payment_required_response.accepts[0].plan_id
+                            # Parse dict into PaymentRequirements model
+                            payment_opt = payment_required_response.accepts[0]
+                            if isinstance(payment_opt, dict):
+                                payment_opt = PaymentRequirements.model_validate(payment_opt)
+                            
+                            plan_id = payment_opt.plan_id
                             subscriber_address = self.payments.get_account_address()
                             
                             logger.info(f"Fetching balance for plan {plan_id}, address {subscriber_address}")
@@ -342,20 +375,69 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                             logger.info(f"Successfully fetched balance: {updated_balance} credits")
                 except Exception as e:
                     logger.warning(f"Could not fetch updated balance: {e}", exc_info=True)
+                
+                # Extract transaction hash from settlement receipt
+                try:
+                    logger.info(f"Looking for transaction in task...")
+                    logger.info(f"Task metadata: {response_task.metadata if hasattr(response_task, 'metadata') else 'No task metadata'}")
+                    logger.info(f"Has status.message: {hasattr(response_task.status, 'message')}")
+                    
+                    # Try task.metadata first (might be stored here)
+                    receipts = None
+                    if hasattr(response_task, 'metadata') and response_task.metadata:
+                        receipts = response_task.metadata.get(self.nvm.RECEIPTS_KEY)
+                        logger.info(f"Receipts from task.metadata: {receipts}")
+                    
+                    # Try task.status.message.metadata if not found
+                    if not receipts and hasattr(response_task.status, 'message') and response_task.status.message:
+                        logger.info(f"Has message.metadata: {hasattr(response_task.status.message, 'metadata')}")
+                        logger.info(f"Message metadata: {response_task.status.message.metadata if hasattr(response_task.status.message, 'metadata') else 'No message metadata'}")
+                        
+                        if (hasattr(response_task.status.message, 'metadata') and 
+                            response_task.status.message.metadata):
+                            
+                            receipts = response_task.status.message.metadata.get(self.nvm.RECEIPTS_KEY)
+                            logger.info(f"Receipts from status.message.metadata: {receipts}")
+                            
+                            if not receipts:
+                                logger.info(f"Available keys in message.metadata: {list(response_task.status.message.metadata.keys())}")
+                    
+                    # Process receipts if found
+                    if receipts:
+                        tx_hash = receipts.get('transaction')
+                        network = receipts.get('network', 'base-sepolia')
+                        
+                        if tx_hash:
+                            # Create BaseScan link
+                            if 'sepolia' in network.lower():
+                                basescan_url = f"https://sepolia.basescan.org/tx/{tx_hash}"
+                            else:
+                                basescan_url = f"https://basescan.org/tx/{tx_hash}"
+                            
+                            transaction_info = f"\n\n🔗 Transaction: {basescan_url}"
+                            logger.info(f"✅ Transaction hash found: {tx_hash}")
+                    else:
+                        logger.info(f"⚠️ No transaction receipts found in task")
+                        
+                except Exception as e:
+                    logger.warning(f"Could not extract transaction info: {e}", exc_info=True)
 
             if final_text:
                 result = " ".join(final_text)
-                logger.info(f"Final text exists. Payment completed: {payment_completed}, Balance info: '{balance_info}'")
-                if payment_completed and balance_info:
-                    result += balance_info
-                    logger.info(f"Appending balance info to result. Final result: {result}")
+                logger.info(f"Final text exists. Payment completed: {payment_completed}, Balance info: '{balance_info}', Transaction info: '{transaction_info}'")
+                if payment_completed:
+                    if balance_info:
+                        result += balance_info
+                    if transaction_info:
+                        result += transaction_info
+                    logger.info(f"Appending payment info to result. Final result: {result}")
                 else:
-                    logger.info(f"NOT appending balance. Completed={payment_completed}, has_balance={bool(balance_info)}")
+                    logger.info(f"NOT appending payment info. Completed={payment_completed}")
                 return result
 
             # Fallback for tasks with no text artifacts (e.g., payment settlement)
             if payment_completed:
-                return f"Payment successful! Your purchase is complete.{balance_info}"
+                return f"Payment successful! Your purchase is complete.{balance_info}{transaction_info}"
 
             return f"Task with {agent_name} is {response_task.status.state.value}."
 

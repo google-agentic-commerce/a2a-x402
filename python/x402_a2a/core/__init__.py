@@ -16,7 +16,7 @@
 from .merchant import create_payment_requirements
 from .wallet import process_payment_required, process_payment
 from .protocol import verify_payment, settle_payment
-from .utils import NvmUtils, create_payment_submission_message, extract_task_id
+from .utils import create_payment_submission_message, extract_task_id
 from .helpers import (
     require_payment,
     require_payment_choice,

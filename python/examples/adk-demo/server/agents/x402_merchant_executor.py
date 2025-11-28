@@ -25,6 +25,10 @@ from x402_a2a.types import (
     VerifyResponse,
 )
 from x402_a2a import x402ExtensionConfig
+from payments_py.x402.extensions.nevermined import (
+    validate_nevermined_extension,
+    NEVERMINED
+)
 
 
 # ==============================================================================
@@ -89,11 +93,43 @@ class x402MerchantExecutor(x402ServerExecutor):
         Verifies the payment with the Nevermined facilitator.
         This checks if the subscriber has sufficient permissions/credits on-chain.
         """
+        print(f"\n🔵 [SERVER] Verifying payment...")
+        print(f"   Payload version: {payload.x402_version}")
+        print(f"   Payload scheme: {payload.scheme}")
+        print(f"   Payload network: {payload.network}")
+        
+        # Validate v2 extensions if present
+        if hasattr(payload, 'extensions') and payload.extensions:
+            print(f"   🆕 V2 Extensions present: {list(payload.extensions.keys())}")
+            
+            # Validate Nevermined extension if present
+            if NEVERMINED in payload.extensions:
+                nvm_ext = payload.extensions[NEVERMINED]
+                validation_result = validate_nevermined_extension(nvm_ext)
+                
+                if not validation_result["valid"]:
+                    error_msgs = ", ".join(validation_result.get("errors", []))
+                    print(f"   ⛔ Invalid Nevermined extension: {error_msgs}")
+                    # Return invalid response instead of proceeding
+                    return VerifyResponse(
+                        is_valid=False,
+                        invalid_reason=f"Invalid extension: {error_msgs}"
+                    )
+                else:
+                    print(f"   ✅ Nevermined extension validated successfully")
+        
+        # Log requirements info
+        if requirements:
+            print(f"   Requirements:")
+            print(f"     - Plan ID: {requirements.plan_id}")
+            print(f"     - Agent ID: {requirements.agent_id}")
+            print(f"     - Max Amount: {requirements.max_amount}")
+        
         response = await self._facilitator.verify(payload, requirements)
         if response.is_valid:
-            print("✅ Payment Verified on Blockchain!")
+            print("   ✅ Payment Verified on Blockchain!")
         else:
-            print("⛔ Payment verification failed.")
+            print(f"   ⛔ Payment verification failed: {response.invalid_reason}")
         return response
 
     @override
@@ -104,9 +140,13 @@ class x402MerchantExecutor(x402ServerExecutor):
         Settles the payment with the Nevermined facilitator.
         This burns credits on-chain and returns the transaction hash.
         """
+        print(f"\n🔵 [SERVER] Settling payment...")
+        
         response = await self._facilitator.settle(payload, requirements)
         if response.success:
-            print(f"✅ Payment Settled on Blockchain! Tx: {response.transaction}")
+            print(f"   ✅ Payment Settled on Blockchain!")
+            print(f"   Transaction: {response.transaction}")
+            print(f"   Network: {response.network}")
         else:
-            print(f"⛔ Payment settlement failed: {response.error_reason}")
+            print(f"   ⛔ Payment settlement failed: {response.error_reason}")
         return response

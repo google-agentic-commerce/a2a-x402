@@ -13,8 +13,11 @@
 # limitations under the License.
 """Protocol error types and error code mapping."""
 
-from typing import List, Union, Optional
+from typing import List, Union, Optional, TYPE_CHECKING
 from x402.types import PaymentRequirements, TokenAmount
+
+if TYPE_CHECKING:
+    from payments_py.x402.types_v2 import PaymentRequiredResponseV2
 
 
 class x402Error(Exception):
@@ -50,51 +53,85 @@ class StateError(x402Error):
 class x402PaymentRequiredException(x402Error):
     """Exception thrown by delegate agents to request payment.
 
-    This exception allows delegate agents to dynamically specify payment
-    requirements instead of relying on static server configuration.
+    Supports both v1 (PaymentRequirements) and v2 (PaymentRequiredResponseV2) formats.
 
-    Example:
-        from x402_a2a.types.errors import x402PaymentRequiredException
-        from x402_a2a.core.merchant import create_payment_requirements
+    V1 Example:
+        from x402_a2a.types import x402PaymentRequiredException, PaymentRequirements
 
-        # Single payment option
-        requirements = create_payment_requirements(
-            price="$1.00",
-            pay_to_address="0x123...",
-            resource="/premium-service"
+        requirements = PaymentRequirements(
+            plan_id="...",
+            agent_id="...",
+            max_amount="2",
+            network="base-sepolia",
+            scheme="contract"
         )
         raise x402PaymentRequiredException(
             "Premium feature requires payment",
             payment_requirements=requirements
         )
 
-        # Multiple payment options
+    V2 Example:
+        from x402_a2a.types import (
+            x402PaymentRequiredException,
+            PaymentRequiredResponseV2,
+            ResourceInfo,
+            declare_nevermined_extension,
+            NEVERMINED
+        )
+
+        extension = declare_nevermined_extension(
+            plan_id="...",
+            agent_id="...",
+            max_amount="2"
+        )
+        
+        payment_required_v2 = PaymentRequiredResponseV2(
+            x402_version=2,
+            resource=ResourceInfo(url="/product"),
+            accepts=[],
+            extensions={NEVERMINED: extension}
+        )
+        
         raise x402PaymentRequiredException(
-            "Choose payment method",
-            payment_requirements=[basic_req, premium_req]
+            "Premium feature requires payment",
+            payment_required_v2=payment_required_v2
         )
     """
 
     def __init__(
         self,
         message: str,
-        payment_requirements: Union[PaymentRequirements, List[PaymentRequirements]],
+        payment_requirements: Optional[Union[PaymentRequirements, List[PaymentRequirements]]] = None,
+        payment_required_v2: Optional["PaymentRequiredResponseV2"] = None,
         error_code: Optional[str] = None,
     ):
         """Initialize payment required exception.
 
         Args:
             message: Human-readable error message
-            payment_requirements: Single requirement or list of payment options
+            payment_requirements: V1 single requirement or list of payment options
+            payment_required_v2: V2 payment required response with extensions
             error_code: Optional x402 error code for the failure
         """
         super().__init__(message)
 
-        # Normalize to list format for consistency
-        if isinstance(payment_requirements, list):
-            self.payment_requirements = payment_requirements
+        # V1 handling - normalize to list format for consistency
+        if payment_requirements:
+            if isinstance(payment_requirements, list):
+                self.payment_requirements = payment_requirements
+            else:
+                self.payment_requirements = [payment_requirements]
         else:
-            self.payment_requirements = [payment_requirements]
+            self.payment_requirements = []
+
+        # V2 handling
+        self.payment_required_v2 = payment_required_v2
+        
+        # Auto-detect version
+        if payment_required_v2:
+            self.version = 2
+        else:
+            self.version = 1
 
         self.error_code = error_code
 
