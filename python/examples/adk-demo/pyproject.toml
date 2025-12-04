@@ -30,6 +30,8 @@ packages = ["server", "client"]
 
 [project.scripts]
 server = "server.__main__:main"
+create-payasyougo-plan = "utils.create_payasyougo_plan:main"
+attach-plan-to-agent = "utils.attach_plan_to_agent:main"
 
 [tool.uv.workspace]
 members = ["client"]

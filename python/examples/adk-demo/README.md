@@ -95,7 +95,8 @@ The reusable, core logic for the x402 protocol is encapsulated in:
    NVM_ENVIRONMENT="sandbox"
 
    # Payment Plan Configuration
-   NVM_PLAN_ID="your-plan-id-from-nevermined"
+   NVM_CREDITS_PLAN_ID="your-credits-plan-id-from-nevermined"  # Required: Credits plan ID
+   NVM_PAYASYOUGO_PLAN_ID="your-payasyougo-plan-id"  # Optional: Pay-as-you-go plan ID (if set, creates second plan option)
    NVM_AGENT_ID="your-agent-id-from-nevermined"
    NVM_PAYMENT_AMOUNT="2"  # Credits per transaction
    NVM_NETWORK="base-sepolia"  # Blockchain network
@@ -110,7 +111,8 @@ The reusable, core logic for the x402 protocol is encapsulated in:
    export NVM_API_KEY_SERVER="nvm:your-merchant-jwt-token"
    export NVM_API_KEY_CLIENT="nvm:your-subscriber-jwt-token"
    export NVM_ENVIRONMENT="sandbox"
-   export NVM_PLAN_ID="your-plan-id"
+   export NVM_CREDITS_PLAN_ID="your-credits-plan-id"
+   export NVM_PAYASYOUGO_PLAN_ID="your-payasyougo-plan-id"  # Optional
    export NVM_AGENT_ID="your-agent-id"
    export NVM_PAYMENT_AMOUNT="2"
    export NVM_NETWORK="base-sepolia"
