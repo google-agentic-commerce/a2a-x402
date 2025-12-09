@@ -72,6 +72,45 @@ class ClientAgent:
         self._initialized = False
         self.nvm = X402A2AUtils()
 
+    def _fetch_plan_name(self, plan_id: str, fallback: str = "Plan") -> str:
+        """
+        Fetch plan name from Nevermined API.
+
+        The API returns plan data in the following structure:
+        {
+            "metadata": {
+                "main": {
+                    "name": "Plan Name"
+                }
+            }
+        }
+
+        Args:
+            plan_id: The plan ID to fetch
+            fallback: Default name if fetch fails or name not found
+
+        Returns:
+            Plan name from API, or fallback if unavailable
+        """
+        try:
+            plan_details = self.payments.plans.get_plan(plan_id=plan_id)
+
+            if isinstance(plan_details, dict) and "metadata" in plan_details:
+                metadata = plan_details["metadata"]
+                if (
+                    isinstance(metadata, dict)
+                    and "main" in metadata
+                    and isinstance(metadata["main"], dict)
+                ):
+                    plan_name = metadata["main"].get("name")
+                    if plan_name:
+                        return plan_name
+
+        except Exception as e:
+            logger.warning(f"Could not fetch plan details for {plan_id}: {e}")
+
+        return fallback
+
     def create_agent(self) -> Agent:
         """Creates the ADK Agent instance."""
         return Agent(
@@ -661,17 +700,10 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
                             for idx, plan_info in enumerate(nvm_plans):
                                 # Fetch plan name from Nevermined API
-                                plan_name = f"Plan {idx + 1}"
-                                try:
-                                    plan_details = self.payments.plans.get_plan(
-                                        plan_id=plan_info["plan_id"]
-                                    )
-                                    # Plan metadata typically has a 'name' field
-                                    plan_name = plan_details.get("name", plan_name)
-                                except Exception as e:
-                                    logger.warning(
-                                        f"Could not fetch plan details for {plan_info['plan_id']}: {e}"
-                                    )
+                                plan_name = self._fetch_plan_name(
+                                    plan_id=plan_info["plan_id"],
+                                    fallback=f"Plan {idx + 1}",
+                                )
 
                                 # Try to get balance for this plan
                                 balance_msg = ""
@@ -734,14 +766,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                     plan_id = plan_info["plan_id"]
 
                     # Fetch plan name from Nevermined API
-                    plan_name = "Plan"
-                    try:
-                        plan_details = self.payments.plans.get_plan(plan_id=plan_id)
-                        plan_name = plan_details.get("name", plan_name)
-                    except Exception as e:
-                        logger.warning(
-                            f"Could not fetch plan details for {plan_id}: {e}"
-                        )
+                    plan_name = self._fetch_plan_name(plan_id=plan_id, fallback="Plan")
 
                     # Get current balance
                     try:
@@ -787,14 +812,9 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
                 for idx, opt in enumerate(all_payment_options):
                     # Fetch plan name from Nevermined API
-                    plan_name = f"Plan {idx + 1}"
-                    try:
-                        plan_details = self.payments.plans.get_plan(plan_id=opt.plan_id)
-                        plan_name = plan_details.get("name", plan_name)
-                    except Exception as e:
-                        logger.warning(
-                            f"Could not fetch plan details for {opt.plan_id}: {e}"
-                        )
+                    plan_name = self._fetch_plan_name(
+                        plan_id=opt.plan_id, fallback=f"Plan {idx + 1}"
+                    )
 
                     # Try to get balance for this plan
                     balance_msg = ""
