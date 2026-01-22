@@ -40,12 +40,50 @@ from payments_py.x402 import (
     SessionKeyPayload,
     PaymentPayload,
 )
-from payments_py.x402.types_v2 import PaymentPayloadV2
-from payments_py.x402.extensions.nevermined import extract_all_nevermined_plans
 from x402_a2a.types import PaymentRequirements
 from payments_py.payments import Payments
 
 logger = logging.getLogger(__name__)
+
+
+def extract_plans_from_accepts(payment_required_dict: dict) -> list[dict]:
+    """
+    Extract payment plans from accepts array (nvm:erc4337 scheme).
+
+    Args:
+        payment_required_dict: PaymentRequired response as dict
+
+    Returns:
+        List of plan info dicts with plan_id, agent_id, network, scheme, max_amount, endpoint
+    """
+    accepts = payment_required_dict.get("accepts", [])
+    plans = []
+
+    # Get resource URL from payment_required (needed for facilitator API)
+    resource = payment_required_dict.get("resource", {})
+    endpoint = resource.get("url", "/") if isinstance(resource, dict) else "/"
+
+    for idx, scheme in enumerate(accepts):
+        # Handle nvm:erc4337 scheme format
+        scheme_type = scheme.get("scheme", "")
+        if scheme_type == "nvm:erc4337":
+            plan_id = scheme.get("planId")
+            network = scheme.get("network", "eip155:84532")
+            extra = scheme.get("extra", {})
+            agent_id = extra.get("agentId")
+
+            if plan_id:
+                plans.append({
+                    "plan_id": plan_id,
+                    "agent_id": agent_id,
+                    "network": network,  # CAIP-2 format
+                    "scheme": "nvm:erc4337",  # Native x402 v2 scheme
+                    "max_amount": "2",  # Default, can be overridden
+                    "index": idx,
+                    "endpoint": endpoint,  # Resource URL for facilitator API
+                })
+
+    return plans
 
 
 class ClientAgent:
@@ -212,10 +250,8 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
             logger.info(
                 f"🔍 State at start of sign_and_send_payment: "
-                f"selected_extension_key={state.get('selected_extension_key')}, "
                 f"selected_plan_index={state.get('selected_plan_index')}, "
-                f"has_purchase_task={'purchase_task' in state}, "
-                f"has_payment_required_extensions={'payment_required_extensions' in state}"
+                f"has_purchase_task={'purchase_task' in state}"
             )
             purchase_task_data = state.get("purchase_task")
             if not purchase_task_data:
@@ -236,72 +272,51 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 f"✅ Retrieved payment_required_response: v2={hasattr(payment_required_response, 'x402_version') and payment_required_response.x402_version == 2}"
             )
 
-            # Check if this is v2 with extensions (preferred)
+            # Check if this is v2 with nvm:erc4337 scheme in accepts array
             is_v2 = (
                 hasattr(payment_required_response, "x402_version")
                 and payment_required_response.x402_version == 2
-                and hasattr(payment_required_response, "extensions")
-                and payment_required_response.extensions
             )
 
-            selected_extension_key = None
             requirements = None
-            payment_required_extensions = None
 
             if is_v2:
-                # v2: Extract plans from extensions
+                # v2: Extract plans from accepts array (nvm:erc4337 scheme)
                 payment_required_dict = (
                     payment_required_response.model_dump(by_alias=True)
                     if hasattr(payment_required_response, "model_dump")
                     else payment_required_response
                 )
-                payment_required_extensions = payment_required_dict.get(
-                    "extensions", {}
-                )
                 nvm_plans = state.get("available_payment_plans")
 
                 if not nvm_plans:
-                    # Re-extract if not in state
-                    nvm_plans = extract_all_nevermined_plans(payment_required_dict)
+                    # Extract from accepts array
+                    nvm_plans = extract_plans_from_accepts(payment_required_dict)
                     # Store in state for consistency
                     state["available_payment_plans"] = nvm_plans
 
                 if not nvm_plans:
-                    raise ValueError("No Nevermined plans found in extensions.")
+                    raise ValueError("No nvm:erc4337 schemes found in accepts array.")
 
                 # Log plan order for debugging - CRITICAL: order must match what user saw!
                 logger.info(
                     f"📋 Available plans (order matters!): "
                     + ", ".join(
                         [
-                            f"Index {i}: {plan.get('extension_key', 'unknown')} (plan_id: {plan.get('plan_id', 'unknown')[:20]}...)"
+                            f"Index {i}: plan_id={plan.get('plan_id', 'unknown')[:20]}..."
                             for i, plan in enumerate(nvm_plans)
                         ]
                     )
                 )
 
-                # Handle plan selection - use extension key directly (more reliable than index)
-                selected_extension_key = state.get("selected_extension_key")
+                # Handle plan selection using index
                 selected_plan_index = state.get("selected_plan_index")
                 message_lower = message.lower().strip()
 
                 logger.info(
-                    f"🔍 Payment signing: message='{message}', stored selected_extension_key={selected_extension_key}, "
+                    f"🔍 Payment signing: message='{message}', "
                     f"stored selected_plan_index={selected_plan_index}, available_plans={len(nvm_plans)}"
                 )
-
-                # SAFEGUARD: If selected_extension_key is missing but selected_plan_index exists, recover it
-                if (
-                    not selected_extension_key
-                    and selected_plan_index is not None
-                    and 0 <= selected_plan_index < len(nvm_plans)
-                ):
-                    selected_plan = nvm_plans[selected_plan_index]
-                    selected_extension_key = selected_plan["extension_key"]
-                    state["selected_extension_key"] = selected_extension_key
-                    logger.warning(
-                        f"⚠️ Recovered selected_extension_key from selected_plan_index: {selected_extension_key}"
-                    )
 
                 # Check if user provided a plan selection
                 import re
@@ -309,99 +324,72 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 numbers = re.findall(r"\d+", message_lower)
 
                 if numbers and len(nvm_plans) > 1:
-                    # User explicitly selected a plan number - get the extension key
+                    # User explicitly selected a plan number
                     plan_num = int(numbers[0]) - 1
                     if 0 <= plan_num < len(nvm_plans):
-                        selected_plan = nvm_plans[plan_num]
-                        selected_extension_key = selected_plan["extension_key"]
-                        state["selected_extension_key"] = selected_extension_key
+                        selected_plan_index = plan_num
+                        state["selected_plan_index"] = selected_plan_index
                         logger.info(
-                            f"✅ User selected plan {plan_num + 1} ({selected_extension_key}) from message: {message}"
+                            f"✅ User selected plan {plan_num + 1} from message: {message}"
                         )
                     else:
                         # Invalid number - use first plan
-                        selected_plan = nvm_plans[0]
-                        selected_extension_key = selected_plan["extension_key"]
-                        state["selected_extension_key"] = selected_extension_key
+                        selected_plan_index = 0
+                        state["selected_plan_index"] = selected_plan_index
                         logger.warning(
-                            f"Invalid plan number {plan_num + 1}, defaulting to first plan ({selected_extension_key})"
+                            f"Invalid plan number {plan_num + 1}, defaulting to first plan"
                         )
                 elif (
                     message_lower in ["first", "one", "default"] or len(nvm_plans) == 1
                 ):
                     # User explicitly chose first plan
-                    selected_plan = nvm_plans[0]
-                    selected_extension_key = selected_plan["extension_key"]
-                    state["selected_extension_key"] = selected_extension_key
-                    logger.info(
-                        f"User selected first plan (explicit): {selected_extension_key}"
-                    )
+                    selected_plan_index = 0
+                    state["selected_plan_index"] = selected_plan_index
+                    logger.info("User selected first plan (explicit)")
                 elif message_lower in ["yes", "y", "sign_and_send_payment"]:
-                    # User confirmed payment or we're in payment signing flow - use previously selected extension key if available
-                    if not selected_extension_key:
+                    # User confirmed payment - use previously selected index if available
+                    if selected_plan_index is None:
                         # Fallback to first plan if no selection stored
-                        selected_plan = nvm_plans[0]
-                        selected_extension_key = selected_plan["extension_key"]
-                        state["selected_extension_key"] = selected_extension_key
+                        selected_plan_index = 0
+                        state["selected_plan_index"] = selected_plan_index
                         logger.warning(
-                            f"⚠️ User confirmed payment, no previous selection found in state - using first plan ({selected_extension_key})"
+                            "⚠️ User confirmed payment, no previous selection found in state - using first plan"
                         )
                     else:
                         logger.info(
-                            f"✅ Using previously selected extension key from state: {selected_extension_key}"
-                        )
-                        # Find the plan by extension key to get other details
-                        selected_plan = next(
-                            (
-                                p
-                                for p in nvm_plans
-                                if p.get("extension_key") == selected_extension_key
-                            ),
-                            nvm_plans[0],  # Fallback to first if not found
+                            f"✅ Using previously selected plan index from state: {selected_plan_index}"
                         )
                 else:
-                    # No explicit selection - use stored extension key or default to first
-                    if not selected_extension_key:
-                        selected_plan = nvm_plans[0]
-                        selected_extension_key = selected_plan["extension_key"]
-                        state["selected_extension_key"] = selected_extension_key
+                    # No explicit selection - use stored index or default to first
+                    if selected_plan_index is None:
+                        selected_plan_index = 0
+                        state["selected_plan_index"] = selected_plan_index
                         logger.warning(
-                            f"⚠️ No plan selection found in state, defaulting to first plan ({selected_extension_key})"
+                            "⚠️ No plan selection found in state, defaulting to first plan"
                         )
                     else:
                         logger.info(
-                            f"✅ Using stored extension key from state: {selected_extension_key}"
-                        )
-                        # Find the plan by extension key
-                        selected_plan = next(
-                            (
-                                p
-                                for p in nvm_plans
-                                if p.get("extension_key") == selected_extension_key
-                            ),
-                            nvm_plans[0],  # Fallback to first if not found
+                            f"✅ Using stored plan index from state: {selected_plan_index}"
                         )
 
-                # Also store the extensions dict in state if not already stored
-                if payment_required_extensions:
-                    state["payment_required_extensions"] = payment_required_extensions
-
+                selected_plan = nvm_plans[selected_plan_index]
                 logger.info(
-                    f"✅ Selected plan: extension_key={selected_extension_key}, plan_id={selected_plan['plan_id']}, agent_id={selected_plan['agent_id']}"
+                    f"✅ Selected plan: index={selected_plan_index}, plan_id={selected_plan['plan_id']}, agent_id={selected_plan['agent_id']}"
                 )
 
                 # Create PaymentRequirements from selected plan
+                # Include endpoint in extra for facilitator API
                 requirements = PaymentRequirements(
                     plan_id=selected_plan["plan_id"],
                     agent_id=selected_plan["agent_id"],
                     max_amount=selected_plan["max_amount"],
                     network=selected_plan["network"],
                     scheme=selected_plan["scheme"],
-                    extra={},
+                    extra={"endpoint": selected_plan.get("endpoint", "/")},
                 )
 
                 logger.info(
-                    f"Selected plan from extension '{selected_extension_key}': plan_id={requirements.plan_id}, agent_id={requirements.agent_id}, max_amount={requirements.max_amount}"
+                    f"Selected plan index {selected_plan_index}: plan_id={requirements.plan_id}, agent_id={requirements.agent_id}, max_amount={requirements.max_amount}"
                 )
             else:
                 # v1: Extract from accepts array (backwards compatibility)
@@ -473,76 +461,23 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 x402_access_token = token_result["accessToken"]
 
                 if is_v2:
-                    # V2: Create PaymentPayloadV2 with only the selected extension
-                    # Copy only the selected extension, not all extensions
-                    selected_extensions = {}
-
-                    # Get payment_required_extensions from state if not already available
-                    if not payment_required_extensions:
-                        payment_required_extensions = state.get(
-                            "payment_required_extensions"
-                        )
-
-                    # Use extension key directly from state (more reliable than variable)
-                    stored_extension_key = (
-                        state.get("selected_extension_key") or selected_extension_key
-                    )
-
+                    # V2 with nvm:erc4337: Create PaymentPayload (no extensions needed)
                     logger.info(
-                        f"🔍 Constructing payment payload: "
-                        f"stored_extension_key={stored_extension_key}, "
-                        f"selected_extension_key={selected_extension_key}, "
-                        f"payment_required_extensions keys={list(payment_required_extensions.keys()) if payment_required_extensions else 'None'}"
+                        f"✅ Creating V2 payment payload with nvm:erc4337 scheme, network={requirements.network}"
                     )
 
-                    if stored_extension_key and payment_required_extensions:
-                        if stored_extension_key in payment_required_extensions:
-                            selected_extensions[stored_extension_key] = (
-                                payment_required_extensions[stored_extension_key]
-                            )
-                            logger.info(
-                                f"✅ Creating V2 payment payload with selected extension: {stored_extension_key}"
-                            )
-                        else:
-                            logger.error(
-                                f"❌ Selected extension key '{stored_extension_key}' not found in extensions! "
-                                f"Available keys: {list(payment_required_extensions.keys())}"
-                            )
-                            logger.warning(f"⚠️ Falling back to copying all extensions")
-                            selected_extensions = payment_required_extensions
-                    else:
-                        # Fallback: copy all extensions from payment_required_response
-                        if not stored_extension_key:
-                            logger.error(
-                                f"❌ No extension key found in state or variable! Cannot determine which extension to use."
-                            )
-                        if not payment_required_extensions:
-                            logger.error(f"❌ payment_required_extensions is None!")
-                        payment_required_dict = (
-                            payment_required_response.model_dump(by_alias=True)
-                            if hasattr(payment_required_response, "model_dump")
-                            else payment_required_response
-                        )
-                        selected_extensions = payment_required_dict.get(
-                            "extensions", {}
-                        )
-                        logger.warning(
-                            f"⚠️ Fallback: Creating V2 payment payload with all extensions: {list(selected_extensions.keys())}"
-                        )
-
-                    payment_payload = PaymentPayloadV2(
+                    payment_payload = PaymentPayload(
                         x402_version=2,
-                        scheme=requirements.scheme,
+                        scheme="nvm:erc4337",
                         network=requirements.network,
                         payload=SessionKeyPayload(session_key=x402_access_token),
-                        extensions=selected_extensions,  # Only selected extension (or all if single plan)
                     )
                 else:
                     # V1: Create standard PaymentPayload
-                    logger.info("Creating V1 payment payload (no extensions)")
+                    logger.info("Creating V1 payment payload")
 
                     payment_payload = PaymentPayload(
-                        nvm_version=1,
+                        x402_version=1,
                         scheme=requirements.scheme,
                         network=requirements.network,
                         payload=SessionKeyPayload(session_key=x402_access_token),
@@ -573,9 +508,6 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                 )
                 logger.info(
                     f"📤 Payment payload in metadata: {self.nvm.PAYLOAD_KEY in message_metadata}"
-                )
-                logger.info(
-                    f"📤 Extensions in payload: {list(payment_payload.extensions.keys()) if hasattr(payment_payload, 'extensions') and payment_payload.extensions else 'None'}"
                 )
 
             except Exception as e:
@@ -642,25 +574,23 @@ You are a master orchestrator agent. Your job is to complete user requests by de
             if not requirements:
                 raise ValueError("Server requested payment but sent no requirements.")
 
-            # Check if this is v2 with extensions (preferred approach)
+            # Check if this is v2 with nvm:erc4337 scheme in accepts array
             is_v2 = (
                 hasattr(requirements, "x402_version")
                 and requirements.x402_version == 2
-                and hasattr(requirements, "extensions")
-                and requirements.extensions
             )
 
             if is_v2:
-                # v2: Extract plans from extensions (preferred)
+                # v2: Extract plans from accepts array (nvm:erc4337 scheme)
                 payment_required_dict = (
                     requirements.model_dump(by_alias=True)
                     if hasattr(requirements, "model_dump")
                     else requirements
                 )
-                nvm_plans = extract_all_nevermined_plans(payment_required_dict)
+                nvm_plans = extract_plans_from_accepts(payment_required_dict)
 
                 if nvm_plans:
-                    # Multiple plans from extensions
+                    # Multiple plans from accepts array
                     if len(nvm_plans) > 1:
                         # Check if user already selected a plan number in this message
                         message_lower = message.lower().strip()
@@ -672,19 +602,11 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                         if numbers:
                             plan_num = int(numbers[0]) - 1
                             if 0 <= plan_num < len(nvm_plans):
-                                # User selected a plan - store the extension key directly (more reliable than index)
-                                selected_plan = nvm_plans[plan_num]
-                                selected_extension_key = selected_plan["extension_key"]
-                                state["selected_extension_key"] = selected_extension_key
-                                state["selected_plan_index"] = (
-                                    plan_num  # Keep for backwards compatibility
-                                )
+                                # User selected a plan - store the index
+                                state["selected_plan_index"] = plan_num
                                 state["available_payment_plans"] = nvm_plans
-                                state["payment_required_extensions"] = (
-                                    payment_required_dict.get("extensions", {})
-                                )
                                 logger.info(
-                                    f"✅ User selected plan {plan_num + 1} ({selected_extension_key}) from message: {message}. Proceeding to payment."
+                                    f"✅ User selected plan {plan_num + 1} from message: {message}. Proceeding to payment."
                                 )
                                 # Don't return here - fall through to payment processing section below
                             else:
@@ -724,11 +646,8 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                                     f"{idx + 1}. {plan_name}: {plan_info['max_amount']} credits{balance_msg}"
                                 )
 
-                            # Store plan info (including extension keys) for later selection
+                            # Store plan info for later selection
                             state["available_payment_plans"] = nvm_plans
-                            state["payment_required_extensions"] = (
-                                payment_required_dict.get("extensions", {})
-                            )
 
                             return (
                                 f"The merchant is requesting payment. Multiple payment plans are available:\n\n"
@@ -745,11 +664,10 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                             )
 
                         # Verify state is stored correctly before recursive call
-                        stored_extension_key = state.get("selected_extension_key")
                         stored_index = state.get("selected_plan_index")
                         logger.info(
                             f"🔄 About to recursively call send_message with 'sign_and_send_payment' - "
-                            f"selected_extension_key={stored_extension_key}, selected_plan_index={stored_index}, "
+                            f"selected_plan_index={stored_index}, "
                             f"has_purchase_task={'purchase_task' in state}"
                         )
 
@@ -759,7 +677,7 @@ You are a master orchestrator agent. Your job is to complete user requests by de
                             agent_name, "sign_and_send_payment", tool_context
                         )
 
-                    # Single plan from extension
+                    # Single plan from accepts array
                     plan_info = nvm_plans[0]
                     amount = plan_info["max_amount"]
                     agent_id = plan_info["agent_id"]
@@ -784,9 +702,6 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
                     # Store for payment
                     state["available_payment_plans"] = nvm_plans
-                    state["payment_required_extensions"] = payment_required_dict.get(
-                        "extensions", {}
-                    )
 
                     return f"The merchant is requesting payment for agent {agent_id} with {plan_name} (plan {plan_id}) for {amount} credits.\n{balance_msg}\nDo you want to approve this payment?"
 
@@ -1014,7 +929,13 @@ You are a master orchestrator agent. Your job is to complete user requests by de
 
                         if tx_hash:
                             # Create BaseScan link
-                            if "sepolia" in network.lower():
+                            # Handle both friendly names (base-sepolia) and CAIP-2 format (eip155:84532)
+                            is_sepolia = (
+                                "sepolia" in network.lower()
+                                or network == "eip155:84532"  # Base Sepolia
+                                or network == "eip155:421614"  # Arbitrum Sepolia
+                            )
+                            if is_sepolia:
                                 basescan_url = (
                                     f"https://sepolia.basescan.org/tx/{tx_hash}"
                                 )

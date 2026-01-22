@@ -19,15 +19,7 @@ from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types
-from x402_a2a.types import (
-    PaymentRequirements,
-    PaymentRequiredResponseV2,
-    ResourceInfo,
-)
-from payments_py.x402.extensions.nevermined import (
-    declare_nevermined_extension,
-    nevermined_extension_key,
-)
+from payments_py.x402 import X402PaymentRequired, X402Resource, X402Scheme, X402SchemeExtra
 
 # Import the custom exception and the base agent interface
 from .base_agent import BaseAgent
@@ -94,86 +86,72 @@ class AdkMerchantAgent(BaseAgent):
         network = os.getenv("NVM_NETWORK", "base-sepolia")
         environment = os.getenv("NVM_ENVIRONMENT", "sandbox")
 
-        # Build extensions dictionary - one extension per plan (x402 v2 preferred)
-        # Each plan gets its own extension entry with a qualified key
-        extensions_dict = {}
-        v1_requirements_list = []
+        # Convert network to CAIP-2 format for nvm:erc4337 scheme
+        # base-sepolia -> eip155:84532
+        caip2_network_map = {
+            "base-sepolia": "eip155:84532",
+            "base": "eip155:8453",
+            "arbitrum-sepolia": "eip155:421614",
+            "arbitrum": "eip155:42161",
+        }
+        caip2_network = caip2_network_map.get(network, f"eip155:{network}")
 
-        # Create Credits Plan extension
-        credits_extension = declare_nevermined_extension(
+        # Build accepts array with nvm:erc4337 scheme (x402 v2 native approach)
+        # Each plan is represented as an X402Scheme entry
+
+        # Create Credits Plan scheme
+        credits_scheme = X402Scheme(
+            scheme="nvm:erc4337",
+            network=caip2_network,
             plan_id=credits_plan_id,
-            agent_id=agent_id,
-            max_amount=max_amount,
-            network=network,
-            scheme="contract",
-            environment=environment,
+            extra=X402SchemeExtra(
+                agent_id=agent_id,
+                version="1",
+            ),
         )
-        extensions_dict[nevermined_extension_key("credits")] = credits_extension
 
-        credits_requirements = PaymentRequirements(
-            plan_id=credits_plan_id,
-            agent_id=agent_id,
-            max_amount=max_amount,
-            network=network,
-            scheme="contract",
-            extra={"plan_name": "Credits Plan"},
-        )
-        v1_requirements_list.append(credits_requirements)
-
-        print(f"\n🔵 [SERVER] Creating v2 payment requirements with extensions:")
+        print(f"\n🔵 [SERVER] Creating v2 payment requirements with nvm:erc4337 scheme:")
         print(f"   Agent ID: {agent_id}")
-        print(f"   Network: {network}")
+        print(f"   Network: {caip2_network}")
         print(f"   Environment: {environment}")
         print(f"   - Credits Plan:")
-        print(f"     Extension key: {nevermined_extension_key('credits')}")
+        print(f"     Scheme: nvm:erc4337")
         print(f"     Plan ID: {credits_plan_id}")
-        print(f"     Amount: {max_amount} credits")
+        print(f"     Max Amount: {max_amount} credits")
 
-        # Create Pay-as-you-go Plan extension (if configured)
+        # Create Pay-as-you-go Plan scheme (if configured)
+        payasyougo_scheme = None
         if payasyougo_plan_id:
-            payasyougo_extension = declare_nevermined_extension(
+            payasyougo_scheme = X402Scheme(
+                scheme="nvm:erc4337",
+                network=caip2_network,
                 plan_id=payasyougo_plan_id,
-                agent_id=agent_id,
-                max_amount=max_amount,
-                network=network,
-                scheme="contract",
-                environment=environment,
+                extra=X402SchemeExtra(
+                    agent_id=agent_id,
+                    version="1",
+                ),
             )
-            extensions_dict[nevermined_extension_key("payasyougo")] = (
-                payasyougo_extension
-            )
-
-            payasyougo_requirements = PaymentRequirements(
-                plan_id=payasyougo_plan_id,
-                agent_id=agent_id,
-                max_amount=max_amount,
-                network=network,
-                scheme="contract",
-                extra={"plan_name": "Pay-as-you-go Plan"},
-            )
-            v1_requirements_list.append(payasyougo_requirements)
 
             print(f"   - Pay-as-you-go Plan:")
-            print(f"     Extension key: {nevermined_extension_key('payasyougo')}")
+            print(f"     Scheme: nvm:erc4337")
             print(f"     Plan ID: {payasyougo_plan_id}")
-            print(f"     Amount: {max_amount} credits")
+            print(f"     Max Amount: {max_amount} credits")
 
-        # Create v2 payment required response
-        # For v2, each plan is its own extension entry (x402 v2 preferred approach)
-        # accepts array is kept minimal for backwards compatibility with v1 clients
-        payment_required_v2 = PaymentRequiredResponseV2(
+        # Create X402PaymentRequired response
+        # For nvm:erc4337, payment info is in accepts array, extensions is empty
+        payment_required = X402PaymentRequired(
             x402_version=2,
-            resource=ResourceInfo(
+            resource=X402Resource(
                 url=f"/product/{product_name}", description=f"Purchase {product_name}"
             ),
-            accepts=v1_requirements_list,  # Minimal for v1 backwards compatibility
-            extensions=extensions_dict,  # v2: Each plan is its own extension entry
+            accepts=[credits_scheme] + ([payasyougo_scheme] if payasyougo_plan_id else []),
+            extensions={},  # Empty - no extensions needed for nvm:erc4337
         )
 
         # Signal to the x402ServerAgentExecutor that payment is required.
         # The wrapper will catch this and handle the A2A flow.
         raise x402PaymentRequiredException(
-            product_name, payment_required_v2=payment_required_v2
+            product_name, payment_required=payment_required
         )
 
     def before_agent_callback(self, callback_context: CallbackContext):

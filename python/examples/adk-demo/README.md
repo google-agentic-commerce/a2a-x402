@@ -634,33 +634,52 @@ if verify_result.is_valid:
     settle_result = await facilitator.settle(payment_payload, requirements)
 ```
 
-### Payment Requirements Structure
+### Payment Requirements Structure (nvm:erc4337 scheme)
 
+The demo uses the `nvm:erc4337` scheme in the x402 `accepts` array. This is the native Nevermined scheme for x402 v2.
+
+**Server-side (PaymentRequired response):**
 ```python
-PaymentRequirements(
-    plan_id: str,          # Payment plan ID from Nevermined
-    agent_id: str,         # AI agent ID from Nevermined
-    max_amount: str,       # Number of credits to burn (as string)
-    network: str,          # Blockchain network (e.g., "base-sepolia")
-    scheme: str,           # Payment scheme (e.g., "contract")
-    extra: dict = {        # Additional metadata
-        "subscriber_address": "0x..."  # Subscriber's wallet address
-    }
+from payments_py.x402 import X402Scheme, X402SchemeExtra
+
+# Payment info is in the accepts array, not extensions
+payment_required = PaymentRequiredResponseV2(
+    x402_version=2,
+    resource=ResourceInfo(url="/product/laptop"),
+    accepts=[
+        X402Scheme(
+            scheme="nvm:erc4337",
+            network="eip155:84532",  # CAIP-2 format (Base Sepolia)
+            plan_id="your-plan-id",
+            extra=X402SchemeExtra(
+                agent_id="your-agent-id",
+                version="1"
+            )
+        ).model_dump(by_alias=True)
+    ],
+    extensions={}  # Empty - no extensions needed for nvm:erc4337
 )
 ```
 
-### Payment Payload Structure
-
+**Client-side (PaymentPayload):**
 ```python
 PaymentPayload(
-    x402_version: int,              # Protocol version (1 or 2)
-    scheme: str,                   # Payment scheme
-    network: str,                  # Blockchain network
-    payload: SessionKeyPayload(
-        session_key: str          # X402 access token
+    x402_version=2,
+    scheme="nvm:erc4337",
+    network="eip155:84532",  # CAIP-2 format
+    payload=SessionKeyPayload(
+        session_key="x402-access-token"
     )
 )
 ```
+
+### Network Mapping
+
+The demo converts common network names to CAIP-2 format:
+- `base-sepolia` → `eip155:84532`
+- `base` → `eip155:8453`
+- `arbitrum-sepolia` → `eip155:421614`
+- `arbitrum` → `eip155:42161`
 
 ### X402 Token Generation
 

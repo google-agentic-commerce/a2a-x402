@@ -25,10 +25,6 @@ from x402_a2a.types import (
     VerifyResponse,
 )
 from x402_a2a import x402ExtensionConfig
-from payments_py.x402.extensions.nevermined import (
-    validate_nevermined_extension,
-    NEVERMINED,
-)
 
 
 # ==============================================================================
@@ -69,11 +65,10 @@ class x402MerchantExecutor(x402ServerExecutor):
     @override
     def _extract_payment_requirements_from_context(self, task, context):
         """
-        Override to also check message metadata and payload extensions for payment requirements.
-        This is needed for the Nevermined flow where requirements are sent with the payment.
-        Supports both v1 (message metadata) and v2 (extensions) formats.
+        Override to extract payment requirements from message metadata.
+        Supports nvm:erc4337 scheme in accepts array (x402 v2 native approach).
         """
-        # First try to get from message metadata (Nevermined flow)
+        # Try to get from message metadata (Nevermined flow)
         if (
             context.message
             and hasattr(context.message, "metadata")
@@ -83,45 +78,11 @@ class x402MerchantExecutor(x402ServerExecutor):
             if requirements_dict:
                 from payments_py.x402 import PaymentRequirements
 
+                print(f"\n🔵 [SERVER] Extracted payment requirements from message metadata:")
+                print(f"   Plan ID: {requirements_dict.get('plan_id', 'N/A')}")
+                print(f"   Agent ID: {requirements_dict.get('agent_id', 'N/A')}")
+                print(f"   Network: {requirements_dict.get('network', 'N/A')}")
                 return PaymentRequirements.model_validate(requirements_dict)
-
-        # For v2: Try to extract from payload extensions if available
-        payment_payload = self.utils.get_payment_payload(
-            task
-        ) or self.utils.get_payment_payload_from_message(context.message)
-
-        if (
-            payment_payload
-            and hasattr(payment_payload, "extensions")
-            and payment_payload.extensions
-        ):
-            # Look for any Nevermined extension (supports qualified keys like "nevermined:payasyougo")
-            for ext_key, ext_data in payment_payload.extensions.items():
-                # Check if this is a Nevermined extension (qualified or legacy)
-                if ext_key.startswith(f"{NEVERMINED}:") or ext_key == NEVERMINED:
-                    # Extract info from extension
-                    if isinstance(ext_data, dict):
-                        info = ext_data.get("info", {})
-                    else:
-                        # Pydantic Extension model
-                        info = ext_data.info if hasattr(ext_data, "info") else {}
-
-                    # Create PaymentRequirements from extension info
-                    if info and "plan_id" in info:
-                        from payments_py.x402 import PaymentRequirements
-
-                        extra = {}
-                        if info.get("subscriber_address"):
-                            extra["subscriber_address"] = info.get("subscriber_address")
-
-                        return PaymentRequirements(
-                            plan_id=info.get("plan_id"),
-                            agent_id=info.get("agent_id"),
-                            max_amount=info.get("max_amount"),
-                            network=info.get("network"),
-                            scheme=info.get("scheme"),
-                            extra=extra,
-                        )
 
         # Fall back to the default behavior (stored requirements)
         return super()._extract_payment_requirements_from_context(task, context)
@@ -133,41 +94,12 @@ class x402MerchantExecutor(x402ServerExecutor):
         """
         Verifies the payment with the Nevermined facilitator.
         This checks if the subscriber has sufficient permissions/credits on-chain.
+        Uses nvm:erc4337 scheme - payment info is in accepts array, no extensions needed.
         """
         print(f"\n🔵 [SERVER] Verifying payment...")
         print(f"   Payload version: {payload.x402_version}")
         print(f"   Payload scheme: {payload.scheme}")
         print(f"   Payload network: {payload.network}")
-
-        # Validate v2 extensions if present
-        if hasattr(payload, "extensions") and payload.extensions:
-            print(f"   🆕 V2 Extensions present: {list(payload.extensions.keys())}")
-
-            # Validate Nevermined extension if present (supports qualified keys like "nevermined:payasyougo")
-            nvm_extension_found = False
-            for ext_key, ext_data in payload.extensions.items():
-                if ext_key.startswith(f"{NEVERMINED}:") or ext_key == NEVERMINED:
-                    nvm_extension_found = True
-                    validation_result = validate_nevermined_extension(ext_data)
-
-                    if not validation_result["valid"]:
-                        error_msgs = ", ".join(validation_result.get("errors", []))
-                        print(
-                            f"   ⛔ Invalid Nevermined extension ({ext_key}): {error_msgs}"
-                        )
-                        # Return invalid response instead of proceeding
-                        return VerifyResponse(
-                            is_valid=False,
-                            invalid_reason=f"Invalid extension ({ext_key}): {error_msgs}",
-                        )
-                    else:
-                        print(
-                            f"   ✅ Nevermined extension ({ext_key}) validated successfully"
-                        )
-                    break  # Only validate the first Nevermined extension found
-
-            if not nvm_extension_found:
-                print(f"   ⚠️ No Nevermined extension found in payload extensions")
 
         # Log requirements info
         if requirements:

@@ -36,9 +36,8 @@ from ..types import (
     TaskState,
     # V1 types
     NvmPaymentRequiredResponse,
-    # V2 types
-    PaymentRequiredResponseV2,
-    PaymentPayloadV2,
+    # V2 types (nvm:erc4337 scheme)
+    X402PaymentRequired,
     VerifyResponse,
 )
 
@@ -352,8 +351,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     ):
         """Handle x402PaymentRequiredException to request payment.
 
-        Supports both v1 (PaymentRequirements) and v2 (PaymentRequiredResponseV2) formats.
-        Auto-detects version from exception and creates appropriate response.
+        Uses X402PaymentRequired with nvm:erc4337 scheme.
         """
         task = context.current_task
         if not task:
@@ -375,38 +373,14 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             # Ensure the existing task is always in the input_required state
             task.status.state = TaskState.input_required
 
-        error_message = str(exception)
+        logger.info("🆕 Using x402 v2 format with nvm:erc4337 scheme")
 
-        # Detect version and handle accordingly
-        if exception.version == 2:
-            logger.info("🆕 Using x402 v2 format with extensions")
+        # Get X402PaymentRequired from exception
+        payment_required = exception.payment_required
 
-            # V2: Use PaymentRequiredResponseV2 directly from exception
-            payment_required = exception.payment_required_v2
-
-            # Store v2 response for later (we'll need accepts array for matching)
-            if payment_required and payment_required.accepts:
-                self._payment_requirements_store[task.id] = payment_required.accepts
-
-            # Log extension info
-            if payment_required and payment_required.extensions:
-                logger.info(
-                    f"   Extensions present: {list(payment_required.extensions.keys())}"
-                )
-
-        else:
-            logger.info("Using x402 v1 format (classic)")
-
-            # V1: Extract from payment_requirements list
-            accepts_array = exception.get_accepts_array()
-
-            # Store payment requirements for later correlation
-            self._payment_requirements_store[task.id] = accepts_array
-
-            # Wrap in v1 response
-            payment_required = NvmPaymentRequiredResponse(
-                nvm_version=1, accepts=accepts_array, error=error_message
-            )
+        # Store accepts array for later (we'll need it for matching)
+        if payment_required and payment_required.accepts:
+            self._payment_requirements_store[task.id] = payment_required.accepts
 
         # Update task with payment requirements
         task = self.utils.create_payment_required_task(task, payment_required)

@@ -38,34 +38,20 @@ from x402.types import (
     EIP712Domain,
     SupportedNetworks,
 )
-# V1 types - Use custom PaymentRequirements from nvm module instead of x402.types
+# x402 types from payments-py SDK
 from payments_py.x402 import (
+    # Core types
     PaymentRequirements,
     NvmPaymentRequiredResponse,
     PaymentPayload,
     SessionKeyPayload,
     VerifyResponse,
     SettleResponse,
-)
-
-# V2 types - Extended types with extensions field
-from payments_py.x402.types_v2 import (
-    PaymentRequiredResponseV2,
-    PaymentPayloadV2,
-    Extension,
-    ResourceInfo,
-    Extensions,
-)
-
-# V2 extension helpers
-from payments_py.x402.extensions.nevermined import (
-    NEVERMINED,
-    NeverminedInfo,
-    NeverminedExtension,
-    declare_nevermined_extension,
-    extract_nevermined_info,
-    validate_nevermined_extension,
-    ValidationResult,
+    # x402 v2 types (nvm:erc4337 scheme)
+    X402PaymentRequired,
+    X402Scheme,
+    X402SchemeExtra,
+    X402Resource,
 )
 
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
@@ -91,6 +77,7 @@ from ..extension import (
 )
 
 __all__ = [
+    # A2A types
     "Task",
     "Message",
     "AgentCard",
@@ -101,12 +88,19 @@ __all__ = [
     "AgentExecutor",
     "RequestContext",
     "EventQueue",
+    # x402 core types
     "PaymentRequirements",
-    "x402PaymentRequiredResponse",
     "PaymentPayload",
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    "NvmPaymentRequiredResponse",
+    # x402 v2 types (nvm:erc4337 scheme)
+    "X402PaymentRequired",
+    "X402Scheme",
+    "X402SchemeExtra",
+    "X402Resource",
+    # x402 base types
     "ExactPaymentPayload",
     "EIP3009Authorization",
     "TokenAmount",
@@ -115,8 +109,10 @@ __all__ = [
     "SupportedNetworks",
     "FacilitatorConfig",
     "FacilitatorClient",
+    # State types
     "PaymentStatus",
     "x402Metadata",
+    # Error types
     "x402Error",
     "MessageError",
     "ValidationError",
@@ -125,6 +121,7 @@ __all__ = [
     "x402PaymentRequiredException",
     "x402ErrorCode",
     "map_error_to_code",
+    # Config types
     "X402_EXTENSION_URI",
     "x402ExtensionConfig",
     "x402ServerConfig",
