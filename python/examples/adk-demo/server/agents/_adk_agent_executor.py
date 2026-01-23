@@ -202,6 +202,16 @@ class ADKAgentExecutor(AgentExecutor):
         if context.current_task and context.current_task.metadata.get(
             "x402_payment_verified", False
         ):
+            # --- CRITICAL FOR OPENAI/LITELLM ---
+            # When payment is verified, we need to create a NEW session to clear
+            # the conversation history. The old session has an unanswered tool_call
+            # (from when x402PaymentRequiredException was raised), which causes
+            # OpenAI to error with "tool_calls must be followed by tool messages".
+            # Creating a fresh session avoids this issue.
+            new_session_id = f"{context.context_id}_payment_verified"
+            session = await self._upsert_session(new_session_id)
+            logger.debug(f"Created new session {new_session_id} for payment verification")
+
             # If payment is verified, write structured data to the session state.
             # The agent's `before_agent_callback` will read this.
             product_name = (
@@ -221,10 +231,7 @@ class ADKAgentExecutor(AgentExecutor):
             user_message = types.UserContent(
                 parts=[types.Part(text="Payment verified. Please proceed.")]
             )
-            # --- CRITICAL ---
-            # We must re-fetch the session here to ensure the state changes
-            # from the x402 executor are reflected before the agent's
-            # `before_agent_callback` is invoked.
+            # Re-fetch the session to ensure state changes are reflected
             session = await self._upsert_session(session.id)
         else:
             # No payment verification; process the original user message.

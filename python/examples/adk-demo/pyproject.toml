@@ -16,6 +16,7 @@ dependencies = [
     "x402-a2a",
     "payments-py>=0.10.0",
     "jsonschema>=4.0.0",  # For extension validation
+    "litellm>=1.50.0",  # For OpenAI/multi-provider support
 ]
 
 [build-system]

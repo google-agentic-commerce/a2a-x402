@@ -25,8 +25,8 @@ from ..types import (
     x402Metadata,
     # V1 types
     NvmPaymentRequiredResponse,
-    # V2 types
-    PaymentRequiredResponseV2,
+    # V2 types (nvm:erc4337 scheme)
+    X402PaymentRequired,
     PaymentPayload,
     SettleResponse,
     TaskState,
