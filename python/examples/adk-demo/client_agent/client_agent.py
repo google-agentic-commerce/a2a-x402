@@ -13,7 +13,9 @@
 # limitations under the License.
 import json
 import logging
+import os
 import uuid
+from typing import Union
 
 import httpx
 from a2a.client import A2ACardResolver
@@ -27,9 +29,9 @@ from a2a.types import (
     TaskState,
     TextPart,
 )
-from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.tool_context import ToolContext
 
 # Local imports
@@ -149,10 +151,34 @@ class ClientAgent:
 
         return fallback
 
-    def create_agent(self) -> Agent:
-        """Creates the ADK Agent instance."""
+    def create_agent(self):
+        """Creates the Agent instance.
+
+        Supports both Gemini and OpenAI via ADK's native LiteLLM integration:
+        - Set LLM_PROVIDER=gemini (default) for Gemini models
+        - Set LLM_PROVIDER=openai and OPENAI_API_KEY for OpenAI models
+        - Set LLM_MODEL to override the default model
+        """
+        from google.adk import Agent
+
+        # Determine model based on provider configuration
+        provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+        model_override = os.getenv("LLM_MODEL")
+
+        if provider == "openai":
+            # Use LiteLLM wrapper for OpenAI
+            model_name = model_override or "gpt-4o-mini"
+            if not model_name.startswith("openai/"):
+                model_name = f"openai/{model_name}"
+            model = LiteLlm(model=model_name)
+            print(f"🤖 Client agent using OpenAI via LiteLLM: {model_name}")
+        else:
+            # Use Gemini directly
+            model = model_override or "gemini-2.0-flash"
+            print(f"🤖 Client agent using Gemini: {model}")
+
         return Agent(
-            model="gemini-2.5-flash",
+            model=model,
             name="client_agent",
             instruction=self.root_instruction,
             before_agent_callback=self.before_agent_callback,

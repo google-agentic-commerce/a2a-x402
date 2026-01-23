@@ -101,8 +101,15 @@ The reusable, core logic for the x402 protocol is encapsulated in:
    NVM_PAYMENT_AMOUNT="2"  # Credits per transaction
    NVM_NETWORK="base-sepolia"  # Blockchain network
 
-   # Google ADK
+   # LLM Provider (choose one)
+   # Option A: Google Gemini (default)
+   LLM_PROVIDER="gemini"
    GOOGLE_GENAI_API_KEY="your-google-api-key"
+
+   # Option B: OpenAI
+   # LLM_PROVIDER="openai"
+   # OPENAI_API_KEY="your-openai-api-key"
+   # LLM_MODEL="gpt-4o-mini"  # Optional: defaults to gpt-4o-mini
    ```
 
    Or export them directly:
@@ -116,7 +123,15 @@ The reusable, core logic for the x402 protocol is encapsulated in:
    export NVM_AGENT_ID="your-agent-id"
    export NVM_PAYMENT_AMOUNT="2"
    export NVM_NETWORK="base-sepolia"
+
+   # For Gemini (default):
+   export LLM_PROVIDER="gemini"
    export GOOGLE_GENAI_API_KEY="your-google-api-key"
+
+   # Or for OpenAI:
+   # export LLM_PROVIDER="openai"
+   # export OPENAI_API_KEY="your-openai-api-key"
+   # export LLM_MODEL="gpt-4o-mini"  # Optional
    ```
 
    **Important Notes**:

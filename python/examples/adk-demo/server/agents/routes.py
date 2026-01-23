@@ -48,20 +48,33 @@ AGENTS: Dict[str, BaseAgent] = {
 def create_agent_routes(base_url: str, base_path: str) -> List[BaseRoute]:
     """
     Creates and configures the routes for all registered agents.
+    Supports both Gemini and OpenAI via ADK's native LiteLLM integration.
+
+    Set LLM_PROVIDER=openai and OPENAI_API_KEY for OpenAI models.
     """
-    if os.getenv("GOOGLE_GENAI_USE_VERTEXAI") != "TRUE" and not os.getenv(
-        "GOOGLE_API_KEY"
-    ):
-        raise ValueError("GOOGLE_API_KEY environment variable not set.")
+    provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+    model = os.getenv("LLM_MODEL", "gemini-2.0-flash" if provider == "gemini" else "gpt-4o-mini")
+    print(f"--- LLM Provider: {provider}, Model: {model} ---")
+
+    # Validate provider configuration
+    if provider == "openai":
+        if not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("OPENAI_API_KEY environment variable not set for OpenAI provider.")
+    else:
+        # Gemini provider
+        if os.getenv("GOOGLE_GENAI_USE_VERTEXAI") != "TRUE" and not os.getenv("GOOGLE_API_KEY"):
+            raise ValueError("GOOGLE_API_KEY environment variable not set for Gemini provider.")
 
     routes: List[BaseRoute] = []
 
     for path, agent_factory in AGENTS.items():
         full_path = f"{base_path}/{path}"
         url = f"{base_url}{full_path}"
+
+        # ADK handles both Gemini and OpenAI (via LiteLLM) natively
         routes.extend(
             _create_routes(
-                path,  # Pass the agent's path for wrapper selection
+                path,
                 full_path,
                 agent_factory.create_agent_card(url),
                 agent_factory.create_agent(),
@@ -84,7 +97,8 @@ def _create_routes(
     memory_service: InMemoryMemoryService,
 ) -> List[Route]:
     """
-    Creates the routes for a single agent, applying the correct x402 wrapper.
+    Creates the routes for a single agent using Google ADK.
+    Supports both Gemini and OpenAI (via ADK's native LiteLLM integration).
     """
     from google.adk.runners import Runner
 

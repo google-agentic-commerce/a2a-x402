@@ -15,9 +15,11 @@ import hashlib
 import os
 from typing import override
 
+import os
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from payments_py.x402 import X402PaymentRequired, X402Resource, X402Scheme, X402SchemeExtra
 
@@ -176,9 +178,31 @@ class AdkMerchantAgent(BaseAgent):
 
     @override
     def create_agent(self) -> LlmAgent:
-        """Creates the LlmAgent instance for the merchant."""
+        """Creates the LlmAgent instance for the merchant.
+
+        Supports both Gemini and OpenAI via LiteLLM:
+        - Set LLM_PROVIDER=gemini (default) for Gemini models
+        - Set LLM_PROVIDER=openai and OPENAI_API_KEY for OpenAI models
+        - Set LLM_MODEL to override the default model
+        """
+        # Determine model based on provider configuration
+        provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+        model_override = os.getenv("LLM_MODEL")
+
+        if provider == "openai":
+            # Use LiteLLM wrapper for OpenAI
+            model_name = model_override or "gpt-4o-mini"
+            if not model_name.startswith("openai/"):
+                model_name = f"openai/{model_name}"
+            model = LiteLlm(model=model_name)
+            print(f"🤖 Merchant agent using OpenAI via LiteLLM: {model_name}")
+        else:
+            # Use Gemini directly
+            model = model_override or "gemini-2.0-flash"
+            print(f"🤖 Merchant agent using Gemini: {model}")
+
         return LlmAgent(
-            model="gemini-2.5-flash",
+            model=model,
             name="adk_merchant_agent",
             description="An agent that can sell any item by providing a price and then processing the payment using the x402 protocol.",
             instruction="""You are a helpful and friendly "Amazon" merchant agent.
