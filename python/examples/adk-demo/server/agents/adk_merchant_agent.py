@@ -15,7 +15,6 @@ import hashlib
 import os
 from typing import override
 
-import os
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext

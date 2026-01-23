@@ -14,7 +14,7 @@ dependencies = [
     "web3>=7.10.0",
     "cdp-sdk>=1.20.0",
     "x402-a2a",
-    "payments-py>=0.10.0",
+    "payments-py>=0.13.1",
     "jsonschema>=4.0.0",  # For extension validation
     "litellm>=1.50.0",  # For OpenAI/multi-provider support
 ]
@@ -40,9 +40,9 @@ members = ["client"]
 # Development: Use local editable packages for development
 # Production: Will use published packages from PyPI
 [tool.uv.sources]
-# Uncomment for local development:
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
-payments-py = { path = "../../../../payments-py", editable = true }
+# Uncomment for local development:
+# payments-py = { path = "../../../../payments-py", editable = true }
 
 # Use x402 v2 from GitHub (v2-development branch)
 # This will be replaced with PyPI version when v2 is officially released

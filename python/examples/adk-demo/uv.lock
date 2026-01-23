@@ -66,7 +66,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jsonschema", specifier = ">=4.0.0" },
     { name = "litellm", specifier = ">=1.50.0" },
-    { name = "payments-py", editable = "../../../../payments-py" },
+    { name = "payments-py", specifier = ">=0.13.1" },
     { name = "uvicorn", specifier = ">=0.34.2" },
     { name = "web3", specifier = ">=7.10.0" },
     { name = "x402", git = "https://github.com/coinbase/x402.git?subdirectory=python%2Fx402&branch=v2-development" },
@@ -2124,8 +2124,8 @@ wheels = [
 
 [[package]]
 name = "payments-py"
-version = "0.12.0"
-source = { editable = "../../../../payments-py" }
+version = "0.13.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "aiohttp" },
@@ -2142,27 +2142,10 @@ dependencies = [
     { name = "requests" },
     { name = "websocket-client" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "a2a-sdk", specifier = ">=0.3.0,<0.4.0" },
-    { name = "aiohttp", specifier = ">=3.10.8,<4.0.0" },
-    { name = "black", specifier = ">=26.1.0,<27.0.0" },
-    { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.120.0,<0.121.0" },
-    { name = "helicone-helpers", specifier = ">=1.1.1,<2.0.0" },
-    { name = "jsonschema", specifier = ">=4.25.1,<5.0.0" },
-    { name = "lazydocs", specifier = ">=0.4.8,<0.5.0" },
-    { name = "mkdocs", specifier = ">=1.5.3,<2.0.0" },
-    { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.9.2,<3.0.0" },
-    { name = "pydantic", specifier = ">=2.8.2,<3.0.0" },
-    { name = "pyjwt", specifier = ">=2.9.0,<3.0.0" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0,<2.0.0" },
-    { name = "python-socketio", specifier = "==5.14.3" },
-    { name = "requests", specifier = ">=2.31.0,<3.0.0" },
-    { name = "starlette", marker = "extra == 'fastapi'", specifier = ">=0.40.0,<0.41.0" },
-    { name = "websocket-client", specifier = ">=1.8.0,<2.0.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/22/1e/e9ca3fbd662ae7610a4d73ce7765dcad3fc1821b7a7d55f08dd087b4f131/payments_py-0.13.1.tar.gz", hash = "sha256:201f255895791d4ba8b9e2b6a451fe2df0ab2fa116b3594b901f0c2d2ebd2f27", size = 84467, upload-time = "2026-01-23T16:13:30.663Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/51/f2f3fc46b55844da5361ab4359c29e6b928f381506029761a32bf0f83a87/payments_py-0.13.1-py3-none-any.whl", hash = "sha256:2db1ae30ee3e140f0915a416c7f975a8ca781d5dae951d200b0eb75ff720b1d1", size = 109994, upload-time = "2026-01-23T16:13:31.554Z" },
 ]
-provides-extras = ["fastapi"]
 
 [[package]]
 name = "platformdirs"
