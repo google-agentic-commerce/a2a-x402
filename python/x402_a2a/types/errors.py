@@ -99,7 +99,6 @@ class x402PaymentRequiredException(x402Error):
         self.error_code = error_code
 
 
-
 class x402ErrorCode:
     """Standard error codes from spec Section 8.1."""
 

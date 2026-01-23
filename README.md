@@ -1,6 +1,6 @@
-# A2A x402 Extension
+# A2A x402 Nevermined Extension
 
-The **A2A x402 Extension** brings cryptocurrency payments to the Agent-to-Agent (A2A) protocol, enabling agents to monetize their services through on-chain payments. This extension revives the spirit of HTTP 402 "Payment Required" for the decentralized agent ecosystem.
+The **A2A x402 Extension** brings cryptocurrency payments to the Agent-to-Agent (A2A) protocol, enabling agents to monetize their services through on-chain payments using Nevermined. This extension revives the spirit of HTTP 402 "Payment Required" for the decentralized agent ecosystem.
 
 ## 🎯 **Goal**
 

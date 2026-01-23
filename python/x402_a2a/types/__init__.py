@@ -38,6 +38,7 @@ from x402.types import (
     EIP712Domain,
     SupportedNetworks,
 )
+
 # x402 types from payments-py SDK
 from payments_py.x402 import (
     # Core types

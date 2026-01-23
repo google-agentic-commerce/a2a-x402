@@ -14,7 +14,11 @@
 """x402_a2a - x402 Payment Protocol Extension for A2A."""
 
 # A2A Integration utilities (from payments-py x402 module)
-from payments_py.x402.a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
+from payments_py.x402.a2a import (
+    X402A2AUtils,
+    X402Metadata,
+    PaymentStatus as X402PaymentStatus,
+)
 
 # Nevermined X402 Types (from payments-py x402 module)
 from payments_py.x402 import (

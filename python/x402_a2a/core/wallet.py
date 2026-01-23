@@ -111,13 +111,13 @@ def process_payment_required(
 #         payload=exact_payload,
 #     )
 
-def process_payment(
-    requirements: PaymentRequirements) -> PaymentPayload:
+
+def process_payment(requirements: PaymentRequirements) -> PaymentPayload:
     return PaymentPayload(
-        nvm_version = 1,
+        nvm_version=1,
         scheme=requirements.scheme,
         network=requirements.network,
-        payload= {
+        payload={
             "session_key": "somesessionkey",
-        } ,
+        },
     )
