@@ -1,6 +1,7 @@
 # Environment variables
 .env
 .env.*
+!.env.sample
 
 # Python virtual environments
 .venv/

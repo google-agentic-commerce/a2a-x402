@@ -41,22 +41,37 @@ Each language-specific implementation (e.g., `python/x402_a2a`) contains its own
 
 The `examples/` directory contains various demonstrations of the x402 extension. Each example also has its own `README.md` with instructions on how to run it.
 
+### 🎯 **Nevermined Demo**
+
+We provide a complete, production-ready demo showcasing x402 payments with **Nevermined** blockchain integration:
+
+- **[ADK Demo with Nevermined](python/examples/adk-demo/README.md)**: A full end-to-end payment flow demonstration using Google's ADK (Agent Development Kit) and Nevermined's payment infrastructure. This demo shows:
+  - Client and merchant agents communicating via the A2A protocol
+  - Real on-chain payment verification and settlement
+  - X402 access token generation and validation
+  - Complete payment flow from request to completion
+
+The Nevermined demo uses the `payments_py` SDK for payment processing and demonstrates how to integrate x402 payments into production agent systems.
+
 ## 🏗️ **Architecture**
 
 The `x402_a2a` libraries follow a **functional core, imperative shell** architecture:
 
-*   **Core Protocol:** The fundamental data structures and functions for creating, signing, and verifying payments.
-*   **Executors:** Middleware that automates the payment flow, making it easy to add payment capabilities to any agent.
+- **Core Protocol:** The fundamental data structures and functions for creating, signing, and verifying payments.
+- **Executors:** Middleware that automates the payment flow, making it easy to add payment capabilities to any agent.
 
 This design provides both flexibility and ease of use, allowing developers to either build custom payment logic with the core protocol or use the executors for a more hands-off approach.
 
 ## 📚 **Learn More**
 
-*   **[Specification](spec/v0.1/spec.md)**: The complete technical specification for the x402 extension.
-*   **[Python Library](python/x402_a2a/README.md)**: The documentation for the Python implementation of the x402 extension.
-*   **[Python Examples](python/examples/)**: The directory containing demonstration applications for the Python implementation.
-*   **[A2A Protocol](https://github.com/a2aproject/a2a-python)**: The core agent-to-agent protocol.
-*   **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
+- **[Specification](spec/v0.1/spec.md)**: The complete technical specification for the x402 extension.
+- **[Python Library](python/x402_a2a/README.md)**: The documentation for the Python implementation of the x402 extension.
+- **[Nevermined Demo](python/examples/adk-demo/README.md)**: Complete end-to-end payment flow demonstration with Nevermined integration.
+- **[Python Examples](python/examples/)**: The directory containing demonstration applications for the Python implementation.
+- **[A2A Protocol](https://github.com/a2aproject/a2a-python)**: The core agent-to-agent protocol.
+- **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
+- **[Nevermined Documentation](https://docs.nevermined.app/)**: Documentation for Nevermined's payment infrastructure.
+- **[Payments-py SDK](https://github.com/nevermined-io/payments-py)**: The Python SDK for Nevermined payments.
 
 ## 🤝 **Contributing**
 

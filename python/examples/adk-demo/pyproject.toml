@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
     "a2a-sdk",
     "google-adk>=0.5.0",
-    "x402>=0.1.4",
+    "x402",  # Installed from git via [tool.uv.sources]
     "click>=8.2.0",
     "eth-account>=0.13.7",
     "httpx>=0.28.1",
@@ -14,6 +14,9 @@ dependencies = [
     "web3>=7.10.0",
     "cdp-sdk>=1.20.0",
     "x402-a2a",
+    "payments-py>=0.13.1",
+    "jsonschema>=4.0.0",  # For extension validation
+    "litellm>=1.50.0",  # For OpenAI/multi-provider support
 ]
 
 [build-system]
@@ -28,12 +31,22 @@ packages = ["server", "client"]
 
 [project.scripts]
 server = "server.__main__:main"
+create-payasyougo-plan = "utils.create_payasyougo_plan:main"
+attach-plan-to-agent = "utils.attach_plan_to_agent:main"
 
 [tool.uv.workspace]
 members = ["client"]
 
+# Development: Use local editable packages for development
+# Production: Will use published packages from PyPI
 [tool.uv.sources]
 x402-a2a = { path = "../../../python/x402_a2a", editable = true }
+# Uncomment for local development:
+# payments-py = { path = "../../../../payments-py", editable = true }
+
+# Use x402 v2 from GitHub (v2-development branch)
+# This will be replaced with PyPI version when v2 is officially released
+x402 = { git = "https://github.com/coinbase/x402.git", subdirectory = "python/x402", branch = "v2-development" }
 
 [tool.ruff]
 target-version = "py313"

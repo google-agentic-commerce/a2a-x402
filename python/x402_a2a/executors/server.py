@@ -34,7 +34,10 @@ from ..types import (
     Task,
     TaskStatus,
     TaskState,
-    x402PaymentRequiredResponse,
+    # V1 types
+    NvmPaymentRequiredResponse,
+    # V2 types (nvm:erc4337 scheme)
+    X402PaymentRequired,
     VerifyResponse,
 )
 
@@ -106,12 +109,34 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         )
         self.utils.get_payment_status(task)
 
+        # Check for payment status with detailed logging
+        task_status = self.utils.get_payment_status_from_task(context.current_task)
+        message_status = self.utils.get_payment_status_from_message(context.message)
+
+        logger.info(
+            f"🔍 Payment status check - Task status: {task_status}, Message status: {message_status}"
+        )
+        logger.info(f"🔍 Expected status: {PaymentStatus.PAYMENT_SUBMITTED.value}")
         if (
-            self.utils.get_payment_status_from_task(context.current_task)
-            == PaymentStatus.PAYMENT_SUBMITTED
-            or self.utils.get_payment_status_from_message(context.message)
-            == PaymentStatus.PAYMENT_SUBMITTED
+            context.message
+            and hasattr(context.message, "metadata")
+            and context.message.metadata
         ):
+            logger.info(
+                f"🔍 Message metadata keys: {list(context.message.metadata.keys())}"
+            )
+            logger.info(
+                f"🔍 Has PAYLOAD_KEY ({self.utils.PAYLOAD_KEY}): {self.utils.PAYLOAD_KEY in context.message.metadata}"
+            )
+            logger.info(
+                f"🔍 Has STATUS_KEY ({self.utils.STATUS_KEY}): {self.utils.STATUS_KEY in context.message.metadata}"
+            )
+
+        if (
+            task_status == PaymentStatus.PAYMENT_SUBMITTED.value
+            or message_status == PaymentStatus.PAYMENT_SUBMITTED.value
+        ):
+            logger.info("✅ Payment status detected - processing paid request")
             return await self._process_paid_request(context, event_queue)
 
         try:
@@ -241,6 +266,15 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 task = self.utils.record_payment_success(task, settle_response)
 
                 self._payment_requirements_store.pop(task.id, None)
+
+                # Preserve settlement metadata for final task returned to client
+                # Store in task.metadata so it persists through task completion
+                if not task.metadata:
+                    task.metadata = {}
+                task.metadata[self.utils.RECEIPTS_KEY] = settle_response.model_dump(
+                    by_alias=True
+                )
+                logger.info("Settlement receipt stored in task.metadata for client")
             else:
                 logger.warning(f"Settlement failed: {settle_response.error_reason}")
                 error_code = (
@@ -317,8 +351,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     ):
         """Handle x402PaymentRequiredException to request payment.
 
-        Extracts payment requirements directly from the exception and creates
-        a payment required response for the client.
+        Uses X402PaymentRequired with nvm:erc4337 scheme.
         """
         task = context.current_task
         if not task:
@@ -340,16 +373,14 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             # Ensure the existing task is always in the input_required state
             task.status.state = TaskState.input_required
 
-        # Extract payment requirements directly from the exception
-        accepts_array = exception.get_accepts_array()
-        error_message = str(exception)
+        logger.info("🆕 Using x402 v2 format with nvm:erc4337 scheme")
 
-        # Store payment requirements for later correlation
-        self._payment_requirements_store[task.id] = accepts_array
+        # Get X402PaymentRequired from exception
+        payment_required = exception.payment_required
 
-        payment_required = x402PaymentRequiredResponse(
-            x402_version=1, accepts=accepts_array, error=error_message
-        )
+        # Store accepts array for later (we'll need it for matching)
+        if payment_required and payment_required.accepts:
+            self._payment_requirements_store[task.id] = payment_required.accepts
 
         # Update task with payment requirements
         task = self.utils.create_payment_required_task(task, payment_required)

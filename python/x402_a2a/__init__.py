@@ -13,19 +13,35 @@
 # limitations under the License.
 """x402_a2a - x402 Payment Protocol Extension for A2A."""
 
+# A2A Integration utilities (from payments-py x402 module)
+from payments_py.x402.a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
+
+# Nevermined X402 Types (from payments-py x402 module)
+from payments_py.x402 import (
+    PaymentRequirements,
+    NvmPaymentRequiredResponse,
+    PaymentPayload,
+    SessionKeyPayload,
+    VerifyResponse,
+    SettleResponse,
+    NeverminedFacilitator,
+    SupportedNetworks as NvmSupportedNetworks,
+    SupportedSchemes as NvmSupportedSchemes,
+)
+
 # Core x402 Protocol Types (from x402.types)
 from x402.types import (
-    PaymentRequirements,
-    x402PaymentRequiredResponse,
-    PaymentPayload,
-    SettleResponse,
+    # PaymentRequirements,
+    # x402PaymentRequiredResponse,
+    # PaymentPayload,
+    # SettleResponse,
     ExactPaymentPayload,
     EIP3009Authorization,
     TokenAmount,
     TokenAsset,
     EIP712Domain,
     SupportedNetworks,
-    VerifyResponse,
+    # VerifyResponse,
 )
 
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
@@ -61,8 +77,7 @@ from .core import (
     process_payment,
     verify_payment,
     settle_payment,
-    # State Management
-    x402Utils,
+    # State Management (X402A2AUtils imported from payments_py above)
     create_payment_submission_message,
     extract_task_id,
     # Helper functions (new exception-based approach)
@@ -84,7 +99,8 @@ __version__ = "1.0.0"
 __all__ = [
     # Core x402 Protocol Types
     "PaymentRequirements",
-    "x402PaymentRequiredResponse",
+    # "x402PaymentRequiredResponse",
+    "NvmPaymentRequiredResponse",
     "PaymentPayload",
     "VerifyResponse",
     "SettleResponse",
@@ -98,11 +114,16 @@ __all__ = [
     # Facilitator
     "FacilitatorConfig",
     "FacilitatorClient",
+    "NeverminedFacilitator",
     # Extension Constants
     "X402_EXTENSION_URI",
     # A2A-Specific Types
     "PaymentStatus",
     "x402Metadata",
+    # A2A Integration (from payments_py.x402)
+    "X402A2AUtils",
+    "X402Metadata",
+    "X402PaymentStatus",
     # Configuration
     "x402ExtensionConfig",
     # Error Types
@@ -123,8 +144,7 @@ __all__ = [
     "process_payment",
     "verify_payment",
     "settle_payment",
-    # State Management
-    "x402Utils",
+    # State Management (X402A2AUtils from payments_py.x402)
     "create_payment_submission_message",
     "extract_task_id",
     # Helper functions (new exception-based approach)
@@ -140,4 +160,7 @@ __all__ = [
     "x402BaseExecutor",
     "x402ServerExecutor",
     "x402ClientExecutor",
+    "SessionKeyPayload",
+    "VerifyResponse",
+    "SettleResponse",
 ]

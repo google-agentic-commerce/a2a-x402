@@ -13,8 +13,11 @@
 # limitations under the License.
 """Protocol error types and error code mapping."""
 
-from typing import List, Union, Optional
+from typing import List, Union, Optional, TYPE_CHECKING
 from x402.types import PaymentRequirements, TokenAmount
+
+if TYPE_CHECKING:
+    from payments_py.x402 import X402PaymentRequired
 
 
 class x402Error(Exception):
@@ -50,99 +53,51 @@ class StateError(x402Error):
 class x402PaymentRequiredException(x402Error):
     """Exception thrown by delegate agents to request payment.
 
-    This exception allows delegate agents to dynamically specify payment
-    requirements instead of relying on static server configuration.
+    Uses X402PaymentRequired with nvm:erc4337 scheme in accepts array.
 
     Example:
-        from x402_a2a.types.errors import x402PaymentRequiredException
-        from x402_a2a.core.merchant import create_payment_requirements
+        from x402_a2a.types import x402PaymentRequiredException
+        from payments_py.x402 import X402PaymentRequired, X402Resource, X402Scheme, X402SchemeExtra
 
-        # Single payment option
-        requirements = create_payment_requirements(
-            price="$1.00",
-            pay_to_address="0x123...",
-            resource="/premium-service"
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/product"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id="...",
+                    extra=X402SchemeExtra(agent_id="...")
+                )
+            ],
+            extensions={}
         )
+
         raise x402PaymentRequiredException(
             "Premium feature requires payment",
-            payment_requirements=requirements
-        )
-
-        # Multiple payment options
-        raise x402PaymentRequiredException(
-            "Choose payment method",
-            payment_requirements=[basic_req, premium_req]
+            payment_required=payment_required
         )
     """
 
     def __init__(
         self,
         message: str,
-        payment_requirements: Union[PaymentRequirements, List[PaymentRequirements]],
+        payment_required: Optional["X402PaymentRequired"] = None,
         error_code: Optional[str] = None,
     ):
         """Initialize payment required exception.
 
         Args:
             message: Human-readable error message
-            payment_requirements: Single requirement or list of payment options
+            payment_required: X402PaymentRequired with nvm:erc4337 scheme
             error_code: Optional x402 error code for the failure
         """
         super().__init__(message)
 
-        # Normalize to list format for consistency
-        if isinstance(payment_requirements, list):
-            self.payment_requirements = payment_requirements
-        else:
-            self.payment_requirements = [payment_requirements]
-
+        self.payment_required = payment_required
+        self.version = 2
         self.error_code = error_code
 
-    def get_accepts_array(self) -> List[PaymentRequirements]:
-        """Get payment requirements in x402PaymentRequiredResponse.accepts format.
-
-        Returns:
-            List of PaymentRequirements for the accepts array
-        """
-        return self.payment_requirements
-
-    @classmethod
-    def for_service(
-        cls,
-        price: Union[str, int, TokenAmount],
-        pay_to_address: str,
-        resource: str,
-        network: str = "base",
-        description: str = "Payment required for this service",
-        message: Optional[str] = None,
-    ) -> "x402PaymentRequiredException":
-        """Create payment exception for a simple service.
-
-        Helper method for common use case of single payment requirement.
-
-        Args:
-            price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
-            pay_to_address: Ethereum address to receive payment
-            resource: Resource identifier (e.g., "/api/generate")
-            network: Blockchain network (default: "base")
-            description: Human-readable description
-            message: Exception message (default: uses description)
-
-        Returns:
-            x402PaymentRequiredException with single payment requirement
-        """
-        # Import here to avoid circular imports
-        from ..core.merchant import create_payment_requirements
-
-        requirements = create_payment_requirements(
-            price=price,
-            pay_to_address=pay_to_address,
-            resource=resource,
-            network=network,
-            description=description,
-        )
-
-        return cls(message=message or description, payment_requirements=requirements)
 
 
 class x402ErrorCode:

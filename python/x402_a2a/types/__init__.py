@@ -26,9 +26,9 @@ from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
 from x402.types import (
-    PaymentRequirements,
-    x402PaymentRequiredResponse,
-    PaymentPayload,
+    # PaymentRequirements,
+    # x402PaymentRequiredResponse,
+    # PaymentPayload,
     VerifyResponse,
     SettleResponse,
     ExactPaymentPayload,
@@ -38,6 +38,22 @@ from x402.types import (
     EIP712Domain,
     SupportedNetworks,
 )
+# x402 types from payments-py SDK
+from payments_py.x402 import (
+    # Core types
+    PaymentRequirements,
+    NvmPaymentRequiredResponse,
+    PaymentPayload,
+    SessionKeyPayload,
+    VerifyResponse,
+    SettleResponse,
+    # x402 v2 types (nvm:erc4337 scheme)
+    X402PaymentRequired,
+    X402Scheme,
+    X402SchemeExtra,
+    X402Resource,
+)
+
 from x402.facilitator import FacilitatorConfig, FacilitatorClient
 
 from .state import PaymentStatus, x402Metadata
@@ -61,6 +77,7 @@ from ..extension import (
 )
 
 __all__ = [
+    # A2A types
     "Task",
     "Message",
     "AgentCard",
@@ -71,11 +88,19 @@ __all__ = [
     "AgentExecutor",
     "RequestContext",
     "EventQueue",
+    # x402 core types
     "PaymentRequirements",
-    "x402PaymentRequiredResponse",
     "PaymentPayload",
+    "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    "NvmPaymentRequiredResponse",
+    # x402 v2 types (nvm:erc4337 scheme)
+    "X402PaymentRequired",
+    "X402Scheme",
+    "X402SchemeExtra",
+    "X402Resource",
+    # x402 base types
     "ExactPaymentPayload",
     "EIP3009Authorization",
     "TokenAmount",
@@ -84,8 +109,10 @@ __all__ = [
     "SupportedNetworks",
     "FacilitatorConfig",
     "FacilitatorClient",
+    # State types
     "PaymentStatus",
     "x402Metadata",
+    # Error types
     "x402Error",
     "MessageError",
     "ValidationError",
@@ -94,6 +121,7 @@ __all__ = [
     "x402PaymentRequiredException",
     "x402ErrorCode",
     "map_error_to_code",
+    # Config types
     "X402_EXTENSION_URI",
     "x402ExtensionConfig",
     "x402ServerConfig",

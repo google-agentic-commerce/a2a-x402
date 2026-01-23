@@ -13,6 +13,7 @@ keywords = ["a2a", "x402", "payments", "ethereum", "coinbase", "google"]
 dependencies = [
     "a2a-sdk",  # For A2A protocol integration
     "x402>=0.2.0",  # For x402 payment protocol
+    "payments-py>=0.1.0",  # Nevermined payments SDK with x402 module
     "eth-account>=0.13.7",  # For Ethereum account management
     "httpx>=0.28.1",  # For async HTTP client
     "pydantic>=2.0.0",  # For data validation
@@ -34,11 +35,16 @@ lint = [
 test = "pytest:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-force-include = { "__init__.py" = "x402_a2a/__init__.py", "core" = "x402_a2a/core", "executors" = "x402_a2a/executors", "types" = "x402_a2a/types", "extension.py" = "x402_a2a/extension.py" }
+[tool.setuptools]
+# Tell setuptools that the x402_a2a package is in the current directory
+packages = ["x402_a2a", "x402_a2a.core", "x402_a2a.executors", "x402_a2a.types"]
+package-dir = {"x402_a2a" = "."}
+
+[tool.setuptools.package-data]
+x402_a2a = ["py.typed"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -56,3 +62,9 @@ markers = [
 
 [tool.ruff]
 target-version = "py311"
+
+# Development: Use local editable payments-py for development
+# Production: Will use published payments-py from PyPI
+[tool.uv.sources]
+# Uncomment for local development:
+# payments-py = { path = "../../../payments-py", editable = true }
