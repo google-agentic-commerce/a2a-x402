@@ -23,7 +23,7 @@ from .merchant import create_payment_requirements
 def require_payment(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
-    resource: Optional[str] = None,
+    resource: str,
     network: str = "base",
     description: str = "Payment required for this service",
     message: Optional[str] = None,
@@ -35,7 +35,7 @@ def require_payment(
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
         pay_to_address: Ethereum address to receive payment
-        resource: Resource identifier (auto-generated if None)
+        resource: Resource identifier (e.g., "/api/generate")
         network: Blockchain network (default: "base")
         description: Human-readable description
         message: Exception message (default: uses description)
@@ -56,7 +56,7 @@ def require_payment(
     return x402PaymentRequiredException.for_service(
         price=price,
         pay_to_address=pay_to_address,
-        resource=resource or "/service",
+        resource=resource,
         network=network,
         description=description,
         message=message,
