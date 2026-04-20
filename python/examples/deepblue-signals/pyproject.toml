@@ -1,0 +1,44 @@
+[project]
+name = "deepblue-signals-x402-demo"
+version = "0.1.0"
+description = "DeepBlue x402 trading signals demo — agents pay per signal via A2A x402"
+requires-python = ">=3.13"
+dependencies = [
+    "a2a-sdk",
+    "google-adk>=0.5.0",
+    "x402>=0.1.4",
+    "click>=8.2.0",
+    "eth-account>=0.13.7",
+    "httpx>=0.28.1",
+    "uvicorn>=0.34.2",
+    "web3>=7.10.0",
+    "cdp-sdk>=1.20.0",
+    "x402-a2a",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["server", "client_agent"]
+
+[project.scripts]
+server = "server.__main__:main"
+
+[tool.uv.workspace]
+members = ["client_agent"]
+
+[tool.uv.sources]
+x402-a2a = { path = "../../../python/x402_a2a", editable = true }
+
+[tool.ruff]
+target-version = "py313"
+
+[dependency-groups]
+lint = [
+    "ruff>=0.13.1",
+]
