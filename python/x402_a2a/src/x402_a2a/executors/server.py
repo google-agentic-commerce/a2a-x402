@@ -20,6 +20,7 @@ from typing import Optional, Dict, List
 from a2a.server.tasks import TaskUpdater
 
 from .base import x402BaseExecutor
+from ..core.policy import NoOpSpendingPolicy, SpendingPolicy
 from ..types import (
     AgentExecutor,
     RequestContext,
@@ -64,15 +65,24 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         self,
         delegate: AgentExecutor,
         config: x402ExtensionConfig,
+        policy: Optional[SpendingPolicy] = None,
     ):
         """Initialize server executor.
 
         Args:
             delegate: Underlying agent executor for business logic
             config: x402 extension configuration
+            policy: Optional spending policy invoked before settlement.
+                Defaults to ``NoOpSpendingPolicy`` so behavior is
+                unchanged unless a policy is supplied. See
+                :class:`x402_a2a.core.policy.SpendingPolicy` for the hook
+                contract and ``BoundedSpendPolicy`` for a reference
+                in-memory implementation. Addresses
+                https://github.com/google-agentic-commerce/a2a-x402/issues/60.
         """
         super().__init__(delegate, config)
         self._payment_requirements_store: Dict[str, List[PaymentRequirements]] = {}
+        self._policy: SpendingPolicy = policy or NoOpSpendingPolicy()
 
     @abstractmethod
     async def verify_payment(
@@ -181,6 +191,16 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             f"Retrieved payment requirements: {payment_requirements.model_dump_json(indent=2)}"
         )
 
+        decision = self._policy.check(payment_payload, payment_requirements)
+        if not decision.allowed:
+            logger.warning(f"Payment rejected by spending policy: {decision.reason}")
+            return await self._fail_payment(
+                task,
+                x402ErrorCode.POLICY_REJECTED,
+                decision.reason or "Spending policy rejected payment",
+                event_queue,
+            )
+
         try:
             logger.info("Calling self.verify_payment...")
             verify_response = await self.verify_payment(
@@ -263,10 +283,16 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 )
 
                 self._payment_requirements_store.pop(task.id, None)
+            self._policy.record_settlement(
+                payment_payload, payment_requirements, settle_response.success
+            )
             await event_queue.enqueue_event(task)
             logger.info("Settlement processing finished.")
         except Exception as e:
             logger.error(f"Exception during settlement: {e}", exc_info=True)
+            self._policy.record_settlement(
+                payment_payload, payment_requirements, success=False
+            )
             await self._fail_payment(
                 task,
                 x402ErrorCode.SETTLEMENT_FAILED,

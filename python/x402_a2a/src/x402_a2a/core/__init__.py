@@ -26,6 +26,12 @@ from .helpers import (
     check_payment_context,
 )
 from .agent import create_x402_agent_card
+from .policy import (
+    SpendingPolicy,
+    NoOpSpendingPolicy,
+    BoundedSpendPolicy,
+    PolicyDecision,
+)
 
 __all__ = [
     # Core merchant/wallet functions
@@ -48,4 +54,9 @@ __all__ = [
     "check_payment_context",
     # Agent utilities
     "create_x402_agent_card",
+    # Spending policy hooks (issue #60)
+    "SpendingPolicy",
+    "NoOpSpendingPolicy",
+    "BoundedSpendPolicy",
+    "PolicyDecision",
 ]
