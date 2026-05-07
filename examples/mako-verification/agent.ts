@@ -26,11 +26,11 @@ async function handleA2APayment(action: A2APaymentRequiredAction) {
 
   if (verdict.verdict !== "callable" || verdict.score < 70) {
     console.warn("MAKO blocked the call:");
-    for (const w of verdict.warnings) console.warn(" -", w);
+    for (const w of verdict.warnings ?? []) console.warn(" -", w);
     return {
       type: "a2a_response",
       status: "blocked_by_verifier",
-      reason: verdict.warnings.join("; ") || "verdict not callable",
+      reason: verdict.warnings?.join("; ") || "verdict not callable",
       receipt: verdict.receipt,
     };
   }
@@ -50,7 +50,7 @@ const inbound: A2APaymentRequiredAction = {
   type: "paymentRequired",
   target_url: process.env.TARGET_URL ?? "https://mako.pollinateresearch.com",
   intended_task: "Fetch latest governance proposal signal for arbitrumfoundation.eth",
-  max_price_usdc: 0.10,
+  max_price_usdc: 0.50,
 };
 
 handleA2APayment(inbound)

@@ -16,7 +16,7 @@ Total cost: $0.25 + the original target call. The verification receipt is hash-a
 
 ```bash
 npm install
-AGENT_PRIVATE_KEY=0x... TARGET_URL=https://some-x402-service node agent.ts
+AGENT_PRIVATE_KEY=0x... TARGET_URL=https://some-x402-service npx tsx agent.ts
 ```
 
 ## Composability
