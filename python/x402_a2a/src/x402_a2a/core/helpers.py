@@ -35,7 +35,7 @@ def require_payment(
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
         pay_to_address: Ethereum address to receive payment
-        resource: Resource identifier (auto-generated if None)
+        resource: Resource identifier
         network: Blockchain network (default: "base")
         description: Human-readable description
         message: Exception message (default: uses description)
@@ -53,10 +53,13 @@ def require_payment(
                 description="Premium feature access"
             )
     """
+    if not resource:
+        raise ValueError("resource is required when creating payment requirements")
+
     return x402PaymentRequiredException.for_service(
         price=price,
         pay_to_address=pay_to_address,
-        resource=resource or "/service",
+        resource=resource,
         network=network,
         description=description,
         message=message,
@@ -106,7 +109,7 @@ def paid_service(
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
         pay_to_address: Ethereum address to receive payment
-        resource: Resource identifier (auto-generated from function name if None)
+        resource: Resource identifier
         network: Blockchain network (default: "base")
         description: Human-readable description
 
@@ -114,6 +117,7 @@ def paid_service(
         @paid_service(
             price="$2.00",
             pay_to_address="0x123...",
+            resource="https://api.example.com/generate-premium-image",
             description="Premium image generation"
         )
         async def generate_premium_image(self, prompt: str):
@@ -129,12 +133,10 @@ def paid_service(
         def wrapper(*args, **kwargs):
             # For now, always require payment on first call
             # In a real implementation, you might check payment status from context
-            effective_resource = resource or f"/{func.__name__}"
-
             raise require_payment(
                 price=price,
                 pay_to_address=pay_to_address,
-                resource=effective_resource,
+                resource=resource,
                 network=network,
                 description=description,
             )
@@ -258,7 +260,7 @@ def smart_paid_service(
     Args:
         price: Payment amount (e.g., "$1.00", 1.00, TokenAmount)
         pay_to_address: Ethereum address to receive payment
-        resource: Resource identifier (auto-generated from function name if None)
+        resource: Resource identifier
         network: Blockchain network (default: "base")
         description: Human-readable description
 
@@ -266,6 +268,7 @@ def smart_paid_service(
         @smart_paid_service(
             price="$1.00",
             pay_to_address="0x123...",
+            resource="https://api.example.com/generate-text",
             description="AI text generation"
         )
         async def generate_text(self, context, prompt: str):
@@ -291,12 +294,10 @@ def smart_paid_service(
                     return func(*args, **kwargs)
 
             # No payment found, require payment
-            effective_resource = resource or f"/{func.__name__}"
-
             raise require_payment(
                 price=price,
                 pay_to_address=pay_to_address,
-                resource=effective_resource,
+                resource=resource,
                 network=network,
                 description=description,
             )
