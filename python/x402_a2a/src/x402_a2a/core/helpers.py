@@ -20,10 +20,16 @@ from ..types import x402PaymentRequiredException, PaymentRequirements, TokenAmou
 from .merchant import create_payment_requirements
 
 
+def _validate_resource(resource: str) -> str:
+    if not resource:
+        raise ValueError("resource is required when creating payment requirements")
+    return resource
+
+
 def require_payment(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
-    resource: Optional[str] = None,
+    resource: str,
     network: str = "base",
     description: str = "Payment required for this service",
     message: Optional[str] = None,
@@ -53,8 +59,7 @@ def require_payment(
                 description="Premium feature access"
             )
     """
-    if not resource:
-        raise ValueError("resource is required when creating payment requirements")
+    resource = _validate_resource(resource)
 
     return x402PaymentRequiredException.for_service(
         price=price,
@@ -100,7 +105,7 @@ def require_payment_choice(
 def paid_service(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
-    resource: Optional[str] = None,
+    resource: str,
     network: str = "base",
     description: str = "Payment required for this service",
 ):
@@ -127,6 +132,7 @@ def paid_service(
         # When called without payment, will raise x402PaymentRequiredException
         # When called with valid payment, will execute normally
     """
+    resource = _validate_resource(resource)
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
@@ -248,7 +254,7 @@ def check_payment_context(context: Any) -> Optional[str]:
 def smart_paid_service(
     price: Union[str, int, TokenAmount],
     pay_to_address: str,
-    resource: Optional[str] = None,
+    resource: str,
     network: str = "base",
     description: str = "Payment required for this service",
 ):
@@ -275,6 +281,7 @@ def smart_paid_service(
             # Payment automatically handled based on context
             return await self.ai_service.generate(prompt)
     """
+    resource = _validate_resource(resource)
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
@@ -285,6 +292,11 @@ def smart_paid_service(
                 if hasattr(arg, "current_task"):
                     context = arg
                     break
+            if context is None:
+                for value in kwargs.values():
+                    if hasattr(value, "current_task"):
+                        context = value
+                        break
 
             # Check if payment already exists in context
             if context:
