@@ -57,6 +57,7 @@ This design provides both flexibility and ease of use, allowing developers to ei
 *   **[Python Examples](python/examples/)**: The directory containing demonstration applications for the Python implementation.
 *   **[A2A Protocol](https://github.com/a2aproject/a2a-python)**: The core agent-to-agent protocol.
 *   **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
+*   **[AP2 Protocol](https://github.com/google-agentic-commerce/AP2)**: The Agent Payments Protocol.
 
 ## 🤝 **Contributing**
 
