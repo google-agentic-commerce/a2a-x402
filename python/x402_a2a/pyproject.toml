@@ -11,7 +11,7 @@ authors = [
 requires-python = ">=3.10"
 keywords = ["a2a", "x402", "payments", "ethereum", "coinbase", "google"]
 dependencies = [
-    "a2a-sdk>=0.1.0",  # For A2A protocol integration
+    "a2a-sdk>=1.0.2",  # For A2A protocol integration
     "x402>=0.2.0",  # For x402 payment protocol
     "eth-account>=0.13.7",  # For Ethereum account management
     "httpx>=0.28.1",  # For async HTTP client
