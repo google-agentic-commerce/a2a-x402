@@ -14,6 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'google-agentic-commerce'
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.BOT_TOKEN }}
