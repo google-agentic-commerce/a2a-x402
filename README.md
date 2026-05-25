@@ -11,7 +11,7 @@ Enable **agent commerce** by providing a standardized way for agents to charge f
 This repository contains the specification, core libraries, and example implementations for the A2A x402 extension, supporting multiple languages.
 
 ```
-x402-a2a/
+a2a-x402/
 ├── spec/
 │   └── v0.1/
 │       └── spec.md         # The official x402 extension specification
