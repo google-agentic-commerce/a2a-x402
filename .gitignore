@@ -14,5 +14,7 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Claude Code files
-claude.md
+# Coding Agent MD files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
