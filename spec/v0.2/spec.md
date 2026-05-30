@@ -479,6 +479,17 @@ If a payment fails, the server MUST set the x402.payment.status to payment-faile
 * **Replay Protection**: Servers MUST track used nonces to prevent replay attacks.  
 * **Transport Security**: All A2A communication MUST use a secure transport layer like HTTPS/TLS.
 
+### **10.1. Production Payment Binding Requirements**
+
+Implementations that grant paid service results, mutate account state, or trigger downstream commerce workflows MUST bind payment verification to the exact task and paid resource being fulfilled:
+
+* **Task and requirement binding**: Merchant Agents MUST validate that the submitted `PaymentPayload` matches a `PaymentRequirements` option that was previously issued for the same `taskId`. If the accepted requirements include a `resource` field, the Merchant Agent MUST compare it exactly against the resource identifier being fulfilled before settlement. If the flow is embedded in a higher-level protocol, the implementation MUST also verify that the enclosing order or mandate identity matches the task being fulfilled.
+* **Atomic claim before grant**: Merchant Agents MUST atomically record the accepted payment claim, such as the nonce, transaction authorization, or scheme-specific payment identifier, before returning paid artifacts or performing paid side effects. To ensure idempotency, duplicate submissions for an already claimed payment MUST NOT produce another paid result; implementations SHOULD return the existing receipt or fail with `DUPLICATE_NONCE`.
+* **Settlement and finality**: Merchant Agents MUST NOT set `x402.payment.status` to `"payment-completed"` or release final paid artifacts until the settlement response satisfies the implementation's finality policy. The `"payment-verified"` status MAY be used after signature verification but before settlement is final.
+* **Receipt history**: `x402.payment.receipts` MUST append every settlement attempt, including failures, and MUST NOT replace earlier receipt entries for the same task.
+* **Scheme field checks**: When the payment scheme or facilitator exposes payer, recipient, network, asset, amount, or resource fields, Merchant Agents MUST compare those values against the issued `PaymentRequirements` and reject mismatches before granting service.
+* **HTTP transport handling**: Implementations that expose A2A payment messages over HTTP SHOULD mark payment-required and paid-task responses with cache controls such as `Cache-Control: no-store, private`. Gateways and middleware MUST reject ambiguous duplicate payment metadata or payment headers instead of silently choosing one.
+
 ## **11\. References**
 
 * [**A2A Protocol Specification**](https://a2a-protocol.org/latest/specification)  
