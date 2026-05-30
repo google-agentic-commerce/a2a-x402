@@ -155,6 +155,7 @@ class x402ErrorCode:
     NETWORK_MISMATCH = "NETWORK_MISMATCH"
     INVALID_AMOUNT = "INVALID_AMOUNT"
     SETTLEMENT_FAILED = "SETTLEMENT_FAILED"
+    POLICY_REJECTED = "POLICY_REJECTED"
 
     @classmethod
     def get_all_codes(cls) -> list[str]:
@@ -167,6 +168,7 @@ class x402ErrorCode:
             cls.NETWORK_MISMATCH,
             cls.INVALID_AMOUNT,
             cls.SETTLEMENT_FAILED,
+            cls.POLICY_REJECTED,
         ]
 
 
