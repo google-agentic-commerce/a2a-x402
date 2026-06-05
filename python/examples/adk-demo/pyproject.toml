@@ -5,13 +5,13 @@ description = "ADK x402 Payment Protocol Demo using refactored x402_a2a package"
 requires-python = ">=3.13"
 dependencies = [
     "a2a-sdk",
-    "google-adk>=0.5.0",
+    "google-adk>=1.33.0",
     "x402>=0.1.4",
-    "click>=8.2.0",
+    "click>=8.3.3",
     "eth-account>=0.13.7",
     "httpx>=0.28.1",
-    "uvicorn>=0.34.2",
-    "web3>=7.10.0",
+    "uvicorn>=0.46.0",
+    "web3>=7.16.0",
     "cdp-sdk>=1.20.0",
     "x402-a2a",
 ]
@@ -40,5 +40,5 @@ target-version = "py313"
 
 [dependency-groups]
 lint = [
-    "ruff>=0.13.1",
+    "ruff>=0.15.12",
 ]
