@@ -26,6 +26,7 @@ from x402_a2a.types import (
     SettleResponse,
 )
 from x402_a2a.core.utils import x402Utils
+from x402_a2a.core.merchant import create_payment_requirements
 
 # --- Fixtures ---
 
@@ -127,6 +128,40 @@ def test_get_payment_payload_from_message(utils, sample_payment_payload):
     assert isinstance(extracted_payload, PaymentPayload)
     assert extracted_payload.scheme == "exact"
     assert extracted_payload.payload.signature == "0xabc"
+
+
+def test_create_payment_requirements_rejects_invalid_timeouts(monkeypatch):
+    """Payment requirements should not include invalid timeout values."""
+
+    monkeypatch.setattr(
+        "x402_a2a.core.merchant.process_price_to_atomic_amount",
+        lambda price, network: ("100", "0x456", {}),
+    )
+
+    for timeout in (0, -1, 1.5, True):
+        with pytest.raises(ValueError):
+            create_payment_requirements(
+                price="$1.00",
+                pay_to_address="0x123",
+                resource="/test",
+                max_timeout_seconds=timeout,
+            )
+
+
+def test_create_payment_requirements_accepts_positive_integer_timeout(monkeypatch):
+    monkeypatch.setattr(
+        "x402_a2a.core.merchant.process_price_to_atomic_amount",
+        lambda price, network: ("100", "0x456", {}),
+    )
+
+    requirements = create_payment_requirements(
+        price="$1.00",
+        pay_to_address="0x123",
+        resource="/test",
+        max_timeout_seconds=60,
+    )
+
+    assert requirements.max_timeout_seconds == 60
 
 
 # --- Tests for x402ServerExecutor ---
