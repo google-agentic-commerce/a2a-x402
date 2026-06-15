@@ -51,6 +51,13 @@ def create_payment_requirements(
         PaymentRequirements object ready for x402PaymentRequiredResponse
     """
 
+    if not isinstance(max_timeout_seconds, int) or isinstance(
+        max_timeout_seconds, bool
+    ):
+        raise ValueError("max_timeout_seconds must be an integer")
+    if max_timeout_seconds <= 0:
+        raise ValueError("max_timeout_seconds must be positive")
+
     max_amount_required, asset_address, eip712_domain = process_price_to_atomic_amount(
         price, network
     )
