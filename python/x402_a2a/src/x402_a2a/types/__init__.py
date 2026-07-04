@@ -53,7 +53,7 @@ from .errors import (
     map_error_to_code,
 )
 
-from .config import X402_EXTENSION_URI, x402ExtensionConfig, x402ServerConfig
+from .config import X402_EXTENSION_URI, x402ExtensionConfig, x402ServerConfig, PaymentVerificationMode
 from ..extension import (
     get_extension_declaration,
     check_extension_activation,
@@ -97,6 +97,7 @@ __all__ = [
     "X402_EXTENSION_URI",
     "x402ExtensionConfig",
     "x402ServerConfig",
+    "PaymentVerificationMode",
     "get_extension_declaration",
     "check_extension_activation",
     "add_extension_activation_header",
