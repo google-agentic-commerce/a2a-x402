@@ -39,6 +39,8 @@ from .types import (
     x402Metadata,
     # Configuration
     x402ExtensionConfig,
+    x402ServerConfig,
+    PaymentVerificationMode,
     # Error Types
     x402Error,
     MessageError,
@@ -91,6 +93,8 @@ __all__ = [
     "x402MessageType",
     "x402Metadata",
     "x402ExtensionConfig",
+    "x402ServerConfig",
+    "PaymentVerificationMode",
     "x402PaymentRequiredException",
     "require_payment",
     "require_payment_choice",

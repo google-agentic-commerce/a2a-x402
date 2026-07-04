@@ -36,6 +36,7 @@ from ..types import (
     TaskState,
     x402PaymentRequiredResponse,
     VerifyResponse,
+    PaymentVerificationMode,
 )
 
 
@@ -78,7 +79,17 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     async def verify_payment(
         self, payload: PaymentPayload, requirements: PaymentRequirements
     ) -> VerifyResponse:
-        """Verifies the payment with a facilitator."""
+        """Verifies the payment with a facilitator.
+
+        What this method guarantees depends on the config's
+        ``verification_mode``:
+
+        - ``format_only`` — checks signature/payload structure only.
+          The caller MUST settle before executing.
+        - ``settlement_check`` — confirms the tx is visible on-chain.
+        - ``settlement_final`` — waits for required_confirmations
+          blocks before returning.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -130,7 +141,32 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     async def _process_paid_request(
         self, context: RequestContext, event_queue: EventQueue
     ):
-        """Process paid request: verify → execute → settle."""
+        """Process paid request: verify → execute → settle (or settle → execute).
+
+        The order depends on ``config.verification_mode``:
+
+        SETTLEMENT_CHECK / SETTLEMENT_FINAL
+            verify → execute → settle
+            (default — verify confirms on-chain presence, settlement
+            completes after execution)
+
+        FORMAT_ONLY
+            verify → settle → execute
+            (format-only verify means settlement must happen before
+            any irreversible work)
+
+        Timing diagram::
+
+            SETTLEMENT_CHECK / SETTLEMENT_FINAL
+            ┌──────────┐    ┌──────────┐    ┌──────────┐
+            │  verify  │───▶│ execute  │───▶│  settle  │
+            └──────────┘    └──────────┘    └──────────┘
+
+            FORMAT_ONLY
+            ┌──────────┐    ┌──────────┐    ┌──────────┐
+            │  verify  │───▶│  settle  │───▶│ execute  │
+            └──────────┘    └──────────┘    └──────────┘
+        """
         logger.info("Starting payment processing...")
         task = context.current_task
         if not task:
@@ -223,6 +259,61 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             or not task.status.message.metadata
         ):
             task.status.message.metadata = {}
+
+        # ── FORMAT_ONLY: settle BEFORE executing ──────────────────────
+        if self.config.verification_mode == PaymentVerificationMode.FORMAT_ONLY:
+            logger.info("FORMAT_ONLY mode: settling before delegate execution.")
+            try:
+                settle_response = await self.settle_payment(
+                    payment_payload, payment_requirements
+                )
+                if settle_response.success:
+                    logger.info("Pre-execution settlement successful.")
+                    task = self.utils.record_payment_success(task, settle_response)
+                    self._payment_requirements_store.pop(task.id, None)
+                else:
+                    logger.warning(
+                        f"Pre-execution settlement failed: "
+                        f"{settle_response.error_reason}"
+                    )
+                    return await self._fail_payment(
+                        task,
+                        x402ErrorCode.SETTLEMENT_FAILED,
+                        settle_response.error_reason or "Settlement failed",
+                        event_queue,
+                    )
+                await event_queue.enqueue_event(task)
+            except Exception as e:
+                logger.error(
+                    f"Exception during pre-execution settlement: {e}",
+                    exc_info=True,
+                )
+                return await self._fail_payment(
+                    task,
+                    x402ErrorCode.SETTLEMENT_FAILED,
+                    f"Pre-execution settlement failed: {e}",
+                    event_queue,
+                )
+
+            # Execute delegate after settlement (settlement is already done)
+            try:
+                logger.info("FORMAT_ONLY: executing delegate after settlement.")
+                await self._delegate.execute(context, event_queue)
+                logger.info("Delegate execution finished.")
+            except Exception as e:
+                logger.error(f"Exception during delegate execution: {e}", exc_info=True)
+                return await self._fail_payment(
+                    task,
+                    x402ErrorCode.SETTLEMENT_FAILED,
+                    f"Service failed: {e}",
+                    event_queue,
+                )
+
+            # FORMAT_ONLY: settlement already complete — return without
+            # falling through to post-execution settlement.
+            return
+
+        # ── EXECUTE DELEGATE ──────────────────────────────────────────
         try:
             logger.info("Executing delegate agent...")
             await self._delegate.execute(context, event_queue)

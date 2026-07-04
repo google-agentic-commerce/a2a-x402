@@ -13,6 +13,7 @@
 # limitations under the License.
 """Configuration types for x402_a2a."""
 
+from enum import Enum
 from typing import Optional, Union
 from pydantic import BaseModel
 
@@ -23,6 +24,31 @@ from x402.types import TokenAmount
 X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1"
 
 
+class PaymentVerificationMode(str, Enum):
+    """Controls what verify_payment guarantees before delegate execution.
+
+    FORMAT_ONLY:
+        verify_payment checks signature and payload structure only — no
+        on-chain interaction. SAFE FOR: low-value calls, idempotent work,
+        or when settle_payment runs before delegate execution.
+        The executor MUST settle BEFORE executing the delegate.
+
+    SETTLEMENT_CHECK:
+        verify_payment confirms the transaction is visible on-chain.
+        Settlement runs AFTER execution. SAFE FOR: most use cases where
+        ~1s block times are acceptable (Base mainnet, L2s).
+
+    SETTLEMENT_FINAL:
+        verify_payment waits for sufficient on-chain confirmations
+        (controlled by required_confirmations). SAFE FOR: high-value
+        flows, irreversible work, cross-chain scenarios.
+    """
+
+    FORMAT_ONLY = "format_only"
+    SETTLEMENT_CHECK = "settlement_check"
+    SETTLEMENT_FINAL = "settlement_final"
+
+
 class x402ExtensionConfig(BaseModel):
     """Configuration for x402 extension."""
 
@@ -30,6 +56,10 @@ class x402ExtensionConfig(BaseModel):
     version: str = "0.1"
     x402_version: int = 1
     required: bool = True
+    verification_mode: PaymentVerificationMode = (
+        PaymentVerificationMode.SETTLEMENT_CHECK
+    )
+    required_confirmations: int = 0
 
 
 class x402ServerConfig(BaseModel):
