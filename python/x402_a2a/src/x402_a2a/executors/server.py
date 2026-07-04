@@ -299,6 +299,26 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                     event_queue,
                 )
 
+            # Execute delegate after settlement (settlement is already done)
+            try:
+                logger.info("FORMAT_ONLY: executing delegate after settlement.")
+                await self._delegate.execute(context, event_queue)
+                logger.info("Delegate execution finished.")
+            except Exception as e:
+                logger.error(
+                    f"Exception during delegate execution: {e}", exc_info=True
+                )
+                return await self._fail_payment(
+                    task,
+                    x402ErrorCode.SETTLEMENT_FAILED,
+                    f"Service failed: {e}",
+                    event_queue,
+                )
+
+            # FORMAT_ONLY: settlement already complete — return without
+            # falling through to post-execution settlement.
+            return
+
         # ── EXECUTE DELEGATE ──────────────────────────────────────────
         try:
             logger.info("Executing delegate agent...")
