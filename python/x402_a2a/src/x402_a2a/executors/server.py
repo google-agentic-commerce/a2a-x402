@@ -262,18 +262,14 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
 
         # ── FORMAT_ONLY: settle BEFORE executing ──────────────────────
         if self.config.verification_mode == PaymentVerificationMode.FORMAT_ONLY:
-            logger.info(
-                "FORMAT_ONLY mode: settling before delegate execution."
-            )
+            logger.info("FORMAT_ONLY mode: settling before delegate execution.")
             try:
                 settle_response = await self.settle_payment(
                     payment_payload, payment_requirements
                 )
                 if settle_response.success:
                     logger.info("Pre-execution settlement successful.")
-                    task = self.utils.record_payment_success(
-                        task, settle_response
-                    )
+                    task = self.utils.record_payment_success(task, settle_response)
                     self._payment_requirements_store.pop(task.id, None)
                 else:
                     logger.warning(
@@ -305,9 +301,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 await self._delegate.execute(context, event_queue)
                 logger.info("Delegate execution finished.")
             except Exception as e:
-                logger.error(
-                    f"Exception during delegate execution: {e}", exc_info=True
-                )
+                logger.error(f"Exception during delegate execution: {e}", exc_info=True)
                 return await self._fail_payment(
                     task,
                     x402ErrorCode.SETTLEMENT_FAILED,

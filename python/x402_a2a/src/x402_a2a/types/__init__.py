@@ -53,7 +53,12 @@ from .errors import (
     map_error_to_code,
 )
 
-from .config import X402_EXTENSION_URI, x402ExtensionConfig, x402ServerConfig, PaymentVerificationMode
+from .config import (
+    X402_EXTENSION_URI,
+    x402ExtensionConfig,
+    x402ServerConfig,
+    PaymentVerificationMode,
+)
 from ..extension import (
     get_extension_declaration,
     check_extension_activation,
