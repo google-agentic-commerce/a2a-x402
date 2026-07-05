@@ -39,7 +39,7 @@ This flow is designed to be implemented in any language, allowing developers to 
 
 Each language-specific implementation (e.g., `python/x402_a2a`) contains its own `README.md` with detailed instructions on how to install dependencies, run tests, and use the library.
 
-The `examples/` directory contains various demonstrations of the x402 extension. Each example also has its own `README.md` with instructions on how to run it.
+Language-specific example directories, such as `python/examples/`, contain demonstrations of the x402 extension. Each example also has its own `README.md` with instructions on how to run it.
 
 ## 🏗️ **Architecture**
 
