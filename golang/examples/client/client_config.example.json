@@ -1,0 +1,12 @@
+{
+  "networkKeyPairs": [
+    {
+      "networkName": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "privateKey": "YOUR_SOLANA_PRIVATE_KEY_BASE58"
+    },
+    {
+      "networkName": "eip155:84532",
+      "privateKey": "0xYOUR_EVM_PRIVATE_KEY_HEX"
+    }
+  ]
+}

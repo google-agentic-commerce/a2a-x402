@@ -1,0 +1,54 @@
+name: Go x402 A2A
+
+on:
+  pull_request:
+    paths:
+      - "golang/**"
+      - ".github/workflows/go-x402-a2a.yml"
+  push:
+    branches: [main]
+    paths:
+      - "golang/**"
+      - ".github/workflows/go-x402-a2a.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: golang
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: golang/go.mod
+          cache-dependency-path: golang/go.sum
+
+      - name: Verify modules
+        run: go mod verify
+
+      - name: Check module files
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            printf 'The following files require gofmt:\n%s\n' "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with race detector
+        run: go test -race -count=1 ./...

@@ -13,6 +13,32 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+
+# Go
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+# Go workspace file
+go.work
+go.work.sum
+# Build directories
+/bin/
+/dist/
+# Test coverage
+*.cover
+*.coverprofile
+coverage.html
+coverage.out
+
+# Go config files (contain sensitive information)
+golang/examples/client/client_config.json
+golang/examples/merchant/server_config.json
 
 # Claude Code files
 claude.md

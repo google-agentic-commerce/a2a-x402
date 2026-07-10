@@ -18,7 +18,7 @@ x402-a2a/
 │
 ├── schemes/                # Directory contains experimental x402 payment schemes drafted by partners and other contributors
 │
-└── {language}/             # Language-specific implementations (e.g., python/, typescript/)
+└── {language}/             # Language-specific implementations (e.g., python/, golang/)
     ├── x402_a2a/           # The core library for the x402 extension
     │
     └── examples/
@@ -37,7 +37,7 @@ This flow is designed to be implemented in any language, allowing developers to 
 
 ## 🚀 **Getting Started**
 
-Each language-specific implementation (e.g., `python/x402_a2a`) contains its own `README.md` with detailed instructions on how to install dependencies, run tests, and use the library.
+Each language-specific implementation contains its own `README.md` with detailed instructions on how to install dependencies, run tests, and use the library. See the [Python implementation](python/x402_a2a/README.md) or the [Go x402 v2 implementation](golang/README.md).
 
 The `examples/` directory contains various demonstrations of the x402 extension. Each example also has its own `README.md` with instructions on how to run it.
 
@@ -55,6 +55,7 @@ This design provides both flexibility and ease of use, allowing developers to ei
 *   **[Specification](spec/v0.1/spec.md)**: The complete technical specification for the x402 extension.
 *   **[Python Library](python/x402_a2a/README.md)**: The documentation for the Python implementation of the x402 extension.
 *   **[Python Examples](python/examples/)**: The directory containing demonstration applications for the Python implementation.
+*   **[Go Library](golang/README.md)**: The x402 v2 Go implementation, including merchant and client examples.
 *   **[A2A Protocol](https://github.com/a2aproject/a2a-python)**: The core agent-to-agent protocol.
 *   **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
 *   **[AP2 Protocol](https://github.com/google-agentic-commerce/AP2)**: The Agent Payments Protocol.
