@@ -59,6 +59,12 @@ This design provides both flexibility and ease of use, allowing developers to ei
 *   **[x402 Protocol](https://x402.gitbook.io/x402)**: The underlying payment protocol.
 *   **[AP2 Protocol](https://github.com/google-agentic-commerce/AP2)**: The Agent Payments Protocol.
 
+## 🌐 **Ecosystem**
+
+Projects and services built on or integrated with the A2A x402 extension:
+
+- **[Nauti-Labs](https://nauti-labs.com)** — Live x402 payment services on Base USDC. Payment Flow Review ($199 USDC), micro tools ($0.02/call), and bot-comm directory lookup. PayTo: `0x369301753a2372304ba4e159bab852339d760989` (spacegravy.base.eth). Live endpoints at `bore.pub:63190`.
+
 ## 🤝 **Contributing**
 
 Contributions are welcome! Please read the [specification](spec/v0.1/spec.md) and the existing code to understand the project's design and goals. Then, feel free to open a pull request with your changes.
