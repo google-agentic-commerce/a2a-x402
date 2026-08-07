@@ -1,6 +1,6 @@
 [project]
 name = "x402-a2a"
-version = "1.0.0"
+version = "0.1.0"
 description = "Official x402 payment protocol extension for A2A"
 readme = "README.md"
 license = { file = "LICENSE" }

@@ -1,0 +1,99 @@
+version: 2
+
+# Strategy: minimize Dependabot PR volume by grouping safe updates (patch + minor)
+# into a single weekly PR per ecosystem/scope, while letting major bumps come as
+# individual PRs that get human review.
+#
+# Scope:
+#   - python/x402_a2a       — published library, full coverage with prod/dev split
+#   - python/examples/adk-demo — example with CI, conservative grouping
+#   - github-actions        — workflow actions at repo root
+#
+# Intentionally skipped:
+#   - python/examples/ap2-demo — depends on a git branch (ap2 @ git+...@main) and
+#     has no dedicated CI; Dependabot adds noise without a safety signal.
+
+updates:
+  # --- x402_a2a: the published library ---
+  - package-ecosystem: "uv"
+    directory: "/python/x402_a2a"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    rebase-strategy: "disabled"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      x402-a2a-prod:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      x402-a2a-dev:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    # Major bumps fall outside the groups above and arrive as individual PRs.
+
+  # --- adk-demo: example with CI coverage ---
+  - package-ecosystem: "uv"
+    directory: "/python/examples/adk-demo"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:15"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 14
+      semver-major-days: 30
+    rebase-strategy: "disabled"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+      - "example"
+    groups:
+      adk-demo-safe:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # --- GitHub Actions ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:30"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
+    rebase-strategy: "disabled"
+    commit-message:
+      prefix: "chore(ci-deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      github-actions-all:
+        patterns:
+          - "*"
