@@ -7,18 +7,22 @@ This package provides a complete implementation of the x402 payment protocol ext
 Instead of static configuration, delegate agents throw `x402PaymentRequiredException` to request payment dynamically:
 
 ```python
-from x402_a2a import x402PaymentRequiredException
+from x402_a2a import paid_service, x402PaymentRequiredException
 
 # In your agent logic:
 if is_premium_feature(request):
     raise x402PaymentRequiredException.for_service(
         price="$5.00",
         pay_to_address="0x123...",
-        resource="/premium-feature"
+        resource="https://api.example.com/premium-feature"
     )
 
 # Or use helper decorators:
-@require_payment(price="$2.00", pay_to_address="0x456...", resource="/ai-service")
+@paid_service(
+    price="$2.00",
+    pay_to_address="0x456...",
+    resource="https://api.example.com/ai-service"
+)
 async def generate_content(prompt):
     return ai_service.generate(prompt)
 ```
@@ -1087,7 +1091,7 @@ class MyAgent:
             raise x402PaymentRequiredException.for_service(
                 price="$5.00",
                 pay_to_address="0xmerchant123",
-                resource="/premium-feature"
+                resource="https://api.example.com/premium-feature"
             )
         # Regular logic continues...
 ```
