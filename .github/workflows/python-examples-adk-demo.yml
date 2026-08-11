@@ -29,7 +29,7 @@ jobs:
         run: uv sync --group lint
 
       - name: Lint
-        run: uvx ruff check --output-format=github .
+        run: uvx ruff@0.15.18 check --output-format=github .
 
       - name: Format
-        run: uvx ruff format --check .
+        run: uvx ruff@0.15.18 format --check .
