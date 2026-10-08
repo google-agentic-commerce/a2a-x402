@@ -60,23 +60,6 @@ ASSET_ABI = json.loads(
       ],
       "stateMutability": "view",
       "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "name": "owner",
-          "type": "address"
-        }
-      ],
-      "name": "nonces",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
     }
 ]
 """
@@ -166,9 +149,10 @@ def process_payment(
         address=Web3.to_checksum_address(requirements.asset), abi=ASSET_ABI
     )
 
-    # --- 1. Get the current nonce from the contract ---
-    nonce_uint = asset_contract.functions.nonces(account.address).call()
-    nonce_bytes = nonce_uint.to_bytes(32, "big")
+    # --- 1. Generate a random nonce ---
+    # EIP-3009 nonces are arbitrary unique bytes32 values chosen by the payer,
+    # not the token's EIP-2612 nonces(owner) counter.
+    nonce_bytes = os.urandom(32)
 
     # --- 2. Generate the authorization data ONCE ---
     auth_data = {
