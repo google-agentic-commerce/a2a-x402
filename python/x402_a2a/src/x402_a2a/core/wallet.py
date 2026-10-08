@@ -60,23 +60,6 @@ ASSET_ABI = json.loads(
       ],
       "stateMutability": "view",
       "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "name": "owner",
-          "type": "address"
-        }
-      ],
-      "name": "nonces",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
     }
 ]
 """
@@ -166,9 +149,10 @@ def process_payment(
         address=Web3.to_checksum_address(requirements.asset), abi=ASSET_ABI
     )
 
-    # --- 1. Get the current nonce from the contract ---
-    nonce_uint = asset_contract.functions.nonces(account.address).call()
-    nonce_bytes = nonce_uint.to_bytes(32, "big")
+    # --- 1. Generate a random nonce ---
+    # EIP-3009 nonces are arbitrary unique bytes32 values chosen by the payer,
+    # not the token's EIP-2612 nonces(owner) counter.
+    nonce_bytes = os.urandom(32)
 
     # --- 2. Generate the authorization data ONCE ---
     auth_data = {
@@ -187,10 +171,14 @@ def process_payment(
         "nonce": nonce_bytes,
     }
 
-    # --- Get EIP-712 domain info from the contract ---
+    # --- Get EIP-712 domain info ---
+    # Prefer the domain the server advertises in `extra`: some EIP-3009 tokens
+    # (e.g. Tether USD on Celo) have no version() function, and name() is not
+    # guaranteed to match the domain name. Fall back to the contract otherwise.
     chain_id = w3.eth.chain_id
-    token_name = asset_contract.functions.name().call()
-    token_version = asset_contract.functions.version().call()
+    extra = requirements.extra or {}
+    token_name = extra.get("name") or asset_contract.functions.name().call()
+    token_version = extra.get("version") or asset_contract.functions.version().call()
 
     # Set up logging
     logging.basicConfig(level=logging.INFO)
