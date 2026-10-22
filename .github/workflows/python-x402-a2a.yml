@@ -29,10 +29,13 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --group lint
+        run: uv sync --python 3.11 --frozen --group lint
 
       - name: Lint
         run: uv run --frozen --group lint ruff check --output-format=github .
 
       - name: Format
         run: uv run --frozen --group lint ruff format --check .
+
+      - name: Test
+        run: uv run --frozen pytest -q

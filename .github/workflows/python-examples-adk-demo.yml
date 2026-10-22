@@ -29,7 +29,7 @@ jobs:
         run: uv python install 3.13
 
       - name: Install dependencies
-        run: uv sync --group lint
+        run: uv sync --python 3.13 --frozen --group lint
 
       - name: Lint
         run: uv run --frozen --group lint ruff check --output-format=github .
