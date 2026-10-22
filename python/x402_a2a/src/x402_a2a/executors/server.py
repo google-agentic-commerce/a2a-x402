@@ -18,8 +18,10 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional, Dict, List
 
 from a2a.server.tasks import TaskUpdater
+from a2a.types import Role, TaskStatusUpdateEvent
 
 from .base import x402BaseExecutor
+from ._payment_event_queue import PaymentEventQueue
 from ..types import (
     AgentExecutor,
     RequestContext,
@@ -36,6 +38,7 @@ from ..types import (
     TaskState,
     x402PaymentRequiredResponse,
     VerifyResponse,
+    x402Metadata,
 )
 
 
@@ -92,18 +95,6 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         """Payment middleware: verify → execute service → settle."""
         if not context.task_id or not context.context_id:
             raise ValueError("Task ID and Context ID cannot be None")
-        updater = TaskUpdater(event_queue, context.task_id, context.context_id)
-        if not context.current_task:
-            await updater.submit()
-        await updater.start_work()
-
-        task = context.current_task or Task(
-            id=context.task_id,
-            context_id=context.context_id,
-            status=TaskStatus(state=TaskState.working),
-        )
-        self.utils.get_payment_status(task)
-
         payment_status_task = (
             self.utils.get_payment_status_from_task(context.current_task)
             if context.current_task
@@ -121,6 +112,11 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         ):
             return await self._process_paid_request(context, event_queue)
 
+        updater = TaskUpdater(event_queue, context.task_id, context.context_id)
+        if not context.current_task:
+            await updater.submit()
+        await updater.start_work()
+
         try:
             return await self._delegate.execute(context, event_queue)
         except x402PaymentRequiredException as e:
@@ -136,6 +132,35 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         if not task:
             logger.error("Task not found in context during payment processing.")
             raise ValueError("Task not found in context")
+
+        # Keep receipt history independent of TaskManager status updates.
+        current_task = task
+        task = task.model_copy(deep=True)
+        task.status.state = TaskState.working
+        # The request handler moves the previous status message into history.
+        # Its most recent receipt array is cumulative; do not concatenate it
+        # with older snapshots or accept a receipt supplied by the client.
+        if task.status.message is None:
+            for message in reversed(task.history or []):
+                # A payment submission can itself use role=agent. It is still
+                # incoming data, not a previously issued payment receipt.
+                if context.message and message.message_id == context.message.message_id:
+                    continue
+                if message.role == Role.agent and (message.metadata or {}).get(
+                    x402Metadata.RECEIPTS_KEY
+                ):
+                    task.status.message = message.model_copy(deep=True)
+                    task.status.message.metadata = {
+                        x402Metadata.RECEIPTS_KEY: (message.metadata or {})[
+                            x402Metadata.RECEIPTS_KEY
+                        ]
+                    }
+                    break
+        await TaskUpdater(event_queue, task.id, task.context_id).start_work(
+            message=task.status.message.model_copy(deep=True)
+            if task.status.message
+            else None
+        )
 
         logger.info(
             f"✅ Received payment payload. Beginning verification for task: {task.id}"
@@ -210,12 +235,23 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
 
         logger.info("Payment verified successfully. Recording and updating task.")
         task = self.utils.record_payment_verified(task)
-        await event_queue.enqueue_event(task)
-
         # Add the verification status to the task metadata for the delegate agent.
         if not task.metadata:
             task.metadata = {}
         task.metadata["x402_payment_verified"] = True
+        if current_task.metadata is None:
+            current_task.metadata = {}
+        current_task.metadata["x402_payment_verified"] = True
+        current_task.status = task.status.model_copy(deep=True)
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task.id,
+                context_id=task.context_id,
+                status=task.status.model_copy(deep=True),
+                metadata={"x402_payment_verified": True},
+                final=False,
+            )
+        )
         logger.info("Set x402_payment_verified=True in task.metadata")
 
         if task.status.message is not None and (
@@ -223,9 +259,10 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
             or not task.status.message.metadata
         ):
             task.status.message.metadata = {}
+        payment_events = PaymentEventQueue(event_queue)
         try:
             logger.info("Executing delegate agent...")
-            await self._delegate.execute(context, event_queue)
+            await self._delegate.execute(context, payment_events)
             logger.info("Delegate agent execution finished.")
         except Exception as e:
             logger.error(f"Exception during delegate execution: {e}", exc_info=True)
@@ -263,7 +300,7 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 )
 
                 self._payment_requirements_store.pop(task.id, None)
-            await event_queue.enqueue_event(task)
+            await payment_events.publish_result(task, settle_response.success)
             logger.info("Settlement processing finished.")
         except Exception as e:
             logger.error(f"Exception during settlement: {e}", exc_info=True)
@@ -381,4 +418,12 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
 
         self._payment_requirements_store.pop(task.id, None)
 
-        await event_queue.enqueue_event(task)
+        task.status.state = TaskState.failed
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task.id,
+                context_id=task.context_id,
+                status=task.status.model_copy(deep=True),
+                final=True,
+            )
+        )

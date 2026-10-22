@@ -904,6 +904,15 @@ async def handle_payment_requirements(task: Task, account: Account):
 
 The `/executors` module provides optional middleware for common integration patterns. **These are convenience wrappers and are not required** if you implement the core functions directly.
 
+For paid requests, `x402ServerExecutor` keeps the existing verify → execute →
+settle order. Delegate progress and artifact events can stream during execution,
+but response-ending events are held until settlement finishes. The final response
+includes `x402.payment.status` and the cumulative `x402.payment.receipts` in its
+message metadata; a settlement failure ends the task as `failed`. This coordinates
+response delivery and does not make delegate side effects conditional on successful
+settlement.
+
+
 ### 8.1. Server Executor (Exception-Based)
 
 ```python
