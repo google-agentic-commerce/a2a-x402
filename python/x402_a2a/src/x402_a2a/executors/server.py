@@ -41,6 +41,10 @@ from ..types import (
 
 logger = logging.getLogger(__name__)
 
+# Task metadata key that tells the delegate the current turn carries a verified
+# payment. It is only valid for the duration of the delegate call on that turn.
+PAYMENT_VERIFIED_KEY = "x402_payment_verified"
+
 
 class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
     """Server-side payment middleware for merchant agents.
@@ -92,6 +96,11 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         """Payment middleware: verify → execute service → settle."""
         if not context.task_id or not context.context_id:
             raise ValueError("Task ID and Context ID cannot be None")
+        # Never trust a verification flag carried over from an earlier turn.
+        # Clear it before updater.start_work() so the cleaned metadata is saved
+        # even when TaskStore serializes Task objects on write.
+        _clear_payment_verified(context.current_task)
+
         updater = TaskUpdater(event_queue, context.task_id, context.context_id)
         if not context.current_task:
             await updater.submit()
@@ -215,24 +224,35 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         # Add the verification status to the task metadata for the delegate agent.
         if not task.metadata:
             task.metadata = {}
-        task.metadata["x402_payment_verified"] = True
-        logger.info("Set x402_payment_verified=True in task.metadata")
+        task.metadata[PAYMENT_VERIFIED_KEY] = True
+        logger.info(f"Set {PAYMENT_VERIFIED_KEY}=True in task.metadata")
 
         if task.status.message is not None and (
             not hasattr(task.status.message, "metadata")
             or not task.status.message.metadata
         ):
             task.status.message.metadata = {}
+        delegate_error: Optional[Exception] = None
         try:
             logger.info("Executing delegate agent...")
             await self._delegate.execute(context, event_queue)
             logger.info("Delegate agent execution finished.")
         except Exception as e:
-            logger.error(f"Exception during delegate execution: {e}", exc_info=True)
+            delegate_error = e
+        finally:
+            # The flag is a per-turn signal. Clear it before any further task
+            # events are enqueued so it is never persisted for later turns.
+            _clear_payment_verified(task)
+
+        if delegate_error is not None:
+            logger.error(
+                f"Exception during delegate execution: {delegate_error}",
+                exc_info=delegate_error,
+            )
             return await self._fail_payment(
                 task,
                 x402ErrorCode.SETTLEMENT_FAILED,
-                f"Service failed: {e}",
+                f"Service failed: {delegate_error}",
                 event_queue,
             )
 
@@ -382,3 +402,9 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         self._payment_requirements_store.pop(task.id, None)
 
         await event_queue.enqueue_event(task)
+
+
+def _clear_payment_verified(task: Optional[Task]) -> None:
+    """Removes the per-turn payment verification flag from a task, if present."""
+    if task is not None and task.metadata:
+        task.metadata.pop(PAYMENT_VERIFIED_KEY, None)
