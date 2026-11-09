@@ -19,6 +19,10 @@ import pytest
 from a2a.server.tasks import InMemoryTaskStore, TaskManager, TaskUpdater
 from a2a.types import Message, Task, TaskState, TaskStatus, TextPart
 
+from x402_a2a.executors.nonce_store import (
+    InMemoryPaymentNonceStore,
+    PaymentNonceStore,
+)
 from x402_a2a.executors.server import PAYMENT_VERIFIED_KEY, x402ServerExecutor
 from x402_a2a.types import (
     PaymentPayload,
@@ -26,6 +30,7 @@ from x402_a2a.types import (
     PaymentStatus,
     SettleResponse,
     VerifyResponse,
+    x402ErrorCode,
     x402Metadata,
     x402PaymentRequiredException,
 )
@@ -50,8 +55,14 @@ class RecordingDelegate:
 
 
 class FakeServerExecutor(x402ServerExecutor):
-    def __init__(self, delegate):
-        super().__init__(delegate=delegate, config=MagicMock())
+    def __init__(self, delegate, nonce_store=None):
+        super().__init__(
+            delegate=delegate,
+            config=MagicMock(),
+            nonce_store=(
+                nonce_store if nonce_store is not None else InMemoryPaymentNonceStore()
+            ),
+        )
         self.verify_payment = AsyncMock(
             return_value=VerifyResponse(is_valid=True, payer="0x789")
         )
@@ -78,7 +89,7 @@ def _requirements() -> PaymentRequirements:
     )
 
 
-def _payload(nonce: str = "0xdef") -> PaymentPayload:
+def _payload(nonce: str = "0xdef", valid_before: str = "9999999999") -> PaymentPayload:
     return PaymentPayload(
         x402_version=1,
         scheme="exact",
@@ -90,7 +101,7 @@ def _payload(nonce: str = "0xdef") -> PaymentPayload:
                 "to": "0x123",
                 "value": "100",
                 "valid_after": "0",
-                "valid_before": "9999999999",
+                "valid_before": valid_before,
                 "nonce": nonce,
             },
         },
@@ -111,13 +122,20 @@ def _context(task: Task, metadata: dict) -> MagicMock:
     return context
 
 
-def _paid_context(executor: x402ServerExecutor, task: Task, nonce: str = "0xdef"):
+def _paid_context(
+    executor: x402ServerExecutor,
+    task: Task,
+    nonce: str = "0xdef",
+    valid_before: str = "9999999999",
+):
     executor._payment_requirements_store[task.id] = [_requirements()]
     return _context(
         task,
         {
             x402Metadata.STATUS_KEY: PaymentStatus.PAYMENT_SUBMITTED.value,
-            x402Metadata.PAYLOAD_KEY: _payload(nonce).model_dump(by_alias=True),
+            x402Metadata.PAYLOAD_KEY: _payload(nonce, valid_before).model_dump(
+                by_alias=True
+            ),
         },
     )
 
@@ -249,3 +267,147 @@ async def test_task_manager_persistence_across_turns_clears_verified_flag():
         t3.status.message.metadata.get(x402Metadata.STATUS_KEY)
         == PaymentStatus.PAYMENT_REQUIRED.value
     )
+
+
+def _error_code(task: Task):
+    assert task.status.message is not None
+    assert task.status.message.metadata is not None
+    return task.status.message.metadata.get(x402Metadata.ERROR_KEY)
+
+
+@pytest.mark.asyncio
+async def test_replayed_payload_on_new_task_is_rejected_before_delegate():
+    delegate = RecordingDelegate()
+    executor = FakeServerExecutor(delegate)
+    task_1 = _new_task("task-replay-1")
+    task_2 = _new_task("task-replay-2")
+
+    await executor.execute(_paid_context(executor, task_1), AsyncMock())
+    await executor.execute(_paid_context(executor, task_2), AsyncMock())
+
+    assert delegate.saw_verified == [True]
+    executor.settle_payment.assert_called_once()
+    assert _error_code(task_2) == x402ErrorCode.DUPLICATE_NONCE
+
+
+@pytest.mark.asyncio
+async def test_replayed_nonce_with_different_hex_casing_or_prefix_is_rejected():
+    delegate = RecordingDelegate()
+    executor = FakeServerExecutor(delegate)
+    task_1 = _new_task("task-hex-1")
+    task_2 = _new_task("task-hex-2")
+    task_3 = _new_task("task-hex-3")
+
+    await executor.execute(_paid_context(executor, task_1, nonce="0xDeF"), AsyncMock())
+    await executor.execute(_paid_context(executor, task_2, nonce="0xdef"), AsyncMock())
+    await executor.execute(_paid_context(executor, task_3, nonce="def"), AsyncMock())
+
+    assert delegate.saw_verified == [True]
+    assert _error_code(task_2) == x402ErrorCode.DUPLICATE_NONCE
+    assert _error_code(task_3) == x402ErrorCode.DUPLICATE_NONCE
+
+
+@pytest.mark.asyncio
+async def test_distinct_nonces_are_accepted():
+    delegate = RecordingDelegate()
+    executor = FakeServerExecutor(delegate)
+
+    await executor.execute(
+        _paid_context(executor, _new_task("t-1"), nonce="0x01"), AsyncMock()
+    )
+    await executor.execute(
+        _paid_context(executor, _new_task("t-2"), nonce="0x02"), AsyncMock()
+    )
+
+    assert delegate.saw_verified == [True, True]
+    assert executor.settle_payment.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_replay_is_rejected_across_executor_instances_sharing_a_store():
+    store = InMemoryPaymentNonceStore()
+    delegate = RecordingDelegate()
+    first = FakeServerExecutor(delegate, nonce_store=store)
+    second = FakeServerExecutor(delegate, nonce_store=store)
+
+    await first.execute(_paid_context(first, _new_task("t-a")), AsyncMock())
+    await second.execute(_paid_context(second, _new_task("t-b")), AsyncMock())
+
+    assert delegate.saw_verified == [True]
+    second.settle_payment.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_failed_verification_does_not_consume_nonce():
+    delegate = RecordingDelegate()
+    executor = FakeServerExecutor(delegate)
+    executor.verify_payment.return_value = VerifyResponse(
+        is_valid=False, invalid_reason="bad signature", payer="0x789"
+    )
+
+    await executor.execute(_paid_context(executor, _new_task("t-forged")), AsyncMock())
+    assert delegate.saw_verified == []
+
+    executor.verify_payment.return_value = VerifyResponse(is_valid=True, payer="0x789")
+    await executor.execute(_paid_context(executor, _new_task("t-real")), AsyncMock())
+    assert delegate.saw_verified == [True]
+
+
+@pytest.mark.asyncio
+async def test_expired_authorization_is_rejected_before_delegate():
+    delegate = RecordingDelegate()
+    executor = FakeServerExecutor(delegate)
+    task = _new_task("t-expired")
+
+    await executor.execute(_paid_context(executor, task, valid_before="1"), AsyncMock())
+
+    assert delegate.saw_verified == []
+    executor.settle_payment.assert_not_called()
+    assert _error_code(task) == x402ErrorCode.EXPIRED_PAYMENT
+
+
+class FailingNonceStore(PaymentNonceStore):
+    async def reserve(self, key: str, expires_at: int) -> bool:
+        raise ConnectionError("store unavailable")
+
+
+@pytest.mark.asyncio
+async def test_nonce_store_failure_fails_closed():
+    delegate = RecordingDelegate()
+    executor = FakeServerExecutor(delegate, nonce_store=FailingNonceStore())
+
+    await executor.execute(
+        _paid_context(executor, _new_task("t-store-down")), AsyncMock()
+    )
+
+    assert delegate.saw_verified == []
+    executor.settle_payment.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_in_memory_nonce_store_drops_expired_entries_and_bounds_size():
+    from x402_a2a import (
+        InMemoryPaymentNonceStore as TopLevelInMemoryStore,
+        PaymentNonceStore as TopLevelStore,
+    )
+
+    assert TopLevelInMemoryStore is InMemoryPaymentNonceStore
+    assert TopLevelStore is PaymentNonceStore
+
+    now = [1000.0]
+    store = InMemoryPaymentNonceStore(clock=lambda: now[0], max_entries=3)
+
+    assert await store.reserve("a", expires_at=1500)
+    assert await store.reserve("b", expires_at=3000)
+    assert not await store.reserve("a", expires_at=1500)
+
+    now[0] = 1500.0
+    assert not await store.reserve("a", expires_at=1500)
+
+    now[0] = 2000.0
+    assert await store.reserve("c", expires_at=4000)
+    assert await store.reserve("a", expires_at=5000)
+    assert not await store.reserve("b", expires_at=3000)
+
+    assert await store.reserve("d", expires_at=6000)
+    assert await store.reserve("b", expires_at=7000)
