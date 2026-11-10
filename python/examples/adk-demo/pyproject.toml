@@ -37,6 +37,13 @@ x402-a2a = { path = "../../../python/x402_a2a", editable = true }
 
 [tool.ruff]
 target-version = "py313"
+# Ruff 0.17+ also formats Python code blocks in Markdown; keep docs out of CI checks.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+# Pin the rule set to ruff's long-standing defaults. CI runs an unpinned `uvx ruff`,
+# and ruff 0.16+ enables many more rules by default, which fails CI on unchanged code.
+select = ["E4", "E7", "E9", "F"]
 
 [dependency-groups]
 lint = [
