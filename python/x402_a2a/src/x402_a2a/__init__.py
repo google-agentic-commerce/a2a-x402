@@ -77,7 +77,12 @@ from .core import (
 )
 
 # Optional Middleware
-from .executors import x402BaseExecutor, x402ServerExecutor
+from .executors import (
+    InMemoryPaymentNonceStore,
+    PaymentNonceStore,
+    x402BaseExecutor,
+    x402ServerExecutor,
+)
 
 __all__ = [
     "X402_EXTENSION_URI",
@@ -111,4 +116,6 @@ __all__ = [
     "map_error_to_code",
     "x402BaseExecutor",
     "x402ServerExecutor",
+    "PaymentNonceStore",
+    "InMemoryPaymentNonceStore",
 ]

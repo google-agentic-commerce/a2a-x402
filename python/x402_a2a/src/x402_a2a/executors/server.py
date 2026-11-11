@@ -13,13 +13,16 @@
 # limitations under the License.
 """Server-side executor for merchant implementations."""
 
+import json
 import logging
+import time
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional, Tuple
 
 from a2a.server.tasks import TaskUpdater
 
 from .base import x402BaseExecutor
+from .nonce_store import InMemoryPaymentNonceStore, PaymentNonceStore
 from ..types import (
     AgentExecutor,
     RequestContext,
@@ -40,6 +43,14 @@ from ..types import (
 
 
 logger = logging.getLogger(__name__)
+
+# Task metadata key that tells the delegate the current turn carries a verified
+# payment. It is only valid for the duration of the delegate call on that turn.
+PAYMENT_VERIFIED_KEY = "x402_payment_verified"
+
+# Used when no nonce store is supplied. Shared by every executor in the process
+# so replays are caught even if executors are created per request.
+_DEFAULT_NONCE_STORE = InMemoryPaymentNonceStore()
 
 
 class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
@@ -64,15 +75,22 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         self,
         delegate: AgentExecutor,
         config: x402ExtensionConfig,
+        nonce_store: Optional[PaymentNonceStore] = None,
     ):
         """Initialize server executor.
 
         Args:
             delegate: Underlying agent executor for business logic
             config: x402 extension configuration
+            nonce_store: Records used payment nonces to block replays. Defaults
+                to a process-local in-memory store; multi-replica deployments
+                must supply a shared store.
         """
         super().__init__(delegate, config)
         self._payment_requirements_store: Dict[str, List[PaymentRequirements]] = {}
+        self._nonce_store = (
+            nonce_store if nonce_store is not None else _DEFAULT_NONCE_STORE
+        )
 
     @abstractmethod
     async def verify_payment(
@@ -92,6 +110,11 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         """Payment middleware: verify → execute service → settle."""
         if not context.task_id or not context.context_id:
             raise ValueError("Task ID and Context ID cannot be None")
+        # Never trust a verification flag carried over from an earlier turn.
+        # Clear it before updater.start_work() so the cleaned metadata is saved
+        # even when TaskStore serializes Task objects on write.
+        _clear_payment_verified(context.current_task)
+
         updater = TaskUpdater(event_queue, context.task_id, context.context_id)
         if not context.current_task:
             await updater.submit()
@@ -208,6 +231,18 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 event_queue,
             )
 
+        # Reserve the nonce only after the signature is verified, so a forged
+        # payload cannot burn another payer's nonce. This must happen before
+        # the delegate runs, because settlement (the on-chain replay check)
+        # only happens after the service has been delivered.
+        rejection = await self._reserve_payment_nonce(
+            payment_payload, payment_requirements
+        )
+        if rejection is not None:
+            error_code, reason = rejection
+            logger.warning(f"Rejecting payment for task {task.id}: {reason}")
+            return await self._fail_payment(task, error_code, reason, event_queue)
+
         logger.info("Payment verified successfully. Recording and updating task.")
         task = self.utils.record_payment_verified(task)
         await event_queue.enqueue_event(task)
@@ -215,24 +250,35 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         # Add the verification status to the task metadata for the delegate agent.
         if not task.metadata:
             task.metadata = {}
-        task.metadata["x402_payment_verified"] = True
-        logger.info("Set x402_payment_verified=True in task.metadata")
+        task.metadata[PAYMENT_VERIFIED_KEY] = True
+        logger.info(f"Set {PAYMENT_VERIFIED_KEY}=True in task.metadata")
 
         if task.status.message is not None and (
             not hasattr(task.status.message, "metadata")
             or not task.status.message.metadata
         ):
             task.status.message.metadata = {}
+        delegate_error: Optional[Exception] = None
         try:
             logger.info("Executing delegate agent...")
             await self._delegate.execute(context, event_queue)
             logger.info("Delegate agent execution finished.")
         except Exception as e:
-            logger.error(f"Exception during delegate execution: {e}", exc_info=True)
+            delegate_error = e
+        finally:
+            # The flag is a per-turn signal. Clear it before any further task
+            # events are enqueued so it is never persisted for later turns.
+            _clear_payment_verified(task)
+
+        if delegate_error is not None:
+            logger.error(
+                f"Exception during delegate execution: {delegate_error}",
+                exc_info=delegate_error,
+            )
             return await self._fail_payment(
                 task,
                 x402ErrorCode.SETTLEMENT_FAILED,
-                f"Service failed: {e}",
+                f"Service failed: {delegate_error}",
                 event_queue,
             )
 
@@ -273,6 +319,47 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
                 f"Settlement failed: {e}",
                 event_queue,
             )
+
+    async def _reserve_payment_nonce(
+        self, payload: PaymentPayload, requirements: PaymentRequirements
+    ) -> Optional[Tuple[str, str]]:
+        """Marks the payment's nonce as used.
+
+        Returns:
+            None if the payment may proceed, or an (error_code, reason) tuple
+            if it must be rejected.
+        """
+        authorization = getattr(payload.payload, "authorization", None)
+        if authorization is None:
+            return x402ErrorCode.INVALID_SIGNATURE, "Missing payment authorization"
+        try:
+            valid_before = int(authorization.valid_before)
+        except (TypeError, ValueError):
+            return x402ErrorCode.INVALID_SIGNATURE, "Invalid authorization expiry"
+        # Expired authorizations are rejected here so that nonce store entries
+        # can be dropped once their authorization expires.
+        if valid_before <= time.time():
+            return x402ErrorCode.EXPIRED_PAYMENT, "Payment authorization has expired"
+
+        key = json.dumps(
+            [
+                payload.network.strip().lower(),
+                _normalize_hex(requirements.asset),
+                _normalize_hex(authorization.from_),
+                _normalize_hex(authorization.nonce),
+            ]
+        )
+        try:
+            reserved = await self._nonce_store.reserve(key, valid_before)
+        except Exception as e:
+            logger.error(f"Exception while recording payment nonce: {e}", exc_info=True)
+            return x402ErrorCode.SETTLEMENT_FAILED, "Unable to record payment nonce"
+        if not reserved:
+            return (
+                x402ErrorCode.DUPLICATE_NONCE,
+                "Payment nonce has already been used",
+            )
+        return None
 
     def _find_matching_payment_requirement(
         self,
@@ -382,3 +469,14 @@ class x402ServerExecutor(x402BaseExecutor, metaclass=ABCMeta):
         self._payment_requirements_store.pop(task.id, None)
 
         await event_queue.enqueue_event(task)
+
+
+def _clear_payment_verified(task: Optional[Task]) -> None:
+    """Removes the per-turn payment verification flag from a task, if present."""
+    if task is not None and task.metadata:
+        task.metadata.pop(PAYMENT_VERIFIED_KEY, None)
+
+
+def _normalize_hex(value: str) -> str:
+    """Normalizes hex identifiers (addresses, nonces) to lowercase without 0x."""
+    return value.strip().lower().removeprefix("0x")
