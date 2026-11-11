@@ -182,7 +182,7 @@ The Merchant Agent creates a `Task`, sets its status to `input-required`, and in
         "metadata": {
           "x402.payment.status": "payment-required",
           "x402.payment.required": {
-            "x402Version": 1,
+            "x402Version": 2,
             "accepts": [{ /* ... PaymentRequirements object ... */ }]
           }
         }
@@ -232,13 +232,13 @@ The Merchant Agent creates a `Task`, sets its status to `input-required`, and in
                   {
                     "supported_methods": "https://www.x402.org/",
                     "data": {
-                      "x402Version": 1,
+                      "x402Version": 2,
                       "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
+                        "network": "eip155:8453",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913",
                         "payTo": "0xMerchantWalletAddress",
-                        "maxAmountRequired": "120000000"
+                        "amount": "120000000"
                       }]
                     }
                   }
@@ -287,8 +287,8 @@ The Client Agent sends a new `Message` linked to the `Task` via its `taskId`. Th
       "metadata": {
         "x402.payment.status": "payment-submitted",
         "x402.payment.payload": {
-          "x402Version": 1,
-          "network": "base",
+          "x402Version": 2,
+          "network": "eip155:8453",
           /* ... The signed PaymentPayload object ... */
         }
       }
@@ -323,8 +323,8 @@ The Client Agent sends a new `Message` linked to the `Task` via its `taskId`. Th
                 "payment_method": {
                   "supported_methods": "https://www.x402.org/",
                   "data": { // x402 Payment Payload
-                    "x402Version": 1,
-                    "network": "base",
+                    "x402Version": 2,
+                    "network": "eip155:8453",
                     "scheme": "exact",
                     "payload": {
                       /* ... The fully signed x402 transaction object ... */
@@ -370,7 +370,7 @@ The Client Agent sends a new `Message` linked to the `Task` via its `taskId`. Th
           "x402.payment.receipts": [{
             "success": true,
             "transaction": "0xabc123...",
-            "network": "base"
+            "network": "eip155:8453"
           }]
         }
       }
@@ -462,7 +462,7 @@ If a payment fails, the server MUST set the x402.payment.status to payment-faile
         "x402.payment.receipts": [{
             "success": false,
             "errorReason": "Payment authorization was submitted after its 'validBefore' timestamp.",
-            "network": "base",
+            "network": "eip155:8453",
             "transaction": ""
         }]
       }
